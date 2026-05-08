@@ -22,3 +22,32 @@ func TestGetByPath_Messages(t *testing.T) {
 		t.Fatalf("GetByPath(/api/v1/public/messages)=%d, want %d", got, Messages)
 	}
 }
+
+func TestGetByPath_ImagesGenerations(t *testing.T) {
+	if got := GetByPath("/v1/images/generations"); got != ImagesGenerations {
+		t.Fatalf("GetByPath(/v1/images/generations)=%d, want %d", got, ImagesGenerations)
+	}
+	if got := GetByPath("/api/v1/public/images/generations"); got != ImagesGenerations {
+		t.Fatalf("GetByPath(/api/v1/public/images/generations)=%d, want %d", got, ImagesGenerations)
+	}
+}
+
+func TestGetByPath_Audio(t *testing.T) {
+	tests := []struct {
+		path string
+		want int
+	}{
+		{path: "/v1/audio/speech", want: AudioSpeech},
+		{path: "/v1/audio/transcriptions", want: AudioTranscription},
+		{path: "/v1/audio/translations", want: AudioTranslation},
+		{path: "/api/v1/public/audio/speech", want: AudioSpeech},
+		{path: "/api/v1/public/audio/transcriptions", want: AudioTranscription},
+		{path: "/api/v1/public/audio/translations", want: AudioTranslation},
+	}
+
+	for _, tt := range tests {
+		if got := GetByPath(tt.path); got != tt.want {
+			t.Fatalf("GetByPath(%s)=%d, want %d", tt.path, got, tt.want)
+		}
+	}
+}

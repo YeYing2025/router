@@ -1386,6 +1386,7 @@ func executeChannelImageEditModelTest(ctx context.Context, channel *model.Channe
 
 func executeChannelAudioModelTest(ctx context.Context, channel *model.Channel, modelName string) channelModelTestExecution {
 	execution := channelModelTestExecution{}
+	execution.IsStream = false
 	actualModelName := resolveChannelUpstreamModelName(channel, modelName)
 	if actualModelName == "" {
 		execution.Err = fmt.Errorf("未找到可用于音频模型测试的模型")
@@ -1413,11 +1414,10 @@ func executeChannelAudioModelTest(ctx context.Context, channel *model.Channel, m
 	adaptor.Init(relayMeta)
 	relayMeta.OriginModelName = strings.TrimSpace(modelName)
 	relayMeta.ActualModelName = actualModelName
-	requestBody, err := json.Marshal(openaiadaptor.TextToSpeechRequest{
-		Model:          actualModelName,
-		Input:          "Model test from Router.",
-		Voice:          "alloy",
-		ResponseFormat: "mp3",
+	requestBody, err := json.Marshal(map[string]any{
+		"model": actualModelName,
+		"input": "Model test from Router.",
+		"voice": "alloy",
 	})
 	if err != nil {
 		execution.Err = err

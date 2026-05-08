@@ -114,7 +114,13 @@ const CHANNEL_MODEL_TEST_GROUP_COLUMN_WIDTHS = [
   '10%',
 ];
 
+const supportsModelTestStream = (row) =>
+  normalizeChannelModelType(row?.type) === 'text';
+
 const resolveModelTestStreamEnabled = (row) => {
+  if (!supportsModelTestStream(row)) {
+    return false;
+  }
   if (
     Object.prototype.hasOwnProperty.call(row || {}, 'is_stream') ||
     Object.prototype.hasOwnProperty.call(row || {}, 'isStream')
@@ -3046,11 +3052,16 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       }
       const targetConfigs = visibleModelConfigs
         .filter((row) => normalizedTargets.includes(row.model))
-        .map((row) => ({
-          model: row.model,
-          endpoint: getEffectiveModelEndpoint(row),
-          is_stream: !!row.is_stream,
-        }));
+        .map((row) => {
+          const targetConfig = {
+            model: row.model,
+            endpoint: getEffectiveModelEndpoint(row),
+          };
+          if (supportsModelTestStream(row)) {
+            targetConfig.is_stream = !!row.is_stream;
+          }
+          return targetConfig;
+        });
       setModelTesting(true);
       setModelTestingScope(scope === 'single' ? 'single' : 'batch');
       setModelTestingTargets(normalizedTargets);
@@ -3244,9 +3255,12 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       if (targetSet.size === 0) {
         return;
       }
-      const nextConfigs = visibleModelConfigs.map((row) =>
-        targetSet.has(row.model) ? { ...row, is_stream: !!isStream } : row,
-      );
+      const nextConfigs = visibleModelConfigs.map((row) => {
+        if (!targetSet.has(row.model) || !supportsModelTestStream(row)) {
+          return row;
+        }
+        return { ...row, is_stream: !!isStream };
+      });
       if (isDetailMode) {
         await persistDetailModelConfigs(nextConfigs);
         return;

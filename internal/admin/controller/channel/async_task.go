@@ -101,6 +101,9 @@ func CreateChannelModelTestTasks(channelID string, createdBy string, requestedTe
 		if endpointErr != nil {
 			return nil, createdCount, reusedCount, endpointErr
 		}
+		if resolveSelectionModelType(row) == model.ProviderModelTypeAudio {
+			stream = nil
+		}
 		modelID := strings.TrimSpace(row.Model)
 		task, reused, err := model.CreateOrReuseAsyncTaskWithDB(model.DB, model.AsyncTask{
 			Type:      model.AsyncTaskTypeChannelModelTest,

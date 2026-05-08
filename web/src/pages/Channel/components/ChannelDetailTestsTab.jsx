@@ -184,12 +184,20 @@ const ChannelDetailTestsTab = ({
   }, [filteredRows, getEffectiveModelEndpoint]);
 
   const disabledBase = detailTestingReadonly || detailModelMutating;
+  const streamCapableRows = useMemo(
+    () => filteredRows.filter((row) => row?.type === 'text'),
+    [filteredRows],
+  );
+  const streamCapableModelIDs = useMemo(
+    () => streamCapableRows.map((row) => row.model),
+    [streamCapableRows],
+  );
   const batchStreamValue = useMemo(() => {
-    if (filteredRows.length === 0) {
+    if (streamCapableRows.length === 0) {
       return true;
     }
-    return filteredRows.every((row) => row?.is_stream !== false);
-  }, [filteredRows]);
+    return streamCapableRows.every((row) => row?.is_stream !== false);
+  }, [streamCapableRows]);
 
   const resultSummaryByKey = useMemo(() => {
     const summaryMap = new Map();
@@ -344,17 +352,22 @@ const ChannelDetailTestsTab = ({
                   <div className='router-log-filter-editor-title'>
                     {t('channel.edit.model_tester.settings_title')}
                   </div>
-                  <Form.Field style={{ marginBottom: 0 }}>
-                    <Checkbox
-                      toggle
-                      label={t('channel.edit.model_tester.settings_stream')}
-                      checked={batchStreamValue}
-                      disabled={disabledBase || filteredRows.length === 0}
-                      onChange={(e, { checked }) =>
-                        updateAllModelTestStreams(!!checked, filteredModelIDs)
-                      }
-                    />
-                  </Form.Field>
+                  {streamCapableRows.length > 0 ? (
+                    <Form.Field style={{ marginBottom: 0 }}>
+                      <Checkbox
+                        toggle
+                        label={t('channel.edit.model_tester.settings_stream')}
+                        checked={batchStreamValue}
+                        disabled={disabledBase}
+                        onChange={(e, { checked }) =>
+                          updateAllModelTestStreams(
+                            !!checked,
+                            streamCapableModelIDs,
+                          )
+                        }
+                      />
+                    </Form.Field>
+                  ) : null}
                 </div>
               }
             />

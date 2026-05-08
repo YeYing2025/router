@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"github.com/yeying-community/router/internal/relay/meta"
+	"github.com/yeying-community/router/internal/relay/relaymode"
 )
 
 func TestSetupRequestHeaderSetsJSONAcceptForNonStream(t *testing.T) {
@@ -51,5 +52,29 @@ func TestSetupRequestHeaderSetsSSEAcceptForStream(t *testing.T) {
 	}
 	if got := req.Header.Get("Accept"); got != "text/event-stream" {
 		t.Fatalf("Accept = %q, want %q", got, "text/event-stream")
+	}
+}
+
+func TestSetupRequestHeaderPreservesAudioAcceptForSpeech(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/v1/audio/speech", nil)
+	ctx.Request.Header.Set("Accept", "audio/mpeg")
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	req := httptest.NewRequest(http.MethodPost, "https://example.com/v1/audio/speech", nil)
+	adaptor := &Adaptor{ChannelProtocol: relaychannel.OpenAI}
+	meta := &meta.Meta{
+		APIKey:          "sk-test",
+		ChannelProtocol: relaychannel.OpenAI,
+		Mode:            relaymode.AudioSpeech,
+	}
+
+	if err := adaptor.SetupRequestHeader(ctx, req, meta); err != nil {
+		t.Fatalf("SetupRequestHeader returned error: %v", err)
+	}
+	if got := req.Header.Get("Accept"); got != "audio/mpeg" {
+		t.Fatalf("Accept = %q, want %q", got, "audio/mpeg")
 	}
 }

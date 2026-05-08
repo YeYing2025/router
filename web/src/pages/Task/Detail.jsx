@@ -199,6 +199,22 @@ const TaskDetail = () => {
     }
     return raw.trim();
   }, [location.state]);
+  const taskListNavState = useMemo(() => {
+    if (
+      originPath === '' &&
+      originLabel === '' &&
+      contextType === '' &&
+      contextLabel === ''
+    ) {
+      return undefined;
+    }
+    return {
+      from: originPath,
+      fromLabel: originLabel,
+      contextType,
+      contextLabel,
+    };
+  }, [contextLabel, contextType, originLabel, originPath]);
   const [loading, setLoading] = useState(true);
   const [task, setTask] = useState(null);
 
@@ -259,8 +275,10 @@ const TaskDetail = () => {
   );
 
   const backToList = useCallback(() => {
-    navigate(returnPath || buildTaskListPath());
-  }, [buildTaskListPath, navigate, returnPath]);
+    navigate(returnPath || buildTaskListPath(), {
+      state: taskListNavState,
+    });
+  }, [buildTaskListPath, navigate, returnPath, taskListNavState]);
   const goToChannelList = useCallback(() => {
     navigate('/admin/channel');
   }, [navigate]);
