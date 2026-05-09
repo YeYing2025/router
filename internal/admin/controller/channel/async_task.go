@@ -14,10 +14,11 @@ import (
 )
 
 type channelModelTestTaskPayload struct {
-	ChannelID string `json:"channel_id"`
-	Model     string `json:"model"`
-	Endpoint  string `json:"endpoint"`
-	IsStream  *bool  `json:"is_stream,omitempty"`
+	ChannelID     string `json:"channel_id"`
+	Model         string `json:"model"`
+	Endpoint      string `json:"endpoint"`
+	IsStream      *bool  `json:"is_stream,omitempty"`
+	AudioLanguage string `json:"audio_language,omitempty"`
 }
 
 type channelRefreshModelsTaskPayload struct {
@@ -28,13 +29,17 @@ type channelRefreshBalanceTaskPayload struct {
 	ChannelID string `json:"channel_id"`
 }
 
-func buildChannelModelTestTaskDedupeKey(channelID string, modelID string, endpoint string, streamOverride *bool) string {
+func buildChannelModelTestTaskDedupeKey(channelID string, modelID string, endpoint string, streamOverride *bool, audioLanguage string) string {
 	normalizedModelID := strings.TrimSpace(modelID)
 	normalizedEndpoint := model.NormalizeRequestedChannelModelEndpoint(endpoint)
+	normalizedAudioLanguage := normalizeAudioTestLanguage(audioLanguage)
 	if streamOverride == nil {
-		return fmt.Sprintf("%s:%s:%s:%s", model.AsyncTaskTypeChannelModelTest, strings.TrimSpace(channelID), normalizedModelID, normalizedEndpoint)
+		if normalizedAudioLanguage == "zh-CN" {
+			return fmt.Sprintf("%s:%s:%s:%s", model.AsyncTaskTypeChannelModelTest, strings.TrimSpace(channelID), normalizedModelID, normalizedEndpoint)
+		}
+		return fmt.Sprintf("%s:%s:%s:%s:%s", model.AsyncTaskTypeChannelModelTest, strings.TrimSpace(channelID), normalizedModelID, normalizedEndpoint, normalizedAudioLanguage)
 	}
-	return fmt.Sprintf(
+	key := fmt.Sprintf(
 		"%s:%s:%s:%s:%t",
 		model.AsyncTaskTypeChannelModelTest,
 		strings.TrimSpace(channelID),
@@ -42,6 +47,10 @@ func buildChannelModelTestTaskDedupeKey(channelID string, modelID string, endpoi
 		normalizedEndpoint,
 		*streamOverride,
 	)
+	if normalizedAudioLanguage != "zh-CN" {
+		key = fmt.Sprintf("%s:%s", key, normalizedAudioLanguage)
+	}
+	return key
 }
 
 func buildChannelRefreshModelsTaskDedupeKey(channelID string) string {
@@ -52,20 +61,22 @@ func buildChannelRefreshBalanceTaskDedupeKey(channelID string) string {
 	return fmt.Sprintf("%s:%s", model.AsyncTaskTypeChannelRefreshBalance, strings.TrimSpace(channelID))
 }
 
-func buildChannelModelTestTaskPayload(modelID string, channelID string, endpoint string, streamOverride *bool) string {
+func buildChannelModelTestTaskPayload(modelID string, channelID string, endpoint string, streamOverride *bool, audioLanguage string) string {
 	return marshalJSONForLog(channelModelTestTaskPayload{
-		ChannelID: strings.TrimSpace(channelID),
-		Model:     strings.TrimSpace(modelID),
-		Endpoint:  model.NormalizeRequestedChannelModelEndpoint(endpoint),
-		IsStream:  streamOverride,
+		ChannelID:     strings.TrimSpace(channelID),
+		Model:         strings.TrimSpace(modelID),
+		Endpoint:      model.NormalizeRequestedChannelModelEndpoint(endpoint),
+		IsStream:      streamOverride,
+		AudioLanguage: normalizeAudioTestLanguage(audioLanguage),
 	})
 }
 
-func CreateChannelModelTestTasks(channelID string, createdBy string, requestedTestModel string, requestedModels []string, requestedConfigs []channelModelTestTargetItem, traceID string) ([]model.AsyncTask, int, int, error) {
+func CreateChannelModelTestTasks(channelID string, createdBy string, requestedTestModel string, requestedModels []string, requestedConfigs []channelModelTestTargetItem, traceID string, requestedAudioLanguage string) ([]model.AsyncTask, int, int, error) {
 	normalizedChannelID := strings.TrimSpace(channelID)
 	if normalizedChannelID == "" {
 		return nil, 0, 0, fmt.Errorf("渠道 ID 无效")
 	}
+	normalizedAudioLanguage := normalizeAudioTestLanguage(requestedAudioLanguage)
 	channelRow, err := channelsvc.GetByID(normalizedChannelID)
 	if err != nil {
 		return nil, 0, 0, err
@@ -107,11 +118,11 @@ func CreateChannelModelTestTasks(channelID string, createdBy string, requestedTe
 		modelID := strings.TrimSpace(row.Model)
 		task, reused, err := model.CreateOrReuseAsyncTaskWithDB(model.DB, model.AsyncTask{
 			Type:      model.AsyncTaskTypeChannelModelTest,
-			DedupeKey: buildChannelModelTestTaskDedupeKey(normalizedChannelID, modelID, normalizedEndpoint, stream),
+			DedupeKey: buildChannelModelTestTaskDedupeKey(normalizedChannelID, modelID, normalizedEndpoint, stream, normalizedAudioLanguage),
 			ChannelId: normalizedChannelID,
 			Model:     modelID,
 			Endpoint:  normalizedEndpoint,
-			Payload:   buildChannelModelTestTaskPayload(modelID, normalizedChannelID, normalizedEndpoint, stream),
+			Payload:   buildChannelModelTestTaskPayload(modelID, normalizedChannelID, normalizedEndpoint, stream, normalizedAudioLanguage),
 			CreatedBy: strings.TrimSpace(createdBy),
 			TraceID:   strings.TrimSpace(traceID),
 		})
@@ -211,7 +222,7 @@ func executeChannelModelTestTask(ctx context.Context, task *model.AsyncTask) (st
 	if endpoint := strings.TrimSpace(payload.Endpoint); endpoint != "" {
 		row.Endpoint = endpoint
 	}
-	testResult, execution := runSingleChannelModelTestWithContextAndStream(ctx, channelRow, row, payload.IsStream)
+	testResult, execution := runSingleChannelModelTestWithContextAndStream(ctx, channelRow, row, payload.IsStream, payload.AudioLanguage)
 	testResult.ChannelId = channelID
 	persistChannelTestArtifactForExecution(ctx, task.Id, &testResult, &execution)
 	logChannelAsyncTestExecution(task, testResult, execution)

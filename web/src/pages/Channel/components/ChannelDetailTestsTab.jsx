@@ -39,6 +39,8 @@ const ChannelDetailTestsTab = ({
   updateAllModelTestStreams,
   resolvePreferredProviderForModel,
   normalizeChannelModelType,
+  audioTestLanguage,
+  setAudioTestLanguage,
 }) => {
   const [providerFilter, setProviderFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -80,6 +82,21 @@ const ChannelDetailTestsTab = ({
       text: t(`channel.model_types.${value}`),
     }));
   }, [rowsWithMeta, t]);
+  const audioLanguageOptions = useMemo(
+    () => [
+      {
+        key: 'zh-CN',
+        value: 'zh-CN',
+        text: t('channel.edit.model_tester.audio_language_options.zh-CN'),
+      },
+      {
+        key: 'en-US',
+        value: 'en-US',
+        text: t('channel.edit.model_tester.audio_language_options.en-US'),
+      },
+    ],
+    [t],
+  );
 
   const providerStorageKey = useMemo(
     () =>
@@ -368,6 +385,20 @@ const ChannelDetailTestsTab = ({
                       />
                     </Form.Field>
                   ) : null}
+                  <Form.Field style={{ marginBottom: 0, marginTop: 12 }}>
+                    <label>
+                      {t('channel.edit.model_tester.settings_audio_language')}
+                    </label>
+                    <Dropdown
+                      selection
+                      className='router-section-dropdown router-dropdown-min-170'
+                      options={audioLanguageOptions}
+                      value={audioTestLanguage || 'zh-CN'}
+                      onChange={(e, { value }) =>
+                        setAudioTestLanguage((value || 'zh-CN').toString())
+                      }
+                    />
+                  </Form.Field>
                 </div>
               }
             />

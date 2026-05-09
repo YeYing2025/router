@@ -67,12 +67,33 @@ type channelModelTestsRequest struct {
 	TargetModels  []string                     `json:"target_models"`
 	TargetConfigs []channelModelTestTargetItem `json:"target_configs"`
 	TestModel     string                       `json:"test_model,omitempty"`
+	AudioLanguage string                       `json:"audio_language,omitempty"`
 }
 
 type channelModelTestTargetItem struct {
 	Model    string `json:"model"`
 	Endpoint string `json:"endpoint,omitempty"`
 	IsStream *bool  `json:"is_stream,omitempty"`
+}
+
+func normalizeAudioTestLanguage(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", "zh", "zh-cn", "zh_hans":
+		return "zh-CN"
+	case "en", "en-us", "en_us":
+		return "en-US"
+	default:
+		return "zh-CN"
+	}
+}
+
+func buildAudioModelTestInput(language string) string {
+	switch normalizeAudioTestLanguage(language) {
+	case "en-US":
+		return "This is Router's voice test."
+	default:
+		return "这是 Router 的语音测试。"
+	}
 }
 
 type channelModelListData struct {
@@ -525,11 +546,11 @@ func buildChannelModelTestResult(row model.ChannelModel, execution channelModelT
 }
 
 func runSingleChannelModelTest(channel *model.Channel, row model.ChannelModel) (model.ChannelTest, channelModelTestExecution) {
-	return runSingleChannelModelTestWithContextAndStream(context.Background(), channel, row, nil)
+	return runSingleChannelModelTestWithContextAndStream(context.Background(), channel, row, nil, "")
 }
 
 func runSingleChannelModelTestWithContext(ctx context.Context, channel *model.Channel, row model.ChannelModel) (model.ChannelTest, channelModelTestExecution) {
-	return runSingleChannelModelTestWithContextAndStream(ctx, channel, row, nil)
+	return runSingleChannelModelTestWithContextAndStream(ctx, channel, row, nil, "")
 }
 
 func isChannelModelTestEndpointAllowed(modelType string, endpoint string) bool {
@@ -569,7 +590,7 @@ func resolveChannelModelTestEndpoint(modelType string, endpoint string) (string,
 	return normalized, nil
 }
 
-func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel *model.Channel, row model.ChannelModel, requestedStream *bool) (model.ChannelTest, channelModelTestExecution) {
+func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel *model.Channel, row model.ChannelModel, requestedStream *bool, requestedAudioLanguage string) (model.ChannelTest, channelModelTestExecution) {
 	modelType := resolveSelectionModelType(row)
 	endpoint, endpointErr := resolveChannelModelTestEndpoint(modelType, row.Endpoint)
 	if endpointErr != nil {
@@ -611,7 +632,7 @@ func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel 
 			Endpoint:      endpoint,
 		}, execution), execution
 	case model.ProviderModelTypeAudio:
-		execution := executeChannelAudioModelTest(ctx, channel, row.Model)
+		execution := executeChannelAudioModelTest(ctx, channel, row.Model, requestedAudioLanguage)
 		return buildChannelModelTestResult(model.ChannelModel{
 			Model:         row.Model,
 			UpstreamModel: row.UpstreamModel,
@@ -1384,7 +1405,7 @@ func executeChannelImageEditModelTest(ctx context.Context, channel *model.Channe
 	return execution
 }
 
-func executeChannelAudioModelTest(ctx context.Context, channel *model.Channel, modelName string) channelModelTestExecution {
+func executeChannelAudioModelTest(ctx context.Context, channel *model.Channel, modelName string, language string) channelModelTestExecution {
 	execution := channelModelTestExecution{}
 	execution.IsStream = false
 	actualModelName := resolveChannelUpstreamModelName(channel, modelName)
@@ -1416,7 +1437,7 @@ func executeChannelAudioModelTest(ctx context.Context, channel *model.Channel, m
 	relayMeta.ActualModelName = actualModelName
 	requestBody, err := json.Marshal(map[string]any{
 		"model": actualModelName,
-		"input": "Model test from Router.",
+		"input": buildAudioModelTestInput(language),
 		"voice": "alloy",
 	})
 	if err != nil {
@@ -1803,6 +1824,7 @@ func TestChannelModels(c *gin.Context) {
 		req.TargetModels,
 		req.TargetConfigs,
 		c.GetString(helper.TraceIDKey),
+		req.AudioLanguage,
 	)
 	if err != nil {
 		logChannelAdminWarn(c, "test_models", stringField("channel_id", channelID), stringField("reason", err.Error()))

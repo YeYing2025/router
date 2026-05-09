@@ -756,6 +756,7 @@
         "settings_button": "Settings",
         "settings_title": "Test Settings",
         "settings_stream": "Stream Test",
+        "settings_audio_language": "Speech Test Language",
         "single": "Test",
         "task_created": "{{count}} test tasks submitted, {{reused}} active tasks reused.",
         "group_count": "{{count}} models",
@@ -777,6 +778,10 @@
         "download_failed": "Failed to download the test artifact",
         "download_unavailable": "No downloadable artifact is available for this test result",
         "history": "History",
+        "audio_language_options": {
+          "zh-CN": "Chinese",
+          "en-US": "English"
+        },
         "stale": "Connection info, model selection, or endpoint changed. Please run model tests again.",
         "untested": "The current endpoint has not been tested yet.",
         "latest_result_from_endpoint": "Current endpoint is untested. Showing latest test result from endpoint: {{endpoint}}.",

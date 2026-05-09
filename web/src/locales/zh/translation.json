@@ -756,6 +756,7 @@
         "settings_button": "配置",
         "settings_title": "测试配置",
         "settings_stream": "流式测试",
+        "settings_audio_language": "语音测试语言",
         "single": "测试",
         "task_created": "已提交 {{count}} 个测试任务，其中复用 {{reused}} 个运行中任务。",
         "group_count": "{{count}} 个模型",
@@ -777,6 +778,10 @@
         "download_failed": "下载测试结果文件失败",
         "download_unavailable": "当前测试结果没有可下载文件",
         "history": "历史",
+        "audio_language_options": {
+          "zh-CN": "中文",
+          "en-US": "English"
+        },
         "stale": "连接信息、模型选择或端点已变更，请重新执行模型测试。",
         "untested": "当前端点尚未执行测试。",
         "latest_result_from_endpoint": "当前端点未测试，展示最近一次测试结果（端点：{{endpoint}}）",

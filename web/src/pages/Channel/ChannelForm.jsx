@@ -1486,6 +1486,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const [modelTestingTargets, setModelTestingTargets] = useState([]);
   const [channelTasks, setChannelTasks] = useState([]);
   const [modelTestError, setModelTestError] = useState('');
+  const [audioTestLanguage, setAudioTestLanguage] = useState('zh-CN');
   const openChannelTaskView = useCallback(
     (extraParams = {}) => {
       const targetChannelId = (channelId || '')
@@ -3072,6 +3073,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             test_model: inputs.test_model || '',
             target_models: normalizedTargets,
             target_configs: targetConfigs,
+            audio_language: audioTestLanguage,
           },
         );
         const { success, message, data, meta } = res.data || {};
@@ -3115,6 +3117,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       isDetailMode,
       t,
       visibleModelConfigs,
+      audioTestLanguage,
     ],
   );
 
@@ -4603,6 +4606,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                   resolvePreferredProviderForModel
                 }
                 normalizeChannelModelType={normalizeChannelModelType}
+                audioTestLanguage={audioTestLanguage}
+                setAudioTestLanguage={setAudioTestLanguage}
               />
             )}
           </Form>
