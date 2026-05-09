@@ -30,11 +30,13 @@ import (
 )
 
 func validateImageBillingPricing(pricing adminmodel.ResolvedModelPricing) error {
-	switch strings.TrimSpace(strings.ToLower(pricing.PriceUnit)) {
-	case adminmodel.ProviderPriceUnitPer1KTokens, adminmodel.ProviderPriceUnitPer1KChars:
+	switch billing.ResolveImageBillingMode(pricing) {
+	case billing.ImageBillingModePerImage, billing.ImageBillingModePerCall:
+		return nil
+	case billing.ImageBillingModeTokenBased:
 		return fmt.Errorf("image billing strategy is not supported for model %s with price_unit %s on traditional image endpoints", strings.TrimSpace(pricing.Model), strings.TrimSpace(pricing.PriceUnit))
 	default:
-		return nil
+		return fmt.Errorf("image billing strategy is not supported for model %s with price_unit %s on traditional image endpoints", strings.TrimSpace(pricing.Model), strings.TrimSpace(pricing.PriceUnit))
 	}
 }
 

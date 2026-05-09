@@ -94,8 +94,8 @@ func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesGPTImage2Pricing(t *test
 			if detail.PriceUnit != ProviderPriceUnitPer1KTokens {
 				t.Fatalf("gpt-image-2 price_unit=%q, want %q", detail.PriceUnit, ProviderPriceUnitPer1KTokens)
 			}
-			if len(detail.SupportedEndpoints) != 3 {
-				t.Fatalf("gpt-image-2 supported_endpoints=%#v, want 3 endpoints", detail.SupportedEndpoints)
+			if len(detail.SupportedEndpoints) != 1 || detail.SupportedEndpoints[0] != ChannelModelEndpointResponses {
+				t.Fatalf("gpt-image-2 supported_endpoints=%#v, want [%s]", detail.SupportedEndpoints, ChannelModelEndpointResponses)
 			}
 			if len(detail.PriceComponents) != 2 {
 				t.Fatalf("gpt-image-2 price_components=%d, want 2", len(detail.PriceComponents))
@@ -105,6 +105,44 @@ func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesGPTImage2Pricing(t *test
 		t.Fatalf("expected openai seed to include gpt-image-2")
 	}
 	t.Fatalf("expected openai provider to exist")
+}
+
+func TestBuildDefaultProviderCatalogSeeds_TokenBasedImageModelsUseResponsesEndpoint(t *testing.T) {
+	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+	expected := map[string]string{
+		"gpt-image-2":              "openai",
+		"ernie-4.5-vl-32k-preview": "baidu",
+		"qwen-vl-max-latest":       "qwen",
+		"qvq-max-latest":           "qwen",
+		"step-1o-turbo-vision":     "stepfun",
+		"glm-4v-plus-0111":         "zhipu",
+		"pixtral-large-latest":     "mistral",
+	}
+
+	found := make(map[string]bool, len(expected))
+	for _, seed := range seeds {
+		for _, detail := range seed.ModelDetails {
+			provider, ok := expected[detail.Model]
+			if !ok || provider != seed.Provider {
+				continue
+			}
+			if detail.Type != ProviderModelTypeImage {
+				t.Fatalf("%s type=%q, want %q", detail.Model, detail.Type, ProviderModelTypeImage)
+			}
+			if detail.PriceUnit != ProviderPriceUnitPer1KTokens {
+				t.Fatalf("%s price_unit=%q, want %q", detail.Model, detail.PriceUnit, ProviderPriceUnitPer1KTokens)
+			}
+			if len(detail.SupportedEndpoints) != 1 || detail.SupportedEndpoints[0] != ChannelModelEndpointResponses {
+				t.Fatalf("%s supported_endpoints=%#v, want [%s]", detail.Model, detail.SupportedEndpoints, ChannelModelEndpointResponses)
+			}
+			found[detail.Model] = true
+		}
+	}
+	for modelName := range expected {
+		if !found[modelName] {
+			t.Fatalf("expected default catalog to include %s", modelName)
+		}
+	}
 }
 
 func TestBuildDefaultProviderCatalogSeeds_OpenAIIncludesGPT5xPricing(t *testing.T) {

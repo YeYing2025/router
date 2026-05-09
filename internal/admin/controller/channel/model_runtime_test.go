@@ -119,3 +119,30 @@ func TestResolveChannelModelTestEndpoint_AcceptsMessagesForText(t *testing.T) {
 		t.Fatalf("endpoint = %q, want %q", endpoint, adminmodel.ChannelModelEndpointMessages)
 	}
 }
+
+func TestResolveChannelModelTestEndpointForRow_RejectsUnsupportedEndpointForModel(t *testing.T) {
+	_, err := resolveChannelModelTestEndpointForRow(adminmodel.ChannelModel{
+		Model:     "gpt-image-2",
+		Type:      adminmodel.ProviderModelTypeImage,
+		Endpoint:  adminmodel.ChannelModelEndpointImages,
+		Endpoints: []string{adminmodel.ChannelModelEndpointResponses},
+	})
+	if err == nil {
+		t.Fatal("expected error when endpoint is not declared by model")
+	}
+}
+
+func TestResolveChannelModelTestEndpointForRow_AllowsDeclaredEndpointForModel(t *testing.T) {
+	endpoint, err := resolveChannelModelTestEndpointForRow(adminmodel.ChannelModel{
+		Model:     "gpt-image-2",
+		Type:      adminmodel.ProviderModelTypeImage,
+		Endpoint:  adminmodel.ChannelModelEndpointResponses,
+		Endpoints: []string{adminmodel.ChannelModelEndpointResponses},
+	})
+	if err != nil {
+		t.Fatalf("resolveChannelModelTestEndpointForRow returned error: %v", err)
+	}
+	if endpoint != adminmodel.ChannelModelEndpointResponses {
+		t.Fatalf("endpoint = %q, want %q", endpoint, adminmodel.ChannelModelEndpointResponses)
+	}
+}

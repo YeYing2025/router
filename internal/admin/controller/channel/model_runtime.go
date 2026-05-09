@@ -591,9 +591,26 @@ func resolveChannelModelTestEndpoint(modelType string, endpoint string) (string,
 	return normalized, nil
 }
 
+func resolveChannelModelTestEndpointForRow(row model.ChannelModel) (string, error) {
+	modelType := resolveSelectionModelType(row)
+	endpoint, err := resolveChannelModelTestEndpoint(modelType, row.Endpoint)
+	if err != nil {
+		return "", err
+	}
+	if len(row.Endpoints) == 0 {
+		return endpoint, nil
+	}
+	for _, candidate := range row.Endpoints {
+		if model.NormalizeRequestedChannelModelEndpoint(candidate) == endpoint {
+			return endpoint, nil
+		}
+	}
+	return "", fmt.Errorf("模型 %s 未声明支持测试端点 %s", strings.TrimSpace(row.Model), endpoint)
+}
+
 func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel *model.Channel, row model.ChannelModel, requestedStream *bool, requestedAudioLanguage string) (model.ChannelTest, channelModelTestExecution) {
 	modelType := resolveSelectionModelType(row)
-	endpoint, endpointErr := resolveChannelModelTestEndpoint(modelType, row.Endpoint)
+	endpoint, endpointErr := resolveChannelModelTestEndpointForRow(row)
 	if endpointErr != nil {
 		execution := channelModelTestExecution{
 			Err: endpointErr,
@@ -605,7 +622,7 @@ func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel 
 			Model:         row.Model,
 			UpstreamModel: row.UpstreamModel,
 			Type:          modelType,
-			Endpoint:      strings.TrimSpace(row.Endpoint),
+			Endpoint:      model.NormalizeRequestedChannelModelEndpoint(strings.TrimSpace(row.Endpoint)),
 		}, execution), execution
 	}
 

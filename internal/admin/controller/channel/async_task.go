@@ -108,7 +108,7 @@ func CreateChannelModelTestTasks(channelID string, createdBy string, requestedTe
 			row.Endpoint = endpoint
 		}
 		stream := streamOverrides[strings.TrimSpace(row.Model)]
-		normalizedEndpoint, endpointErr := resolveChannelModelTestEndpoint(resolveSelectionModelType(row), row.Endpoint)
+		normalizedEndpoint, endpointErr := resolveChannelModelTestEndpointForRow(row)
 		if endpointErr != nil {
 			return nil, createdCount, reusedCount, endpointErr
 		}
