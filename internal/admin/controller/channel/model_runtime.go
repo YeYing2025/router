@@ -1897,7 +1897,16 @@ func persistChannelModelTests(channelID string, results []model.ChannelTest) err
 		if _, err := model.AppendChannelTestsForModelsWithDB(tx, normalizedChannelID, targetModels, results); err != nil {
 			return err
 		}
-		return model.EnsureChannelTestModelWithDB(tx, normalizedChannelID)
+		if err := model.EnsureChannelTestModelWithDB(tx, normalizedChannelID); err != nil {
+			return err
+		}
+		for _, result := range results {
+			enabled := result.Supported && result.Status == model.ChannelTestStatusSupported
+			if err := model.SetChannelModelEndpointCapabilityWithDB(tx, normalizedChannelID, result.Model, result.Endpoint, enabled); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
