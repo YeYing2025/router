@@ -589,26 +589,9 @@ const isComponentBasedPricing = (detail) =>
 
 const summarizeModelPriceUnit = (detail, t) => {
   if (isComponentBasedPricing(detail)) {
-    return t('channel.providers.model_detail_table.component_based');
+    return '-';
   }
   return detail?.price_unit || '-';
-};
-
-const summarizePriceComponents = (detail, t) => {
-  if (!isComponentBasedPricing(detail)) {
-    return '';
-  }
-  const componentNames = [];
-  detail.price_components.forEach((component, index) => {
-    const name = component?.component || `component_${index + 1}`;
-    if (!componentNames.includes(name)) {
-      componentNames.push(name);
-    }
-  });
-  return t('channel.providers.model_detail_table.component_summary', {
-    components: componentNames.join(' / '),
-    count: detail.price_components.length,
-  });
 };
 
 const hasComplexInputPricing = (detail) =>
@@ -2089,7 +2072,6 @@ const ProvidersManager = () => {
               pageRows.map(({ detail, index: detailIndex }) => {
                 const showInputDetail = hasComplexInputPricing(detail);
                 const showOutputDetail = hasComplexOutputPricing(detail);
-                const componentSummary = summarizePriceComponents(detail, t);
                 return (
                   <Table.Row key={`${detail.model || 'model'}-${detailIndex}`}>
                     <Table.Cell className='router-cell-min-130'>
@@ -2140,14 +2122,7 @@ const ProvidersManager = () => {
                       )}
                     </Table.Cell>
                     <Table.Cell className='router-cell-min-120'>
-                      <div className='router-block-gap-xs'>
-                        <div>{summarizeModelPriceUnit(detail, t)}</div>
-                        {componentSummary ? (
-                          <div className='router-muted-text'>
-                            {componentSummary}
-                          </div>
-                        ) : null}
-                      </div>
+                      {summarizeModelPriceUnit(detail, t)}
                     </Table.Cell>
                     <Table.Cell>{detail.currency || 'USD'}</Table.Cell>
                     <Table.Cell>{detail.source || 'manual'}</Table.Cell>

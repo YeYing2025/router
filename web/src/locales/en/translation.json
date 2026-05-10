@@ -462,7 +462,6 @@
         "output_price": "Output Price",
         "price_unit": "Price Unit",
         "component_based": "Component-based",
-        "component_summary": "{{components}} · {{count}} rules",
         "currency": "Currency",
         "source": "Source",
         "price_components": "Complex Pricing",

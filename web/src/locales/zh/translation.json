@@ -462,7 +462,6 @@
         "output_price": "输出价格",
         "price_unit": "计价单位",
         "component_based": "组件化计费",
-        "component_summary": "{{components}} · {{count}} 条规则",
         "currency": "币种",
         "source": "来源",
         "price_components": "复杂计费",
