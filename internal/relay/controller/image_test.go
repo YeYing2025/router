@@ -252,6 +252,36 @@ func TestGetImageCostRatio(t *testing.T) {
 	}
 }
 
+func TestValidateImageBillingPricing_AllowsTraditionalTokenBillingForGPTImage(t *testing.T) {
+	pricing := adminmodel.ResolvedModelPricing{
+		Model:     "gpt-image-2",
+		PriceUnit: adminmodel.ProviderPriceUnitPer1KTokens,
+	}
+	if err := validateImageBillingPricing(pricing); err != nil {
+		t.Fatalf("validateImageBillingPricing() error = %v", err)
+	}
+}
+
+func TestValidateImageBillingPricing_RejectsUnsupportedTokenBillingModel(t *testing.T) {
+	pricing := adminmodel.ResolvedModelPricing{
+		Model:     "foo-image",
+		PriceUnit: adminmodel.ProviderPriceUnitPer1KTokens,
+	}
+	if err := validateImageBillingPricing(pricing); err == nil {
+		t.Fatal("validateImageBillingPricing() error = nil, want error")
+	}
+}
+
+func TestEstimateTraditionalImageOutputTokens(t *testing.T) {
+	got, err := estimateTraditionalImageOutputTokens("gpt-image-2", "1024x1024", "", 1)
+	if err != nil {
+		t.Fatalf("estimateTraditionalImageOutputTokens() error = %v", err)
+	}
+	if got != 1056 {
+		t.Fatalf("estimateTraditionalImageOutputTokens() = %d, want 1056", got)
+	}
+}
+
 func TestValidateImageBillingPricing(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -275,13 +305,12 @@ func TestValidateImageBillingPricing(t *testing.T) {
 			},
 		},
 		{
-			name: "token based image endpoint blocked",
+			name: "gpt image traditional token billing allowed",
 			pricing: adminmodel.ResolvedModelPricing{
 				Model:     "gpt-image-2",
 				Type:      adminmodel.ProviderModelTypeImage,
 				PriceUnit: adminmodel.ProviderPriceUnitPer1KTokens,
 			},
-			wantErr: true,
 		},
 		{
 			name: "char based image endpoint blocked",

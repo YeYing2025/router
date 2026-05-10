@@ -29,15 +29,109 @@ import (
 	"github.com/yeying-community/router/internal/relay/relaymode"
 )
 
+type traditionalImageTokenEstimate struct {
+	PromptTokens      int
+	ImageOutputTokens int
+}
+
 func validateImageBillingPricing(pricing adminmodel.ResolvedModelPricing) error {
 	switch billing.ResolveImageBillingMode(pricing) {
 	case billing.ImageBillingModePerImage, billing.ImageBillingModePerCall:
 		return nil
 	case billing.ImageBillingModeTokenBased:
+		if supportsTraditionalImageTokenBilling(pricing) {
+			return nil
+		}
 		return fmt.Errorf("image billing strategy is not supported for model %s with price_unit %s on traditional image endpoints", strings.TrimSpace(pricing.Model), strings.TrimSpace(pricing.PriceUnit))
 	default:
 		return fmt.Errorf("image billing strategy is not supported for model %s with price_unit %s on traditional image endpoints", strings.TrimSpace(pricing.Model), strings.TrimSpace(pricing.PriceUnit))
 	}
+}
+
+func supportsTraditionalImageTokenBilling(pricing adminmodel.ResolvedModelPricing) bool {
+	if billing.ResolveImageBillingMode(pricing) != billing.ImageBillingModeTokenBased {
+		return false
+	}
+	modelName := strings.TrimSpace(strings.ToLower(pricing.Model))
+	return strings.HasPrefix(modelName, "gpt-image-")
+}
+
+func normalizeTraditionalImageBillingSize(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "", "auto":
+		return "1024x1024"
+	case "1024x1024", "1024x1536", "1536x1024":
+		return strings.TrimSpace(strings.ToLower(raw))
+	default:
+		return ""
+	}
+}
+
+func normalizeTraditionalImageBillingQuality(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "", "auto":
+		return "medium"
+	case "low", "medium", "high":
+		return strings.TrimSpace(strings.ToLower(raw))
+	default:
+		return ""
+	}
+}
+
+func estimateTraditionalImageOutputTokens(modelName string, size string, quality string, imageCount int) (int, error) {
+	if imageCount <= 0 {
+		return 0, nil
+	}
+	if !strings.HasPrefix(strings.TrimSpace(strings.ToLower(modelName)), "gpt-image-") {
+		return 0, fmt.Errorf("traditional image token estimate is not supported for model %s", strings.TrimSpace(modelName))
+	}
+	normalizedSize := normalizeTraditionalImageBillingSize(size)
+	if normalizedSize == "" {
+		return 0, fmt.Errorf("unsupported image size %q for traditional token billing", strings.TrimSpace(size))
+	}
+	normalizedQuality := normalizeTraditionalImageBillingQuality(quality)
+	if normalizedQuality == "" {
+		return 0, fmt.Errorf("unsupported image quality %q for traditional token billing", strings.TrimSpace(quality))
+	}
+	tokenTable := map[string]map[string]int{
+		"low": {
+			"1024x1024": 272,
+			"1024x1536": 408,
+			"1536x1024": 400,
+		},
+		"medium": {
+			"1024x1024": 1056,
+			"1024x1536": 1584,
+			"1536x1024": 1568,
+		},
+		"high": {
+			"1024x1024": 4160,
+			"1024x1536": 6240,
+			"1536x1024": 6208,
+		},
+	}
+	perImageTokens := tokenTable[normalizedQuality][normalizedSize]
+	if perImageTokens <= 0 {
+		return 0, fmt.Errorf("traditional image token estimate is not configured for size=%s quality=%s", normalizedSize, normalizedQuality)
+	}
+	return perImageTokens * imageCount, nil
+}
+
+func estimateTraditionalImageTokenUsage(imageRequest *relaymodel.ImageRequest, pricing adminmodel.ResolvedModelPricing, imageCount int) (traditionalImageTokenEstimate, error) {
+	if imageRequest == nil {
+		return traditionalImageTokenEstimate{}, errors.New("image request is nil")
+	}
+	if !supportsTraditionalImageTokenBilling(pricing) {
+		return traditionalImageTokenEstimate{}, fmt.Errorf("traditional image token billing is not supported for model %s", strings.TrimSpace(pricing.Model))
+	}
+	outputTokens, err := estimateTraditionalImageOutputTokens(pricing.Model, imageRequest.Size, imageRequest.Quality, imageCount)
+	if err != nil {
+		return traditionalImageTokenEstimate{}, err
+	}
+	return traditionalImageTokenEstimate{
+		PromptTokens:      openai.CountTokenText(strings.TrimSpace(imageRequest.Prompt), strings.TrimSpace(pricing.Model)),
+		ImageOutputTokens: outputTokens,
+	}, nil
 }
 
 func getImageRequest(c *gin.Context, _ int) (*relaymodel.ImageRequest, error) {
@@ -349,14 +443,42 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	if meta.ChannelProtocol == relaychannel.Replicate {
 		imageCount = 1
 	}
-	quota, err := billing.ComputeImageQuota(imageCount, imageCostRatio, pricing, groupRatio)
-	if err != nil {
-		return openai.ErrorWrapper(err, "calculate_image_quota_failed", http.StatusInternalServerError)
+	billingSnapshot := billing.BillingSnapshot{}
+	switch billing.ResolveImageBillingMode(pricing) {
+	case billing.ImageBillingModeTokenBased:
+		tokenEstimate, estimateErr := estimateTraditionalImageTokenUsage(imageRequest, pricing, imageCount)
+		if estimateErr != nil {
+			return openai.ErrorWrapper(estimateErr, "calculate_image_quota_failed", http.StatusInternalServerError)
+		}
+		var snapshotErr error
+		billingSnapshot, snapshotErr = billing.ComputeTraditionalImageTokenBasedBillingSnapshot(
+			tokenEstimate.PromptTokens,
+			tokenEstimate.ImageOutputTokens,
+			pricing,
+			groupRatio,
+		)
+		if snapshotErr != nil {
+			return openai.ErrorWrapper(snapshotErr, "calculate_image_quota_failed", http.StatusInternalServerError)
+		}
+		logger.Debugf(
+			ctx,
+			"[image_token_estimate] model=%s prompt_tokens=%d image_output_tokens=%d size=%s quality=%s count=%d",
+			strings.TrimSpace(pricing.Model),
+			tokenEstimate.PromptTokens,
+			tokenEstimate.ImageOutputTokens,
+			strings.TrimSpace(imageRequest.Size),
+			strings.TrimSpace(imageRequest.Quality),
+			imageCount,
+		)
+	default:
+		var snapshotErr error
+		billingSnapshot, snapshotErr = billing.ComputeImageBillingSnapshot(imageCount, imageCostRatio, pricing, groupRatio)
+		if snapshotErr != nil {
+			logger.Errorf(ctx, "image billing snapshot failed user_id=%s group=%s channel_id=%s model=%s image_count=%d err=%q", strings.TrimSpace(meta.UserId), strings.TrimSpace(meta.Group), strings.TrimSpace(meta.ChannelId), strings.TrimSpace(imageRequest.Model), imageCount, snapshotErr.Error())
+			return openai.ErrorWrapper(snapshotErr, "calculate_image_quota_failed", http.StatusInternalServerError)
+		}
 	}
-	billingSnapshot, snapshotErr := billing.ComputeImageBillingSnapshot(imageCount, imageCostRatio, pricing, groupRatio)
-	if snapshotErr != nil {
-		logger.Errorf(ctx, "image billing snapshot failed user_id=%s group=%s channel_id=%s model=%s image_count=%d err=%q", strings.TrimSpace(meta.UserId), strings.TrimSpace(meta.Group), strings.TrimSpace(meta.ChannelId), strings.TrimSpace(imageRequest.Model), imageCount, snapshotErr.Error())
-	}
+	quota := billingSnapshot.YYCAmount
 	billingPlan, quotaErr := reserveRelayQuota(ctx, meta.Group, meta.UserId, quota)
 	if quotaErr != nil {
 		return quotaErr
@@ -440,8 +562,8 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 				UserId:             meta.UserId,
 				GroupId:            meta.Group,
 				ChannelId:          meta.ChannelId,
-				PromptTokens:       0,
-				CompletionTokens:   0,
+				PromptTokens:       int(billingSnapshot.InputQuantity),
+				CompletionTokens:   int(billingSnapshot.OutputQuantity),
 				ModelName:          imageRequest.Model,
 				TokenName:          tokenName,
 				Quota:              int(quota),

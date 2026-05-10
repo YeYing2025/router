@@ -112,6 +112,21 @@ func ComputeImageBillingSnapshot(imageCount int, multiplier float64, pricing mod
 	}
 }
 
+func ComputeTraditionalImageTokenBasedBillingSnapshot(promptTokens int, imageOutputTokens int, pricing model.ResolvedModelPricing, groupRatio float64) (BillingSnapshot, error) {
+	if ResolveImageBillingMode(pricing) != ImageBillingModeTokenBased {
+		return BillingSnapshot{}, fmt.Errorf("traditional image token-based billing requires token-based pricing for model %s", strings.TrimSpace(pricing.Model))
+	}
+	return buildBillingSnapshot(
+		float64(promptTokens),
+		float64(imageOutputTokens),
+		pricing.InputPrice,
+		pricing.OutputPrice,
+		pricing,
+		groupRatio,
+		promptTokens > 0 || imageOutputTokens > 0,
+	)
+}
+
 func ResolveImageBillingMode(pricing model.ResolvedModelPricing) ImageBillingMode {
 	switch normalizePriceUnit(pricing.PriceUnit) {
 	case model.ProviderPriceUnitPerImage:
