@@ -273,7 +273,10 @@ func ReplaceChannelSelectedModelsWithDB(db *gorm.DB, channelID string, selected 
 }
 
 func ReplaceChannelModelConfigsWithDB(db *gorm.DB, channelID string, rows []ChannelModel) error {
-	return replaceChannelModelRowsWithDB(db, channelID, rows)
+	if err := replaceChannelModelRowsWithDB(db, channelID, rows); err != nil {
+		return err
+	}
+	return SyncChannelModelEndpointsWithDB(db, channelID, rows)
 }
 
 func DisableChannelModelCapability(channelID string, modelName string) (bool, error) {
@@ -670,6 +673,10 @@ func replaceChannelModelRowsWithDB(db *gorm.DB, channelID string, rows []Channel
 	if err != nil {
 		return err
 	}
+	providerByModel, err := LoadUniqueProviderMapByModelsWithDB(db, channelModelProviderLookupCandidates(normalizedRows))
+	if err != nil {
+		return err
+	}
 	now := helper.GetTimestamp()
 	dbRows := make([]ChannelModel, 0, len(normalizedRows))
 	componentRows := make([]ChannelModelPriceComponent, 0)
@@ -679,6 +686,9 @@ func replaceChannelModelRowsWithDB(db *gorm.DB, channelID string, rows []Channel
 		row.UpdatedAt = now
 		normalizeChannelModelRow(&row)
 		completeChannelModelRowDefaults(&row, channelProtocol)
+		if strings.TrimSpace(row.Provider) == "" {
+			row.Provider = ResolveProviderFromCatalogMap(providerByModel, row.UpstreamModel, row.Model)
+		}
 		for componentIdx, component := range NormalizeProviderModelPriceComponents(row.PriceComponents) {
 			componentUpdatedAt := component.UpdatedAt
 			if componentUpdatedAt == 0 {
@@ -727,6 +737,14 @@ func replaceChannelModelRowsWithDB(db *gorm.DB, channelID string, rows []Channel
 		}
 		return tx.Select("*").Create(&componentRows).Error
 	})
+}
+
+func channelModelProviderLookupCandidates(rows []ChannelModel) []string {
+	candidates := make([]string, 0, len(rows)*2)
+	for _, row := range rows {
+		candidates = append(candidates, row.Model, row.UpstreamModel)
+	}
+	return NormalizeProviderLookupCandidates(candidates...)
 }
 
 func lockChannelRowForUpdateWithDB(db *gorm.DB, channelID string) error {

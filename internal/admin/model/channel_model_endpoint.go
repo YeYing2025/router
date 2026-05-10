@@ -218,6 +218,52 @@ func ReplaceChannelModelEndpointsWithDB(db *gorm.DB, channelID string, rows []Ch
 	return nil
 }
 
+func SetChannelModelEndpointCapabilityWithDB(db *gorm.DB, channelID string, modelName string, endpoint string, enabled bool) error {
+	normalizedChannelID := strings.TrimSpace(channelID)
+	normalizedModelName := strings.TrimSpace(modelName)
+	normalizedEndpoint := NormalizeRequestedChannelModelEndpoint(endpoint)
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	if normalizedChannelID == "" || normalizedModelName == "" || normalizedEndpoint == "" {
+		return nil
+	}
+	rows, err := listChannelModelEndpointRowsByChannelIDWithDB(db, normalizedChannelID)
+	if err != nil {
+		return err
+	}
+	nextRows := make([]ChannelModelEndpoint, 0, len(rows)+1)
+	replaced := false
+	for _, row := range rows {
+		normalized := ChannelModelEndpoint{
+			ChannelId: strings.TrimSpace(row.ChannelId),
+			Model:     strings.TrimSpace(row.Model),
+			Endpoint:  NormalizeRequestedChannelModelEndpoint(row.Endpoint),
+			Enabled:   row.Enabled,
+			UpdatedAt: row.UpdatedAt,
+		}
+		if normalized.ChannelId == "" || normalized.Model == "" || normalized.Endpoint == "" {
+			continue
+		}
+		if normalized.ChannelId == normalizedChannelID &&
+			normalized.Model == normalizedModelName &&
+			normalized.Endpoint == normalizedEndpoint {
+			normalized.Enabled = enabled
+			replaced = true
+		}
+		nextRows = append(nextRows, normalized)
+	}
+	if !replaced {
+		nextRows = append(nextRows, ChannelModelEndpoint{
+			ChannelId: normalizedChannelID,
+			Model:     normalizedModelName,
+			Endpoint:  normalizedEndpoint,
+			Enabled:   enabled,
+		})
+	}
+	return replaceChannelModelEndpointRowsWithDB(db, normalizedChannelID, nextRows)
+}
+
 func buildProviderModelEndpointKey(provider string, modelName string) string {
 	normalizedProvider := NormalizeGroupModelProviderValue(provider)
 	normalizedModel := strings.TrimSpace(modelName)
