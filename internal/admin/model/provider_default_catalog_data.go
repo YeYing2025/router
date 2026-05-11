@@ -392,6 +392,7 @@ func normalizeDefaultProviderSeedModelDetails(provider string, details []Provide
 		if next.UpdatedAt <= 0 {
 			next.UpdatedAt = now
 		}
+		next.Status = defaultProviderModelStatus(normalizedProvider, next.Model)
 		if strings.TrimSpace(next.Description) == "" {
 			next.Description = defaultProviderModelDescription(normalizedProvider, next.Model, next.Type)
 		}

@@ -50,6 +50,7 @@ type ProviderModelPriceComponentDetail struct {
 type ProviderModelDetail struct {
 	Model              string                              `json:"model"`
 	Type               string                              `json:"type,omitempty"`
+	Status             string                              `json:"status,omitempty"`
 	Description        string                              `json:"description,omitempty"`
 	IsDeleted          bool                                `json:"is_deleted,omitempty"`
 	SupportedEndpoints []string                            `json:"supported_endpoints,omitempty"`
@@ -92,6 +93,7 @@ func NormalizeProviderModelDetails(details []ProviderModelDetail) []ProviderMode
 		if source == "" {
 			source = "manual"
 		}
+		status := normalizeProviderModelStatus(detail.Status)
 		inputPrice := detail.InputPrice
 		if inputPrice < 0 {
 			inputPrice = 0
@@ -103,6 +105,7 @@ func NormalizeProviderModelDetails(details []ProviderModelDetail) []ProviderMode
 		entry := ProviderModelDetail{
 			Model:              modelName,
 			Type:               t,
+			Status:             status,
 			Description:        strings.TrimSpace(detail.Description),
 			IsDeleted:          detail.IsDeleted,
 			SupportedEndpoints: NormalizeProviderModelSupportedEndpoints(t, detail.SupportedEndpoints),
@@ -118,6 +121,9 @@ func NormalizeProviderModelDetails(details []ProviderModelDetail) []ProviderMode
 			existing := normalized[idx]
 			if existing.Type == "" {
 				existing.Type = entry.Type
+			}
+			if existing.Status == "" {
+				existing.Status = entry.Status
 			}
 			if existing.Description == "" {
 				existing.Description = entry.Description
@@ -169,6 +175,18 @@ func FilterActiveProviderModelDetails(details []ProviderModelDetail) []ProviderM
 		filtered = append(filtered, detail)
 	}
 	return filtered
+}
+
+func normalizeProviderModelStatus(raw string) string {
+	status := strings.TrimSpace(strings.ToLower(raw))
+	switch status {
+	case ProviderModelStatusDeprecated:
+		return ProviderModelStatusDeprecated
+	case ProviderModelStatusActive, "":
+		return ProviderModelStatusActive
+	default:
+		return ProviderModelStatusActive
+	}
 }
 
 func NormalizeProviderModelPriceComponents(details []ProviderModelPriceComponentDetail) []ProviderModelPriceComponentDetail {

@@ -332,6 +332,9 @@ func TestBuildDefaultProviderCatalogSeeds_UnknownOrLegacyDescriptionsStayEmpty(t
 			if strings.TrimSpace(detail.Description) != "" {
 				t.Fatalf("%s/%s description=%q, want empty", seed.Provider, detail.Model, detail.Description)
 			}
+			if detail.Status != ProviderModelStatusDeprecated {
+				t.Fatalf("%s/%s status=%q, want deprecated", seed.Provider, detail.Model, detail.Status)
+			}
 			if !detail.IsDeleted {
 				t.Fatalf("%s/%s is_deleted=false, want true", seed.Provider, detail.Model)
 			}
@@ -339,6 +342,49 @@ func TestBuildDefaultProviderCatalogSeeds_UnknownOrLegacyDescriptionsStayEmpty(t
 		}
 	}
 
+	for provider, models := range checks {
+		for modelName, found := range models {
+			if !found {
+				t.Fatalf("expected %s seed to include %s", provider, modelName)
+			}
+		}
+	}
+}
+
+func TestBuildDefaultProviderCatalogSeeds_DeprecatedStatusApplied(t *testing.T) {
+	seeds := BuildDefaultProviderCatalogSeeds(1700000000)
+	checks := map[string]map[string]bool{
+		"openai": {
+			"codex-mini-latest": false,
+		},
+		"anthropic": {
+			"claude-3-5-haiku-20241022": false,
+		},
+		"google": {
+			"gemini-live-2.5-flash-preview": false,
+		},
+		"qwen": {
+			"qwen-omni-turbo-latest": false,
+		},
+		"xai": {
+			"grok-2-image-1212": false,
+		},
+	}
+	for _, seed := range seeds {
+		providerChecks, ok := checks[seed.Provider]
+		if !ok {
+			continue
+		}
+		for _, detail := range seed.ModelDetails {
+			if _, exists := providerChecks[detail.Model]; !exists {
+				continue
+			}
+			if detail.Status != ProviderModelStatusDeprecated {
+				t.Fatalf("%s/%s status=%q, want deprecated", seed.Provider, detail.Model, detail.Status)
+			}
+			providerChecks[detail.Model] = true
+		}
+	}
 	for provider, models := range checks {
 		for modelName, found := range models {
 			if !found {

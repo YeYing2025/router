@@ -2,6 +2,7 @@ package channel
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -42,6 +43,7 @@ type providerCatalogListData struct {
 type appendProviderModelRequest struct {
 	Model              string   `json:"model"`
 	Type               string   `json:"type,omitempty"`
+	Status             string   `json:"status,omitempty"`
 	Description        string   `json:"description,omitempty"`
 	IsDeleted          bool     `json:"is_deleted,omitempty"`
 	SupportedEndpoints []string `json:"supported_endpoints,omitempty"`
@@ -136,6 +138,134 @@ func mergeMissingProviderDetailsAsDeleted(current []model.ProviderModelDetail, e
 		merged = append(merged, deletedDetail)
 	}
 	return model.NormalizeProviderModelDetails(merged)
+}
+
+type providerModelUsageSummary struct {
+	ChannelModels    []string
+	GroupModels      []string
+	GroupModelRoutes []string
+}
+
+func (summary providerModelUsageSummary) InUse() bool {
+	return len(summary.ChannelModels) > 0 || len(summary.GroupModels) > 0 || len(summary.GroupModelRoutes) > 0
+}
+
+func (summary providerModelUsageSummary) Error(provider string, modelName string) error {
+	parts := make([]string, 0, 3)
+	if len(summary.ChannelModels) > 0 {
+		parts = append(parts, fmt.Sprintf("channels=%s", strings.Join(summary.ChannelModels, ",")))
+	}
+	if len(summary.GroupModels) > 0 {
+		parts = append(parts, fmt.Sprintf("group_models=%s", strings.Join(summary.GroupModels, ",")))
+	}
+	if len(summary.GroupModelRoutes) > 0 {
+		parts = append(parts, fmt.Sprintf("group_model_routes=%s", strings.Join(summary.GroupModelRoutes, ",")))
+	}
+	return fmt.Errorf("provider model %s/%s is still in use: %s", provider, modelName, strings.Join(parts, "; "))
+}
+
+func collectProviderModelUsageWithDB(db *gorm.DB, provider string, modelName string) (providerModelUsageSummary, error) {
+	if db == nil {
+		return providerModelUsageSummary{}, fmt.Errorf("database handle is nil")
+	}
+	normalizedProvider := commonutils.NormalizeProvider(provider)
+	normalizedModel := strings.TrimSpace(modelName)
+	if normalizedProvider == "" || normalizedModel == "" {
+		return providerModelUsageSummary{}, nil
+	}
+
+	type channelModelRef struct {
+		ChannelID string `gorm:"column:channel_id"`
+	}
+	channelRefs := make([]channelModelRef, 0)
+	if err := db.Model(&model.ChannelModel{}).
+		Select("DISTINCT channel_id").
+		Where("provider = ? AND inactive = ? AND (model = ? OR upstream_model = ?)", normalizedProvider, false, normalizedModel, normalizedModel).
+		Order("channel_id asc").
+		Find(&channelRefs).Error; err != nil {
+		return providerModelUsageSummary{}, err
+	}
+
+	type groupModelRef struct {
+		Group string `gorm:"column:group"`
+	}
+	groupRefs := make([]groupModelRef, 0)
+	groupCol := `"group"`
+	if err := db.Model(&model.GroupModel{}).
+		Select("DISTINCT "+groupCol).
+		Where("provider = ? AND enabled = ? AND model = ?", normalizedProvider, true, normalizedModel).
+		Order(groupCol + " asc").
+		Find(&groupRefs).Error; err != nil {
+		return providerModelUsageSummary{}, err
+	}
+
+	type routeRef struct {
+		Group string `gorm:"column:group"`
+	}
+	routeRefs := make([]routeRef, 0)
+	if err := db.Model(&model.GroupModelRoute{}).
+		Select("DISTINCT "+groupCol).
+		Where("provider = ? AND enabled = ? AND (model = ? OR upstream_model = ?)", normalizedProvider, true, normalizedModel, normalizedModel).
+		Order(groupCol + " asc").
+		Find(&routeRefs).Error; err != nil {
+		return providerModelUsageSummary{}, err
+	}
+
+	summary := providerModelUsageSummary{
+		ChannelModels:    make([]string, 0, len(channelRefs)),
+		GroupModels:      make([]string, 0, len(groupRefs)),
+		GroupModelRoutes: make([]string, 0, len(routeRefs)),
+	}
+	for _, item := range channelRefs {
+		channelID := strings.TrimSpace(item.ChannelID)
+		if channelID != "" {
+			summary.ChannelModels = append(summary.ChannelModels, channelID)
+		}
+	}
+	for _, item := range groupRefs {
+		groupID := strings.TrimSpace(item.Group)
+		if groupID != "" {
+			summary.GroupModels = append(summary.GroupModels, groupID)
+		}
+	}
+	for _, item := range routeRefs {
+		groupID := strings.TrimSpace(item.Group)
+		if groupID != "" {
+			summary.GroupModelRoutes = append(summary.GroupModelRoutes, groupID)
+		}
+	}
+	return summary, nil
+}
+
+func ensureProviderModelsCanSoftDeleteWithDB(db *gorm.DB, provider string, current []model.ProviderModelDetail, existing []model.ProviderModelDetail) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	currentByModel := make(map[string]struct{}, len(current))
+	for _, detail := range current {
+		modelName := strings.TrimSpace(detail.Model)
+		if modelName == "" {
+			continue
+		}
+		currentByModel[modelName] = struct{}{}
+	}
+	for _, detail := range existing {
+		modelName := strings.TrimSpace(detail.Model)
+		if modelName == "" {
+			continue
+		}
+		if _, ok := currentByModel[modelName]; ok {
+			continue
+		}
+		usage, err := collectProviderModelUsageWithDB(db, provider, modelName)
+		if err != nil {
+			return err
+		}
+		if usage.InUse() {
+			return usage.Error(provider, modelName)
+		}
+	}
+	return nil
 }
 
 func normalizeProviderCatalogID(item providerCatalogItem) string {
@@ -290,7 +420,7 @@ func nextProviderSortOrder(tx *gorm.DB) (int, error) {
 	return nextOrder, nil
 }
 
-func normalizeProviderUpsertItem(providerID string, item providerCatalogItem, existing *providerCatalogItem, defaultSortOrder int) (providerCatalogItem, error) {
+func normalizeProviderUpsertItem(db *gorm.DB, providerID string, item providerCatalogItem, existing *providerCatalogItem, defaultSortOrder int) (providerCatalogItem, error) {
 	provider := commonutils.NormalizeProvider(providerID)
 	bodyProvider := normalizeProviderCatalogID(item)
 	if provider == "" {
@@ -340,6 +470,11 @@ func normalizeProviderUpsertItem(providerID string, item providerCatalogItem, ex
 	details := mergeProviderDetailInputs(detailInput, item.Models, now)
 	if len(details) == 0 && existing != nil {
 		details = mergeProviderDetailInputs(existing.ModelDetails, existing.Models, now)
+	}
+	if existing != nil {
+		if err := ensureProviderModelsCanSoftDeleteWithDB(db, provider, details, existing.ModelDetails); err != nil {
+			return providerCatalogItem{}, err
+		}
 	}
 	if existing != nil {
 		details = mergeMissingProviderDetailsAsDeleted(details, existing.ModelDetails)
@@ -409,7 +544,7 @@ func saveProviderCatalogItem(item providerCatalogItem, create bool) (providerCat
 		existingCopy := existing
 		existingPtr = &existingCopy
 	}
-	normalized, err := normalizeProviderUpsertItem(resolvedID, item, existingPtr, defaultSortOrder)
+	normalized, err := normalizeProviderUpsertItem(tx, resolvedID, item, existingPtr, defaultSortOrder)
 	if err != nil {
 		_ = tx.Rollback()
 		return providerCatalogItem{}, err
@@ -523,6 +658,7 @@ func appendModelToProviderItem(id string, req appendProviderModelRequest) (provi
 	detail := model.ProviderModelDetail{
 		Model:              strings.TrimSpace(req.Model),
 		Type:               strings.TrimSpace(strings.ToLower(req.Type)),
+		Status:             req.Status,
 		Description:        strings.TrimSpace(req.Description),
 		IsDeleted:          req.IsDeleted,
 		SupportedEndpoints: req.SupportedEndpoints,

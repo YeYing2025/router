@@ -54,6 +54,34 @@ func defaultProviderModelDeleted(provider string, modelName string) bool {
 	}
 }
 
+func defaultProviderModelStatus(provider string, modelName string) string {
+	provider = strings.TrimSpace(strings.ToLower(provider))
+	modelName = strings.TrimSpace(strings.ToLower(modelName))
+	switch provider {
+	case "openai":
+		if modelName == "codex-mini-latest" {
+			return ProviderModelStatusDeprecated
+		}
+	case "anthropic":
+		if modelName == "claude-3-5-haiku-20241022" {
+			return ProviderModelStatusDeprecated
+		}
+	case "google":
+		if modelName == "gemini-live-2.5-flash-preview" {
+			return ProviderModelStatusDeprecated
+		}
+	case "qwen":
+		if modelName == "qwen-omni-turbo-latest" {
+			return ProviderModelStatusDeprecated
+		}
+	case "xai":
+		if modelName == "grok-2-image-1212" {
+			return ProviderModelStatusDeprecated
+		}
+	}
+	return ProviderModelStatusActive
+}
+
 func openAIProviderModelDescription(modelName string) string {
 	switch modelName {
 	case "gpt-5":

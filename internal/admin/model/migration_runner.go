@@ -887,6 +887,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return syncDefaultProviderCatalogWithDB(tx)
 			},
 		},
+		{
+			Version:     "202605111530_provider_model_official_status",
+			Description: "add provider model official status and mark deprecated default models",
+			Up: func(tx *gorm.DB) error {
+				return syncDefaultProviderCatalogWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
