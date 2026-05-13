@@ -1,15 +1,13 @@
 import React from 'react';
-import { Card } from 'semantic-ui-react';
 import TopupPlansManager from '../../components/TopupPlansManager';
+import { AppSection } from '../../router-ui';
 
 const AdminTopup = () => {
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
+      <AppSection>
           <TopupPlansManager />
-        </Card.Content>
-      </Card>
+      </AppSection>
     </div>
   );
 };

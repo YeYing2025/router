@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Form, Grid, Header, Table } from 'semantic-ui-react';
 import {
   API,
   showError,
   showSuccess,
   timestamp2string,
 } from '../helpers';
+import {
+  AppButton,
+  AppFilterHeader,
+  AppInput,
+  AppInputNumber,
+  AppSelect,
+  AppSpin,
+  AppTable,
+} from '../router-ui';
 
 const createEmptyCurrency = () => ({
   code: '',
@@ -180,179 +188,183 @@ const CurrencySetting = ({ section = '' }) => {
   }
 
   return (
-    <Grid columns={1}>
-      <Grid.Column>
-        <Form>
-          <Header as='h3' className='router-section-title'>
-            {t('setting.currency.catalog.title')}
-          </Header>
-          <div className='router-settings-note'>
-            {t('setting.currency.catalog.subtitle')}
-          </div>
-          <div className='router-toolbar router-block-gap-sm'>
-            <div className='router-toolbar-start'>
-              <Button
-                className='router-page-button'
-                type='button'
-                onClick={addCurrency}
-                disabled={loading || currencies.some((item) => item._isNew)}
-              >
-                {t('setting.currency.catalog.buttons.add')}
-              </Button>
-            </div>
-          </div>
-          <div className='router-table-scroll-x'>
-            <Table compact celled className='router-detail-table'>
-              <Table.Header>
-                <Table.Row>
-                  <Table.HeaderCell collapsing style={codeColumnStyle}>
-                    {t('setting.currency.catalog.columns.code')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell style={nameColumnStyle}>
-                    {t('setting.currency.catalog.columns.name')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell collapsing style={symbolColumnStyle}>
-                    {t('setting.currency.catalog.columns.symbol')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell collapsing>
-                    {t('setting.currency.catalog.columns.minor_unit')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell collapsing>
-                    {t('setting.currency.catalog.columns.status')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell collapsing style={createdAtColumnStyle}>
-                    {t('setting.currency.catalog.columns.created_at')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell collapsing style={updatedAtColumnStyle}>
-                    {t('setting.currency.catalog.columns.updated_at')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell collapsing style={actionColumnStyle}>
-                    {t('setting.currency.catalog.columns.action')}
-                  </Table.HeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {loading ? (
-                  <Table.Row>
-                    <Table.Cell colSpan={8} textAlign='center' className='router-empty-cell'>
-                      {t('common.loading')}
-                    </Table.Cell>
-                  </Table.Row>
-                ) : currencies.length === 0 ? (
-                  <Table.Row>
-                    <Table.Cell colSpan={8} textAlign='center' className='router-empty-cell'>
-                      {t('setting.currency.catalog.empty')}
-                    </Table.Cell>
-                  </Table.Row>
-                ) : (
-                  currencies.map((row, index) => {
-                    const currentSavingKey = row._isNew ? `new-${index}` : row.code;
-                    const isSaving = savingKey === currentSavingKey;
-                    return (
-                      <Table.Row key={row.code || `new-${index}`}>
-                        <Table.Cell style={codeColumnStyle}>
-                          <Form.Input
-                            className='router-section-input'
-                            transparent
-                            value={row.code || ''}
-                            onChange={(e, { value }) =>
-                              updateCurrencyField(index, 'code', value)
-                            }
-                            readOnly={!row._isNew}
-                            placeholder='USD'
-                            style={codeColumnStyle}
-                          />
-                        </Table.Cell>
-                        <Table.Cell style={nameColumnStyle}>
-                          <Form.Input
-                            className='router-section-input'
-                            transparent
-                            value={row.name || ''}
-                            onChange={(e, { value }) =>
-                              updateCurrencyField(index, 'name', value)
-                            }
-                            placeholder={t('setting.currency.catalog.placeholders.name')}
-                            style={nameColumnStyle}
-                          />
-                        </Table.Cell>
-                        <Table.Cell style={symbolColumnStyle}>
-                          <Form.Input
-                            className='router-section-input'
-                            transparent
-                            value={row.symbol || ''}
-                            onChange={(e, { value }) =>
-                              updateCurrencyField(index, 'symbol', value)
-                            }
-                            placeholder='$'
-                            style={symbolColumnStyle}
-                          />
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Form.Input
-                            className='router-section-input'
-                            transparent
-                            type='number'
-                            min='0'
-                            max='8'
-                            step='1'
-                            value={row.minor_unit}
-                            onChange={(e, { value }) =>
-                              updateCurrencyField(index, 'minor_unit', value)
-                            }
-                          />
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Form.Dropdown
-                            className='router-section-input'
-                            compact
-                            selection
-                            options={statusOptions}
-                            value={Number(row.status || 1)}
-                            onChange={(e, { value }) =>
-                              updateCurrencyField(index, 'status', value)
-                            }
-                          />
-                        </Table.Cell>
-                        <Table.Cell style={createdAtColumnStyle}>
-                          {row.created_at ? timestamp2string(row.created_at) : '-'}
-                        </Table.Cell>
-                        <Table.Cell style={updatedAtColumnStyle}>
-                          {row.updated_at ? timestamp2string(row.updated_at) : '-'}
-                        </Table.Cell>
-                        <Table.Cell style={actionColumnStyle}>
-                          <div className='router-action-group'>
-                            {row._isNew ? (
-                              <Button
-                                className='router-table-action-button'
-                                type='button'
-                                onClick={() => removeNewCurrency(index)}
-                                disabled={isSaving}
-                              >
-                                {t('setting.currency.catalog.buttons.cancel')}
-                              </Button>
-                            ) : null}
-                              <Button
-                                className='router-table-action-button'
-                                primary
-                                type='button'
-                                loading={isSaving}
-                                disabled={isSaving}
-                                onClick={() => saveCurrency(row, index)}
-                              >
-                                {t('setting.currency.catalog.buttons.save')}
-                              </Button>
-                            </div>
-                          </Table.Cell>
-                      </Table.Row>
-                    );
-                  })
-                )}
-              </Table.Body>
-            </Table>
-          </div>
-        </Form>
-      </Grid.Column>
-    </Grid>
+    <AppSpin spinning={loading}>
+      <div>
+        <AppFilterHeader
+          title={t('setting.currency.catalog.title')}
+          titleClassName='router-ui-section-title'
+          meta={t('setting.currency.catalog.subtitle')}
+          className='router-toolbar-compact'
+          actions={
+            <AppButton
+              className='router-page-button'
+              type='button'
+              onClick={addCurrency}
+              disabled={loading || currencies.some((item) => item._isNew)}
+            >
+              {t('setting.currency.catalog.buttons.add')}
+            </AppButton>
+          }
+        />
+        <div className='router-table-scroll-x'>
+          <AppTable
+            className='router-detail-table'
+            dataSource={currencies.map((row, index) => ({
+              ...row,
+              _rowKey: row.code || `new-${index}`,
+              _rowIndex: index,
+            }))}
+            rowKey='_rowKey'
+            pagination={false}
+            scroll={{ x: 980 }}
+            locale={{
+              emptyText: loading
+                ? t('common.loading')
+                : t('setting.currency.catalog.empty'),
+            }}
+            columns={[
+              {
+                title: t('setting.currency.catalog.columns.code'),
+                dataIndex: 'code',
+                key: 'code',
+                width: codeColumnStyle.width,
+                render: (_, row) => (
+                  <AppInput
+                    className='router-section-input'
+                    value={row.code || ''}
+                    onChange={(e, { value }) =>
+                      updateCurrencyField(row._rowIndex, 'code', value)
+                    }
+                    readOnly={!row._isNew}
+                    placeholder='USD'
+                    style={codeColumnStyle}
+                  />
+                ),
+              },
+              {
+                title: t('setting.currency.catalog.columns.name'),
+                dataIndex: 'name',
+                key: 'name',
+                width: nameColumnStyle.width,
+                render: (_, row) => (
+                  <AppInput
+                    className='router-section-input'
+                    value={row.name || ''}
+                    onChange={(e, { value }) =>
+                      updateCurrencyField(row._rowIndex, 'name', value)
+                    }
+                    placeholder={t('setting.currency.catalog.placeholders.name')}
+                    style={nameColumnStyle}
+                  />
+                ),
+              },
+              {
+                title: t('setting.currency.catalog.columns.symbol'),
+                dataIndex: 'symbol',
+                key: 'symbol',
+                width: symbolColumnStyle.width,
+                render: (_, row) => (
+                  <AppInput
+                    className='router-section-input'
+                    value={row.symbol || ''}
+                    onChange={(e, { value }) =>
+                      updateCurrencyField(row._rowIndex, 'symbol', value)
+                    }
+                    placeholder='$'
+                    style={symbolColumnStyle}
+                  />
+                ),
+              },
+              {
+                title: t('setting.currency.catalog.columns.minor_unit'),
+                dataIndex: 'minor_unit',
+                key: 'minor_unit',
+                width: 120,
+                render: (_, row) => (
+                  <AppInputNumber
+                    className='router-section-input'
+                    min={0}
+                    max={8}
+                    step={1}
+                    precision={0}
+                    fluid
+                    value={row.minor_unit}
+                    onChange={(e, { value }) =>
+                      updateCurrencyField(row._rowIndex, 'minor_unit', value)
+                    }
+                  />
+                ),
+              },
+              {
+                title: t('setting.currency.catalog.columns.status'),
+                dataIndex: 'status',
+                key: 'status',
+                width: 140,
+                render: (_, row) => (
+                  <AppSelect
+                    className='router-section-input'
+                    options={statusOptions}
+                    value={Number(row.status || 1)}
+                    onChange={(e, { value }) =>
+                      updateCurrencyField(row._rowIndex, 'status', value)
+                    }
+                  />
+                ),
+              },
+              {
+                title: t('setting.currency.catalog.columns.created_at'),
+                dataIndex: 'created_at',
+                key: 'created_at',
+                width: createdAtColumnStyle.width,
+                render: (value) => (value ? timestamp2string(value) : '-'),
+              },
+              {
+                title: t('setting.currency.catalog.columns.updated_at'),
+                dataIndex: 'updated_at',
+                key: 'updated_at',
+                width: updatedAtColumnStyle.width,
+                render: (value) => (value ? timestamp2string(value) : '-'),
+              },
+              {
+                title: t('setting.currency.catalog.columns.action'),
+                key: 'action',
+                width: actionColumnStyle.width,
+                render: (_, row) => {
+                  const currentSavingKey = row._isNew
+                    ? `new-${row._rowIndex}`
+                    : row.code;
+                  const isSaving = savingKey === currentSavingKey;
+                  return (
+                    <div className='router-action-group'>
+                      {row._isNew ? (
+                        <AppButton
+                          className='router-table-action-button'
+                          type='button'
+                          onClick={() => removeNewCurrency(row._rowIndex)}
+                          disabled={isSaving}
+                        >
+                          {t('setting.currency.catalog.buttons.cancel')}
+                        </AppButton>
+                      ) : null}
+                      <AppButton
+                        className='router-table-action-button'
+                        color='blue'
+                        type='button'
+                        loading={isSaving}
+                        disabled={isSaving}
+                        onClick={() => saveCurrency(row, row._rowIndex)}
+                      >
+                        {t('setting.currency.catalog.buttons.save')}
+                      </AppButton>
+                    </div>
+                  );
+                },
+              },
+            ]}
+          />
+        </div>
+      </div>
+    </AppSpin>
   );
 };
 

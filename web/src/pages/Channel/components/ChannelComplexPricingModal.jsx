@@ -1,5 +1,12 @@
 import React from 'react';
-import { Button, Label, Modal, Table } from 'semantic-ui-react';
+import {
+  AppButton,
+  AppFormActions,
+  AppModal,
+  AppTable,
+  AppTag,
+  AppToolbar,
+} from '../../../router-ui';
 
 const ChannelComplexPricingModal = ({
   t,
@@ -9,11 +16,24 @@ const ChannelComplexPricingModal = ({
   normalizeChannelModelType,
 }) => {
   return (
-    <Modal size='large' open={open} onClose={onClose}>
-      <Modal.Header>
-        {t('channel.edit.model_selector.pricing_detail_title')}
-      </Modal.Header>
-      <Modal.Content scrolling>
+    <AppModal
+      size='large'
+      open={open}
+      onClose={onClose}
+      title={t('channel.edit.model_selector.pricing_detail_title')}
+      footer={
+        <AppFormActions>
+          <AppButton
+            type='button'
+            className='router-modal-button'
+            onClick={onClose}
+          >
+            {t('channel.edit.buttons.cancel')}
+          </AppButton>
+        </AppFormActions>
+      }
+    >
+      <div className='router-modal-scroll-body'>
         <div className='router-block-gap-sm'>
           <div className='router-text-meta'>
             {t('channel.edit.model_selector.pricing_detail_model', {
@@ -36,89 +56,99 @@ const ChannelComplexPricingModal = ({
           (data?.details || []).map((detail, index) => (
             <div
               key={`${detail.provider || 'provider'}-${detail.model || 'model'}-${index}`}
-              className='router-block-gap-sm'
-              style={{ marginBottom: '1rem' }}
+              className='router-block-gap-sm router-complex-pricing-detail-block'
             >
-              <div className='router-toolbar router-block-gap-sm'>
-                <div className='router-toolbar-start'>
-                  <Label basic className='router-tag'>
+              <AppToolbar
+                className='router-block-gap-sm'
+                startClassName='router-tag-group'
+                start={
+                  <>
+                  <AppTag className='router-tag'>
                     {detail.provider || '-'}
-                  </Label>
-                  <Label basic className='router-tag'>
+                  </AppTag>
+                  <AppTag className='router-tag'>
                     {detail.model || '-'}
-                  </Label>
-                  <Label basic className='router-tag'>
+                  </AppTag>
+                  <AppTag className='router-tag'>
                     {t(
                       `channel.model_types.${normalizeChannelModelType(detail.type)}`,
                     )}
-                  </Label>
+                  </AppTag>
                   {(detail.supported_endpoints || []).map((endpoint) => (
-                    <Label
+                    <AppTag
                       key={`${detail.provider || 'provider'}-${detail.model || 'model'}-${endpoint}`}
-                      basic
                       className='router-tag'
                     >
                       {endpoint}
-                    </Label>
+                    </AppTag>
                   ))}
-                </div>
-              </div>
-              <Table celled compact className='router-detail-subtable'>
-                <Table.Header>
-                  <Table.Row>
-                    <Table.HeaderCell>
-                      {t('channel.edit.model_selector.pricing_detail_table.component')}
-                    </Table.HeaderCell>
-                    <Table.HeaderCell>
-                      {t('channel.edit.model_selector.pricing_detail_table.condition')}
-                    </Table.HeaderCell>
-                    <Table.HeaderCell>
-                      {t('channel.edit.model_selector.pricing_detail_table.input_price')}
-                    </Table.HeaderCell>
-                    <Table.HeaderCell>
-                      {t('channel.edit.model_selector.pricing_detail_table.output_price')}
-                    </Table.HeaderCell>
-                    <Table.HeaderCell>
-                      {t('channel.edit.model_selector.pricing_detail_table.price_unit')}
-                    </Table.HeaderCell>
-                    <Table.HeaderCell>
-                      {t('channel.edit.model_selector.pricing_detail_table.currency')}
-                    </Table.HeaderCell>
-                    <Table.HeaderCell>
-                      {t('channel.edit.model_selector.pricing_detail_table.source')}
-                    </Table.HeaderCell>
-                    <Table.HeaderCell>
-                      {t('channel.edit.model_selector.pricing_detail_table.source_url')}
-                    </Table.HeaderCell>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {detail.price_components.map((component, componentIndex) => (
-                    <Table.Row
-                      key={`${detail.provider || 'provider'}-${detail.model || 'model'}-${component.component || 'component'}-${component.condition || 'condition'}-${componentIndex}`}
-                    >
-                      <Table.Cell>{component.component || '-'}</Table.Cell>
-                      <Table.Cell>{component.condition || '-'}</Table.Cell>
-                      <Table.Cell>{component.input_price || 0}</Table.Cell>
-                      <Table.Cell>{component.output_price || 0}</Table.Cell>
-                      <Table.Cell>{component.price_unit || '-'}</Table.Cell>
-                      <Table.Cell>{component.currency || 'USD'}</Table.Cell>
-                      <Table.Cell>{component.source || 'manual'}</Table.Cell>
-                      <Table.Cell>{component.source_url || '-'}</Table.Cell>
-                    </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table>
+                  </>
+                }
+              />
+              <AppTable
+                className='router-detail-table'
+                pagination={false}
+                scroll={{ x: 980 }}
+                rowKey={(component, componentIndex) =>
+                  `${detail.provider || 'provider'}-${detail.model || 'model'}-${component.component || 'component'}-${component.condition || 'condition'}-${componentIndex}`
+                }
+                dataSource={detail.price_components || []}
+                columns={[
+                  {
+                    title: t('channel.edit.model_selector.pricing_detail_table.component'),
+                    dataIndex: 'component',
+                    key: 'component',
+                    render: (value) => value || '-',
+                  },
+                  {
+                    title: t('channel.edit.model_selector.pricing_detail_table.condition'),
+                    dataIndex: 'condition',
+                    key: 'condition',
+                    render: (value) => value || '-',
+                  },
+                  {
+                    title: t('channel.edit.model_selector.pricing_detail_table.input_price'),
+                    dataIndex: 'input_price',
+                    key: 'input_price',
+                    render: (value) => value || 0,
+                  },
+                  {
+                    title: t('channel.edit.model_selector.pricing_detail_table.output_price'),
+                    dataIndex: 'output_price',
+                    key: 'output_price',
+                    render: (value) => value || 0,
+                  },
+                  {
+                    title: t('channel.edit.model_selector.pricing_detail_table.price_unit'),
+                    dataIndex: 'price_unit',
+                    key: 'price_unit',
+                    render: (value) => value || '-',
+                  },
+                  {
+                    title: t('channel.edit.model_selector.pricing_detail_table.currency'),
+                    dataIndex: 'currency',
+                    key: 'currency',
+                    render: (value) => value || 'USD',
+                  },
+                  {
+                    title: t('channel.edit.model_selector.pricing_detail_table.source'),
+                    dataIndex: 'source',
+                    key: 'source',
+                    render: (value) => value || 'manual',
+                  },
+                  {
+                    title: t('channel.edit.model_selector.pricing_detail_table.source_url'),
+                    dataIndex: 'source_url',
+                    key: 'source_url',
+                    render: (value) => value || '-',
+                  },
+                ]}
+              />
             </div>
           ))
         )}
-      </Modal.Content>
-      <Modal.Actions>
-        <Button type='button' className='router-modal-button' onClick={onClose}>
-          {t('channel.edit.buttons.cancel')}
-        </Button>
-      </Modal.Actions>
-    </Modal>
+      </div>
+    </AppModal>
   );
 };
 

@@ -1,14 +1,8 @@
-import React, { Suspense, useCallback, useContext, useEffect } from 'react';
+import React, { Suspense, lazy, useCallback, useContext, useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Loading from './components/Loading';
-import User from './pages/User';
 import { PrivateRoute } from './components/PrivateRoute';
-import RegisterForm from './components/RegisterForm';
-import LoginForm from './components/LoginForm';
 import NotFound from './pages/NotFound';
-import Setting from './pages/Setting';
-import UserDetail from './pages/User/EditUser';
-import AddUser from './pages/User/AddUser';
 import {
   API,
   getLogo,
@@ -17,42 +11,49 @@ import {
   showError,
   showNotice,
 } from './helpers';
-import PasswordResetForm from './components/PasswordResetForm';
-import PasswordResetConfirm from './components/PasswordResetConfirm';
 import { UserContext } from './context/User';
 import { StatusContext } from './context/Status';
-import Channel from './pages/Channel';
-import Token from './pages/Token';
-import EditToken from './pages/Token/EditToken';
-import EditChannel from './pages/Channel/EditChannel';
-import AddChannel from './pages/Channel/AddChannel';
-import Redemption from './pages/Redemption';
-import EditRedemption from './pages/Redemption/EditRedemption';
-import RedemptionDetail from './pages/Redemption/RedemptionDetail';
-import TopUp from './pages/TopUp';
-import TopUpOrderDetail from './pages/TopUp/TopUpOrderDetail';
-import Log from './pages/Log';
-import LogDetail from './pages/Log/Detail';
-import Chat from './pages/Chat';
-import Dashboard from './pages/Dashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import Providers from './pages/Providers';
-import Group from './pages/Group';
-import Package from './pages/Package';
-import PackageDetail from './pages/Package/Detail';
-import AdminTopup from './pages/AdminTopup';
-import Task from './pages/Task';
-import TaskDetail from './pages/Task/Detail';
-import FlowPage from './pages/Flow';
-import TopupReconcileDetail from './pages/Flow/TopupReconcileDetail';
-import TopupDetail from './pages/Flow/TopupDetail';
-import PackageFlowDetail from './pages/Flow/PackageDetail';
-import RedemptionFlowDetail from './pages/Flow/RedemptionDetail';
-import ServicePricing from './pages/ServicePricing';
-import HelpDoc from './pages/HelpDoc';
 import AdminLayout from './layouts/AdminLayout';
 import UserLayout from './layouts/UserLayout';
 import UserWorkspaceLayout from './layouts/UserWorkspaceLayout';
+
+const User = lazy(() => import('./pages/User'));
+const RegisterForm = lazy(() => import('./components/RegisterForm'));
+const LoginForm = lazy(() => import('./components/LoginForm'));
+const Setting = lazy(() => import('./pages/Setting'));
+const UserDetail = lazy(() => import('./pages/User/EditUser'));
+const AddUser = lazy(() => import('./pages/User/AddUser'));
+const PasswordResetForm = lazy(() => import('./components/PasswordResetForm'));
+const PasswordResetConfirm = lazy(() => import('./components/PasswordResetConfirm'));
+const Channel = lazy(() => import('./pages/Channel'));
+const Token = lazy(() => import('./pages/Token'));
+const EditToken = lazy(() => import('./pages/Token/EditToken'));
+const EditChannel = lazy(() => import('./pages/Channel/EditChannel'));
+const AddChannel = lazy(() => import('./pages/Channel/AddChannel'));
+const Redemption = lazy(() => import('./pages/Redemption'));
+const EditRedemption = lazy(() => import('./pages/Redemption/EditRedemption'));
+const RedemptionDetail = lazy(() => import('./pages/Redemption/RedemptionDetail'));
+const TopUp = lazy(() => import('./pages/TopUp'));
+const TopUpOrderDetail = lazy(() => import('./pages/TopUp/TopUpOrderDetail'));
+const Log = lazy(() => import('./pages/Log'));
+const LogDetail = lazy(() => import('./pages/Log/Detail'));
+const Chat = lazy(() => import('./pages/Chat'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const Providers = lazy(() => import('./pages/Providers'));
+const Group = lazy(() => import('./pages/Group'));
+const Package = lazy(() => import('./pages/Package'));
+const PackageDetail = lazy(() => import('./pages/Package/Detail'));
+const AdminTopup = lazy(() => import('./pages/AdminTopup'));
+const Task = lazy(() => import('./pages/Task'));
+const TaskDetail = lazy(() => import('./pages/Task/Detail'));
+const FlowPage = lazy(() => import('./pages/Flow'));
+const TopupReconcileDetail = lazy(() => import('./pages/Flow/TopupReconcileDetail'));
+const TopupDetail = lazy(() => import('./pages/Flow/TopupDetail'));
+const PackageFlowDetail = lazy(() => import('./pages/Flow/PackageDetail'));
+const RedemptionFlowDetail = lazy(() => import('./pages/Flow/RedemptionDetail'));
+const ServicePricing = lazy(() => import('./pages/ServicePricing'));
+const HelpDoc = lazy(() => import('./pages/HelpDoc'));
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '';
 
@@ -320,7 +321,14 @@ function App() {
             </Suspense>
           }
         />
-        <Route path='/workspace/token' element={<Token />} />
+        <Route
+          path='/workspace/token'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Token />
+            </Suspense>
+          }
+        />
         <Route
           path='/workspace/token/:id'
           element={
@@ -369,7 +377,14 @@ function App() {
             </Suspense>
           }
         />
-        <Route path='/workspace/log' element={<Log />} />
+        <Route
+          path='/workspace/log'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Log />
+            </Suspense>
+          }
+        />
         <Route
           path='/workspace/log/:id'
           element={
@@ -378,7 +393,14 @@ function App() {
             </Suspense>
           }
         />
-        <Route path='/workspace/task' element={<Task />} />
+        <Route
+          path='/workspace/task'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Task />
+            </Suspense>
+          }
+        />
         <Route
           path='/workspace/task/:id'
           element={
@@ -387,7 +409,14 @@ function App() {
             </Suspense>
           }
         />
-        <Route path='/workspace/dashboard' element={<Dashboard />} />
+        <Route
+          path='/workspace/dashboard'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Dashboard />
+            </Suspense>
+          }
+        />
         <Route
           path='/workspace/service/pricing'
           element={
@@ -423,8 +452,22 @@ function App() {
           </PrivateRoute>
         }
       >
-        <Route path='/admin/channel' element={<Channel />} />
-        <Route path='/admin/channel/tasks' element={<Task />} />
+        <Route
+          path='/admin/channel'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Channel />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/admin/channel/tasks'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Task />
+            </Suspense>
+          }
+        />
         <Route
           path='/admin/channel/tasks/:id'
           element={
@@ -457,12 +500,54 @@ function App() {
             </Suspense>
           }
         />
-        <Route path='/admin/provider' element={<Providers />} />
-        <Route path='/admin/group' element={<Group />} />
-        <Route path='/admin/group/detail/:id' element={<Group />} />
-        <Route path='/admin/package' element={<Package />} />
-        <Route path='/admin/package/detail/:id' element={<PackageDetail />} />
-        <Route path='/admin/topup' element={<AdminTopup />} />
+        <Route
+          path='/admin/provider'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Providers />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/admin/group'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Group />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/admin/group/detail/:id'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Group />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/admin/package'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Package />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/admin/package/detail/:id'
+          element={
+            <Suspense fallback={<Loading />}>
+              <PackageDetail />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/admin/topup'
+          element={
+            <Suspense fallback={<Loading />}>
+              <AdminTopup />
+            </Suspense>
+          }
+        />
         <Route
           path='/admin/flow/topup'
           element={
@@ -527,7 +612,14 @@ function App() {
             </Suspense>
           }
         />
-        <Route path='/admin/redemption' element={<Redemption />} />
+        <Route
+          path='/admin/redemption'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Redemption />
+            </Suspense>
+          }
+        />
         <Route
           path='/admin/redemption/edit/:id'
           element={
@@ -552,7 +644,14 @@ function App() {
             </Suspense>
           }
         />
-        <Route path='/admin/user' element={<User />} />
+        <Route
+          path='/admin/user'
+          element={
+            <Suspense fallback={<Loading />}>
+              <User />
+            </Suspense>
+          }
+        />
         <Route
           path='/admin/user/detail/:id'
           element={
@@ -585,8 +684,22 @@ function App() {
             </Suspense>
           }
         />
-        <Route path='/admin/dashboard' element={<AdminDashboard />} />
-        <Route path='/admin/log' element={<Log />} />
+        <Route
+          path='/admin/dashboard'
+          element={
+            <Suspense fallback={<Loading />}>
+              <AdminDashboard />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/admin/log'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Log />
+            </Suspense>
+          }
+        />
         <Route
           path='/admin/log/:id'
           element={
@@ -595,7 +708,14 @@ function App() {
             </Suspense>
           }
         />
-        <Route path='/admin/task' element={<Task />} />
+        <Route
+          path='/admin/task'
+          element={
+            <Suspense fallback={<Loading />}>
+              <Task />
+            </Suspense>
+          }
+        />
         <Route
           path='/admin/task/:id'
           element={

@@ -1,14 +1,28 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Dropdown, Form, Label, Pagination, Popup, Table } from 'semantic-ui-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API, showError, timestamp2string } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
 import UnitDropdown from './UnitDropdown';
 import { buildBillingCurrencyIndex, buildDisplayUnitOptions, formatDisplayAmountFromYYC } from '../helpers/billing';
 import { formatAmountWithUnit, renderText } from '../helpers/render';
+import {
+  AppButton,
+  AppFilterHeader,
+  AppInput,
+  AppPagination,
+  AppSelect,
+  AppTable,
+  AppTag,
+  AppTooltip,
+} from '../router-ui';
 
 const STATUS_FILTER_ALL_VALUE = '__all_status__';
+const BUSINESS_FLOW_HEADER_KEY = {
+  topup: 'header.topup',
+  'topup-reconcile': 'flow.topup_reconcile.title',
+  package: 'header.package',
+};
 
 const readOnlyText = (value) => {
   const normalized = (value || '').toString().trim();
@@ -29,36 +43,36 @@ const normalizeTopupStatus = (value) =>
 const renderTopupStatus = (status, t) => {
   switch (normalizeTopupStatus(status)) {
     case 'created':
-      return <Label basic className='router-tag'>{t('topup.external_topup_orders.status.created')}</Label>;
+      return <AppTag className='router-tag'>{t('topup.external_topup_orders.status.created')}</AppTag>;
     case 'pending':
-      return <Label basic color='blue' className='router-tag'>{t('topup.external_topup_orders.status.pending')}</Label>;
+      return <AppTag color='blue' className='router-tag'>{t('topup.external_topup_orders.status.pending')}</AppTag>;
     case 'paid':
-      return <Label basic color='teal' className='router-tag'>{t('topup.external_topup_orders.status.paid')}</Label>;
+      return <AppTag color='teal' className='router-tag'>{t('topup.external_topup_orders.status.paid')}</AppTag>;
     case 'fulfilled':
-      return <Label basic color='green' className='router-tag'>{t('topup.external_topup_orders.status.fulfilled')}</Label>;
+      return <AppTag color='green' className='router-tag'>{t('topup.external_topup_orders.status.fulfilled')}</AppTag>;
     case 'failed':
-      return <Label basic color='red' className='router-tag'>{t('topup.external_topup_orders.status.failed')}</Label>;
+      return <AppTag color='red' className='router-tag'>{t('topup.external_topup_orders.status.failed')}</AppTag>;
     case 'canceled':
-      return <Label basic color='grey' className='router-tag'>{t('topup.external_topup_orders.status.canceled')}</Label>;
+      return <AppTag color='grey' className='router-tag'>{t('topup.external_topup_orders.status.canceled')}</AppTag>;
     default:
-      return <Label basic color='grey' className='router-tag'>{readOnlyText(status)}</Label>;
+      return <AppTag color='grey' className='router-tag'>{readOnlyText(status)}</AppTag>;
   }
 };
 
 const renderPackageStatus = (status, t) => {
   switch (Number(status)) {
     case 1:
-      return <Label basic color='green' className='router-tag'>{t('user.detail.package_status_types.active')}</Label>;
+      return <AppTag color='green' className='router-tag'>{t('user.detail.package_status_types.active')}</AppTag>;
     case 2:
-      return <Label basic color='grey' className='router-tag'>{t('user.detail.package_status_types.expired')}</Label>;
+      return <AppTag color='grey' className='router-tag'>{t('user.detail.package_status_types.expired')}</AppTag>;
     case 3:
-      return <Label basic color='blue' className='router-tag'>{t('user.detail.package_status_types.replaced')}</Label>;
+      return <AppTag color='blue' className='router-tag'>{t('user.detail.package_status_types.replaced')}</AppTag>;
     case 4:
-      return <Label basic color='red' className='router-tag'>{t('user.detail.package_status_types.canceled')}</Label>;
+      return <AppTag color='red' className='router-tag'>{t('user.detail.package_status_types.canceled')}</AppTag>;
     case 5:
-      return <Label basic color='teal' className='router-tag'>{t('user.detail.package_status_types.pending')}</Label>;
+      return <AppTag color='teal' className='router-tag'>{t('user.detail.package_status_types.pending')}</AppTag>;
     default:
-      return <Label basic color='grey' className='router-tag'>{t('user.detail.package_status_types.unknown')}</Label>;
+      return <AppTag color='grey' className='router-tag'>{t('user.detail.package_status_types.unknown')}</AppTag>;
   }
 };
 
@@ -77,18 +91,18 @@ const renderReconcileStage = (row, t) => {
   const status = normalizeTopupStatus(row?.status);
   switch (status) {
     case 'created':
-      return <Label basic className='router-tag'>{t('flow.topup_reconcile.stage.awaiting_payment')}</Label>;
+      return <AppTag className='router-tag'>{t('flow.topup_reconcile.stage.awaiting_payment')}</AppTag>;
     case 'pending':
-      return <Label basic color='blue' className='router-tag'>{t('flow.topup_reconcile.stage.payment_processing')}</Label>;
+      return <AppTag color='blue' className='router-tag'>{t('flow.topup_reconcile.stage.payment_processing')}</AppTag>;
     case 'paid':
-      return <Label basic color='orange' className='router-tag'>{t('flow.topup_reconcile.stage.awaiting_fulfillment')}</Label>;
+      return <AppTag color='orange' className='router-tag'>{t('flow.topup_reconcile.stage.awaiting_fulfillment')}</AppTag>;
     case 'fulfilled':
-      return <Label basic color='green' className='router-tag'>{t('flow.topup_reconcile.stage.done')}</Label>;
+      return <AppTag color='green' className='router-tag'>{t('flow.topup_reconcile.stage.done')}</AppTag>;
     case 'failed':
     case 'canceled':
-      return <Label basic color='grey' className='router-tag'>{t('flow.topup_reconcile.stage.closed')}</Label>;
+      return <AppTag color='grey' className='router-tag'>{t('flow.topup_reconcile.stage.closed')}</AppTag>;
     default:
-      return <Label basic color='grey' className='router-tag'>{readOnlyText(row?.status)}</Label>;
+      return <AppTag color='grey' className='router-tag'>{readOnlyText(row?.status)}</AppTag>;
   }
 };
 
@@ -125,11 +139,9 @@ const BusinessFlowTable = ({ kind }) => {
       render: (row) => {
         const userId = readOnlyText(row.user_id || row.redeemed_by_user_id);
         return (
-          <Button
+          <AppButton
             type='button'
             basic
-            compact
-            size='mini'
             className='router-inline-button'
             onClick={(event) => {
               event.stopPropagation();
@@ -142,7 +154,7 @@ const BusinessFlowTable = ({ kind }) => {
             }}
           >
             {readOnlyText(row.username || row.redeemed_by_username)}
-          </Button>
+          </AppButton>
         );
       },
     };
@@ -152,11 +164,9 @@ const BusinessFlowTable = ({ kind }) => {
       render: (row) => {
         const userId = readOnlyText(row.user_id || row.redeemed_by_user_id);
         return (
-          <Button
+          <AppButton
             type='button'
             basic
-            compact
-            size='mini'
             className='router-inline-button'
             onClick={(event) => {
               event.stopPropagation();
@@ -169,7 +179,7 @@ const BusinessFlowTable = ({ kind }) => {
             }}
           >
             {readOnlyText(row.username || row.redeemed_by_username)}
-          </Button>
+          </AppButton>
         );
       },
     };
@@ -338,21 +348,17 @@ const BusinessFlowTable = ({ kind }) => {
                 return message;
               }
               return (
-                <Popup
-                  basic
-                  hoverable
-                  position='top left'
-                  trigger={
-                    <div className='router-topup-reconcile-message-text'>
-                      {message}
-                    </div>
-                  }
-                  content={
+                <AppTooltip
+                  title={
                     <div className='router-topup-reconcile-message-popup'>
                       {message}
                     </div>
                   }
-                />
+                >
+                  <div className='router-topup-reconcile-message-text'>
+                    {message}
+                  </div>
+                </AppTooltip>
               );
             },
           },
@@ -366,7 +372,7 @@ const BusinessFlowTable = ({ kind }) => {
             label: t('redemption.table.actions'),
             collapsing: true,
             render: (row) => (
-              <Button
+              <AppButton
                 type='button'
                 className='router-inline-button'
                 loading={refreshingRowID === row.id}
@@ -377,7 +383,7 @@ const BusinessFlowTable = ({ kind }) => {
                 }}
               >
                 {t('flow.topup_reconcile.actions.refresh')}
-              </Button>
+              </AppButton>
             ),
           },
         ],
@@ -708,106 +714,89 @@ const BusinessFlowTable = ({ kind }) => {
 
   return (
     <>
-      <div className='router-toolbar router-block-gap-sm'>
-        <div className='router-toolbar-start'>
-          <Button
-            className='router-page-button'
-            loading={loading}
-            disabled={loading}
-            onClick={onRefresh}
-          >
-            {t('task.buttons.refresh')}
-          </Button>
-        </div>
-        <div className='router-toolbar-end'>
-          {config.statusOptions.length > 0 ? (
-            <Dropdown
-              className='router-section-dropdown router-flow-filter-dropdown router-dropdown-min-170'
-              selection
-              options={statusDropdownOptions}
-              value={statusFilter === '' ? STATUS_FILTER_ALL_VALUE : statusFilter}
-              onChange={(event, { value }) => {
-                const normalizedValue = (value || '').toString();
-                setStatusFilter(
-                  normalizedValue === STATUS_FILTER_ALL_VALUE ? '' : normalizedValue,
-                );
-              }}
-            />
-          ) : null}
-          <Form
-            className='router-search-form-xs'
-            onSubmit={(event) => {
-              event.preventDefault();
-              onSearchSubmit();
-            }}
-          >
-            <Form.Input
-              className='router-section-input'
-              placeholder={config.searchPlaceholder}
-              value={keyword}
-              onChange={(event, { value }) => {
-                setKeyword(value);
-              }}
-            />
-          </Form>
-          <Button
-            className='router-page-button'
-            loading={loading}
-            disabled={loading}
-            onClick={onSearchSubmit}
-          >
-            {t('task.buttons.query')}
-          </Button>
-        </div>
-      </div>
+      <AppFilterHeader
+        title={t(BUSINESS_FLOW_HEADER_KEY[kind] || 'header.business_flow')}
+        meta={`${items.length} / ${totalCount}`}
+        actions={
+          <div className='router-list-toolbar-actions'>
+            <AppButton
+              className='router-page-button'
+              loading={loading}
+              disabled={loading}
+              onClick={onRefresh}
+            >
+              {t('task.buttons.refresh')}
+            </AppButton>
+          </div>
+        }
+        query={
+          <div className='router-list-toolbar-query router-list-toolbar-query-compact'>
+            {config.statusOptions.length > 0 ? (
+              <AppSelect
+                className='router-section-dropdown router-flow-filter-dropdown router-dropdown-min-170'
+                options={statusDropdownOptions}
+                value={statusFilter === '' ? STATUS_FILTER_ALL_VALUE : statusFilter}
+                onChange={(event, { value }) => {
+                  const normalizedValue = (value || '').toString();
+                  setStatusFilter(
+                    normalizedValue === STATUS_FILTER_ALL_VALUE ? '' : normalizedValue,
+                  );
+                }}
+              />
+            ) : null}
+            <div className='router-search-form-xs'>
+              <AppInput
+                className='router-section-input'
+                placeholder={config.searchPlaceholder}
+                value={keyword}
+                onChange={(event, { value }) => {
+                  setKeyword(value);
+                }}
+              />
+            </div>
+            <AppButton
+              className='router-page-button'
+              loading={loading}
+              disabled={loading}
+              onClick={onSearchSubmit}
+            >
+              {t('task.buttons.query')}
+            </AppButton>
+          </div>
+        }
+      />
 
       <div className={`router-table-scroll-x ${config.tableWrapperClassName || ''}`.trim()}>
-        <Table basic='very' compact className='router-hover-table router-list-table'>
-          <Table.Header>
-            <Table.Row>
-              {config.columns.map((column) => (
-                <Table.HeaderCell
-                  key={column.key}
-                  collapsing={column.collapsing === true}
-                  className={column.headerClassName || ''}
-                >
-                  {column.label}
-                </Table.HeaderCell>
-              ))}
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {items.length === 0 ? (
-              <Table.Row>
-                <Table.Cell colSpan={config.columns.length} className='router-table-empty-cell'>
-                  {config.emptyText}
-                </Table.Cell>
-              </Table.Row>
-            ) : (
-              items.map((row) => (
-                <Table.Row
-                  key={row.id || row.transaction_id || row.package_id}
-                  onClick={typeof config.onRowClick === 'function' ? () => config.onRowClick(row) : undefined}
-                  style={typeof config.onRowClick === 'function' ? { cursor: 'pointer' } : undefined}
-                >
-                  {config.columns.map((column) => (
-                    <Table.Cell
-                      key={column.key}
-                      collapsing={column.collapsing === true}
-                      className={column.cellClassName || ''}
-                    >
-                      {column.render(row)}
-                    </Table.Cell>
-                  ))}
-                </Table.Row>
-              ))
-            )}
-          </Table.Body>
-        </Table>
+        <AppTable
+          className='router-hover-table router-list-table'
+          pagination={false}
+          rowKey={(row) => row.id || row.transaction_id || row.package_id}
+          dataSource={items}
+          locale={{ emptyText: config.emptyText }}
+          onRow={(row) => ({
+            onClick:
+              typeof config.onRowClick === 'function'
+                ? () => config.onRowClick(row)
+                : undefined,
+            style:
+              typeof config.onRowClick === 'function'
+                ? { cursor: 'pointer' }
+                : undefined,
+          })}
+          columns={config.columns.map((column) => ({
+            title: column.label,
+            key: column.key,
+            className: column.cellClassName || '',
+            onHeaderCell: () => ({
+              className: column.headerClassName || '',
+            }),
+            render: (_, row) => column.render(row),
+          }))}
+        />
       </div>
 
-      <div className='table-footer'>
-        <Pagination
+      <div className='router-pagination-wrap'>
+        <AppPagination
           activePage={activePage}
           totalPages={totalPages}
           onPageChange={onPageChange}

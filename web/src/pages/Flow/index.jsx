@@ -1,15 +1,13 @@
 import React from 'react';
-import { Card } from 'semantic-ui-react';
 import BusinessFlowTable from '../../components/BusinessFlowTable';
+import { AppSection } from '../../router-ui';
 
 const FlowPage = ({ kind }) => {
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
+      <AppSection>
           <BusinessFlowTable kind={kind} />
-        </Card.Content>
-      </Card>
+      </AppSection>
     </div>
   );
 };

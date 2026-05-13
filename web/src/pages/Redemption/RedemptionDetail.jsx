@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Breadcrumb, Button, Card, Form, Header, Label } from 'semantic-ui-react';
 import {
   useLocation,
   useNavigate,
@@ -17,6 +16,18 @@ import {
   formatYYCValue,
 } from '../../helpers/render';
 import UnitDropdown from '../../components/UnitDropdown';
+import {
+  AppBreadcrumb,
+  AppButton,
+  AppDetailSection,
+  AppField,
+  AppFormRow,
+  AppInput,
+  AppInputNumber,
+  AppSection,
+  AppSelect,
+  AppTag,
+} from '../../router-ui';
 
 const YYC_UNIT = 'YYC';
 
@@ -24,27 +35,27 @@ function renderStatus(status, t) {
   switch (status) {
     case 1:
       return (
-        <Label basic color='green' className='router-tag'>
+        <AppTag color='green' className='router-tag'>
           {t('redemption.status.unused')}
-        </Label>
+        </AppTag>
       );
     case 2:
       return (
-        <Label basic color='red' className='router-tag'>
+        <AppTag color='red' className='router-tag'>
           {t('redemption.status.disabled')}
-        </Label>
+        </AppTag>
       );
     case 3:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('redemption.status.used')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label basic color='black' className='router-tag'>
+        <AppTag color='black' className='router-tag'>
           {t('redemption.status.unknown')}
-        </Label>
+        </AppTag>
       );
   }
 }
@@ -305,142 +316,146 @@ const RedemptionDetail = () => {
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <div className='router-entity-detail-page'>
+      <AppSection>
+        <div className='router-entity-detail-page'>
             <div className='router-entity-detail-breadcrumb'>
-              <Breadcrumb size='small'>
-                <Breadcrumb.Section link onClick={handleBack}>
-                  {t('header.redemption')}
-                </Breadcrumb.Section>
-                <Breadcrumb.Divider icon='right chevron' />
-                <Breadcrumb.Section active>
-                  {redemption?.name || redemption?.code || id}
-                </Breadcrumb.Section>
-              </Breadcrumb>
+              <AppBreadcrumb
+                items={[
+                  {
+                    key: 'redemption-list',
+                    label: t('header.redemption'),
+                    onClick: handleBack,
+                  },
+                  {
+                    key: 'redemption-current',
+                    label: redemption?.name || redemption?.code || id,
+                    active: true,
+                  },
+                ]}
+              />
             </div>
 
-            <section className='router-entity-detail-section'>
-              <div className='router-entity-detail-section-header'>
-                <div className='router-toolbar-start'>
-                  <Header as='h3' className='router-entity-detail-section-title'>
-                    {t('common.basic_info')}
-                  </Header>
-                  {redemption ? renderStatus(redemption.status, t) : null}
-                </div>
-                <div className='router-toolbar-start'>
-                  {isEditing ? (
-                    <>
-                      <Button
-                        className='router-page-button'
-                        onClick={handleCancelEdit}
-                        disabled={saving}
-                      >
-                        {t('redemption.edit.buttons.cancel')}
-                      </Button>
-                      <Button
-                        className='router-page-button'
-                        primary
-                        loading={saving}
-                        disabled={saving}
-                        onClick={submitEdit}
-                      >
-                        {t('redemption.edit.buttons.submit')}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
+            <AppDetailSection
+              title={t('common.basic_info')}
+              headerStart={redemption ? renderStatus(redemption.status, t) : null}
+              headerEnd={
+                isEditing ? (
+                  <>
+                    <AppButton
                       className='router-page-button'
-                      primary
-                      onClick={() => setEditMode(true)}
+                      onClick={handleCancelEdit}
+                      disabled={saving}
                     >
-                      {t('redemption.buttons.edit')}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <Form loading={loading || optionsLoading}>
-                <Form.Group widths='equal'>
+                      {t('redemption.edit.buttons.cancel')}
+                    </AppButton>
+                    <AppButton
+                      className='router-page-button'
+                      color='blue'
+                      loading={saving}
+                      disabled={saving}
+                      onClick={submitEdit}
+                    >
+                      {t('redemption.edit.buttons.submit')}
+                    </AppButton>
+                  </>
+                ) : (
+                  <AppButton
+                    className='router-page-button'
+                    color='blue'
+                    onClick={() => setEditMode(true)}
+                  >
+                    {t('redemption.buttons.edit')}
+                  </AppButton>
+                )
+              }
+              bodyClassName='router-page-stack'
+            >
+                <AppFormRow>
                   {isEditing ? (
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('redemption.edit.name')}
-                      name='name'
-                      value={inputs.name}
-                      placeholder={t('redemption.edit.name_placeholder')}
-                      onChange={handleInputChange}
-                    />
+                    <AppField label={t('redemption.edit.name')}>
+                      <AppInput
+                        className='router-section-input'
+                        name='name'
+                        value={inputs.name}
+                        placeholder={t('redemption.edit.name_placeholder')}
+                        onChange={handleInputChange}
+                      />
+                    </AppField>
                   ) : (
-                    <Form.Input
+                    <AppField label={t('redemption.table.name')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={redemption?.name || t('redemption.table.no_name')}
+                        readOnly
+                      />
+                    </AppField>
+                  )}
+                  <AppField label={t('redemption.detail.code')} readOnly>
+                    <AppInput
                       className='router-section-input'
-                      label={t('redemption.table.name')}
-                      value={redemption?.name || t('redemption.table.no_name')}
+                      value={redemption?.code || ''}
                       readOnly
                     />
-                  )}
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('redemption.detail.code')}
-                    value={redemption?.code || ''}
-                    readOnly
-                  />
-                </Form.Group>
-                <Form.Group widths='equal'>
+                  </AppField>
+                </AppFormRow>
+                <AppFormRow>
                   {isEditing ? (
-                    <Form.Select
-                      className='router-section-input'
-                      label={t('redemption.edit.group')}
-                      name='group_id'
-                      placeholder={t('redemption.edit.group_placeholder')}
-                      options={groupOptions}
-                      value={inputs.group_id}
-                      onChange={handleInputChange}
-                      search
-                      selection
-                    />
+                    <AppField label={t('redemption.edit.group')}>
+                      <AppSelect
+                        className='router-section-input'
+                        name='group_id'
+                        placeholder={t('redemption.edit.group_placeholder')}
+                        options={groupOptions}
+                        value={inputs.group_id}
+                        onChange={handleInputChange}
+                        search
+                      />
+                    </AppField>
                   ) : (
-                    <Form.Input
+                    <AppField label={t('redemption.table.group')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={formatGroupLabel(redemption)}
+                        readOnly
+                      />
+                    </AppField>
+                  )}
+                  <AppField label={t('redemption.detail.redeemed_by')} readOnly>
+                    <AppInput
                       className='router-section-input'
-                      label={t('redemption.table.group')}
-                      value={formatGroupLabel(redemption)}
+                      value={redeemedByValue}
                       readOnly
                     />
-                  )}
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('redemption.detail.redeemed_by')}
-                    value={redeemedByValue}
-                    readOnly
-                  />
-                </Form.Group>
-                <Form.Group widths='equal'>
+                  </AppField>
+                </AppFormRow>
+                <AppFormRow>
                   {isEditing ? (
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('redemption.edit.face_value_amount')}
-                      name='face_value_amount'
-                      type='number'
-                      value={inputs.face_value_amount}
-                      placeholder={t('redemption.edit.face_value_amount_placeholder')}
-                      onChange={handleInputChange}
-                      step={inputs.face_value_unit === YYC_UNIT ? '1' : '0.01'}
-                      min='0'
-                    />
+                    <AppField label={t('redemption.edit.face_value_amount')}>
+                      <AppInputNumber
+                        className='router-section-input'
+                        fluid
+                        name='face_value_amount'
+                        value={inputs.face_value_amount}
+                        placeholder={t('redemption.edit.face_value_amount_placeholder')}
+                        onChange={handleInputChange}
+                        step={inputs.face_value_unit === YYC_UNIT ? 1 : 0.01}
+                        min={0}
+                      />
+                    </AppField>
                   ) : (
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('redemption.table.face_value')}
-                      value={formatAmountWithUnit(
-                        redemption?.face_value_amount ?? resolveCreditedYYC(redemption),
-                        normalizeFaceValueUnit(redemption)
-                      )}
-                      readOnly
-                    />
+                    <AppField label={t('redemption.table.face_value')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={formatAmountWithUnit(
+                          redemption?.face_value_amount ?? resolveCreditedYYC(redemption),
+                          normalizeFaceValueUnit(redemption)
+                        )}
+                        readOnly
+                      />
+                    </AppField>
                   )}
                   {isEditing ? (
-                    <Form.Field className='router-section-input'>
-                      <label>{t('redemption.edit.face_value_unit')}</label>
+                    <AppField label={t('redemption.edit.face_value_unit')}>
                       <UnitDropdown
                         variant='section'
                         fluid
@@ -450,119 +465,127 @@ const RedemptionDetail = () => {
                         value={inputs.face_value_unit}
                         onChange={handleInputChange}
                       />
-                    </Form.Field>
+                    </AppField>
                   ) : (
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('redemption.table.credited_yyc')}
-                      value={redemption ? formatYYCValue(resolveCreditedYYC(redemption)) : ''}
-                      readOnly
-                    />
+                    <AppField label={t('redemption.table.credited_yyc')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={redemption ? formatYYCValue(resolveCreditedYYC(redemption)) : ''}
+                        readOnly
+                      />
+                    </AppField>
                   )}
-                </Form.Group>
+                </AppFormRow>
                 {isEditing ? (
-                  <Form.Field>
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('redemption.edit.credit_yyc')}
-                      value={yycPreview > 0 ? formatYYCValue(yycPreview) : '-'}
-                      readOnly
-                    />
-                  </Form.Field>
+                  <AppFormRow>
+                    <AppField label={t('redemption.edit.credit_yyc')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={yycPreview > 0 ? formatYYCValue(yycPreview) : '-'}
+                        readOnly
+                      />
+                    </AppField>
+                  </AppFormRow>
                 ) : null}
-                <Form.Group widths='equal'>
+                <AppFormRow>
                   {isEditing ? (
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('redemption.edit.code_validity_days')}
-                      name='code_validity_days'
-                      type='number'
-                      value={inputs.code_validity_days}
-                      placeholder={t('redemption.edit.code_validity_days_placeholder')}
-                      onChange={handleInputChange}
-                      min='0'
-                    />
+                    <AppField label={t('redemption.edit.code_validity_days')}>
+                      <AppInputNumber
+                        className='router-section-input'
+                        fluid
+                        name='code_validity_days'
+                        value={inputs.code_validity_days}
+                        placeholder={t('redemption.edit.code_validity_days_placeholder')}
+                        onChange={handleInputChange}
+                        min={0}
+                      />
+                    </AppField>
                   ) : (
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('redemption.detail.code_validity_days')}
-                      value={Number(redemption?.code_validity_days || 0) > 0
-                        ? `${Number(redemption?.code_validity_days || 0)} ${t('common.day')}`
-                        : t('common.never')}
-                      readOnly
-                    />
+                    <AppField label={t('redemption.detail.code_validity_days')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={Number(redemption?.code_validity_days || 0) > 0
+                          ? `${Number(redemption?.code_validity_days || 0)} ${t('common.day')}`
+                          : t('common.never')}
+                        readOnly
+                      />
+                    </AppField>
                   )}
                   {isEditing ? (
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('redemption.edit.credit_validity_days')}
-                      name='credit_validity_days'
-                      type='number'
-                      value={inputs.credit_validity_days}
-                      placeholder={t('redemption.edit.credit_validity_days_placeholder')}
-                      onChange={handleInputChange}
-                      min='0'
-                    />
+                    <AppField label={t('redemption.edit.credit_validity_days')}>
+                      <AppInputNumber
+                        className='router-section-input'
+                        fluid
+                        name='credit_validity_days'
+                        value={inputs.credit_validity_days}
+                        placeholder={t('redemption.edit.credit_validity_days_placeholder')}
+                        onChange={handleInputChange}
+                        min={0}
+                      />
+                    </AppField>
                   ) : (
-                    <Form.Input
+                    <AppField label={t('redemption.detail.credit_validity_days')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={Number(redemption?.credit_validity_days || 0) > 0
+                          ? `${Number(redemption?.credit_validity_days || 0)} ${t('common.day')}`
+                          : t('common.never')}
+                        readOnly
+                      />
+                    </AppField>
+                  )}
+                </AppFormRow>
+                <AppFormRow>
+                  <AppField label={t('redemption.table.created_time')} readOnly>
+                    <AppInput
                       className='router-section-input'
-                      label={t('redemption.detail.credit_validity_days')}
-                      value={Number(redemption?.credit_validity_days || 0) > 0
-                        ? `${Number(redemption?.credit_validity_days || 0)} ${t('common.day')}`
-                        : t('common.never')}
+                      value={
+                        redemption?.created_time
+                          ? timestamp2string(redemption.created_time)
+                          : ''
+                      }
                       readOnly
                     />
-                  )}
-                </Form.Group>
-                <Form.Group widths='equal'>
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('redemption.table.created_time')}
-                    value={
-                      redemption?.created_time
-                        ? timestamp2string(redemption.created_time)
-                        : ''
-                    }
-                    readOnly
-                  />
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('redemption.table.redeemed_time')}
-                    value={
-                      redemption?.redeemed_time
-                        ? timestamp2string(redemption.redeemed_time)
-                        : t('redemption.table.not_redeemed')
-                    }
-                    readOnly
-                  />
-                </Form.Group>
-                <Form.Group widths='equal'>
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('redemption.detail.code_expires_at')}
-                    value={
-                      Number(redemption?.code_expires_at || 0) > 0
-                        ? timestamp2string(redemption.code_expires_at)
-                        : t('common.never')
-                    }
-                    readOnly
-                  />
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('redemption.detail.credit_expires_at')}
-                    value={
-                      Number(redemption?.credit_expires_at || 0) > 0
-                        ? timestamp2string(redemption.credit_expires_at)
-                        : t('common.never')
-                    }
-                    readOnly
-                  />
-                </Form.Group>
-              </Form>
-            </section>
-          </div>
-        </Card.Content>
-      </Card>
+                  </AppField>
+                  <AppField label={t('redemption.table.redeemed_time')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={
+                        redemption?.redeemed_time
+                          ? timestamp2string(redemption.redeemed_time)
+                          : t('redemption.table.not_redeemed')
+                      }
+                      readOnly
+                    />
+                  </AppField>
+                </AppFormRow>
+                <AppFormRow>
+                  <AppField label={t('redemption.detail.code_expires_at')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={
+                        Number(redemption?.code_expires_at || 0) > 0
+                          ? timestamp2string(redemption.code_expires_at)
+                          : t('common.never')
+                      }
+                      readOnly
+                    />
+                  </AppField>
+                  <AppField label={t('redemption.detail.credit_expires_at')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={
+                        Number(redemption?.credit_expires_at || 0) > 0
+                          ? timestamp2string(redemption.credit_expires_at)
+                          : t('common.never')
+                      }
+                      readOnly
+                    />
+                  </AppField>
+                </AppFormRow>
+              </AppDetailSection>
+        </div>
+      </AppSection>
     </div>
   );
 };

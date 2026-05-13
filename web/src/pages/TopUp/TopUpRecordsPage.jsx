@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  Button,
-  Card,
-  Label,
-  Pagination,
-  Popup,
-  Table,
-} from 'semantic-ui-react';
 import { API, timestamp2string, showError, showSuccess } from '../../helpers';
+import {
+  AppButton,
+  AppPagination,
+  AppSection,
+  AppTable,
+  AppTag,
+  AppTooltip,
+} from '../../router-ui';
 import {
   formatTopupBusinessType,
   formatTopupOrderStatusHint,
@@ -282,84 +282,199 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
         };
     }
   }, [navigate, recordKey, t]);
+  const redemptionColumns = useMemo(
+    () => [
+      {
+        title: t('topup.redemption_records.columns.time'),
+        dataIndex: 'created_at',
+        key: 'created_at',
+        render: (value) => (value ? timestamp2string(value) : '-'),
+      },
+      {
+        title: t('topup.redemption_records.columns.amount'),
+        dataIndex: 'yycAmount',
+        key: 'yycAmount',
+        render: (value) =>
+          value ? (
+            <AppTag color='green' className='router-tag'>
+              {renderDisplayAmount(value)}
+            </AppTag>
+          ) : (
+            '-'
+          ),
+      },
+      {
+        title: t('topup.redemption_records.columns.redemption_code'),
+        dataIndex: 'redemptionCode',
+        key: 'redemptionCode',
+        render: (value) => value || '-',
+      },
+    ],
+    [renderDisplayAmount, t],
+  );
+  const orderColumns = useMemo(
+    () => [
+      {
+        title: t('topup.external_topup_orders.columns.time'),
+        dataIndex: 'created_at',
+        key: 'created_at',
+        render: (value) => (value ? timestamp2string(value) : '-'),
+      },
+      {
+        title: t('topup.external_topup_orders.columns.business_type'),
+        dataIndex: 'business_type',
+        key: 'business_type',
+        render: (value) => formatTopupBusinessType(value, t),
+      },
+      {
+        title: t('topup.external_topup_orders.columns.status'),
+        dataIndex: 'status',
+        key: 'status',
+        render: (value) => {
+          const statusNode = renderTopupOrderStatus(value, t);
+          const statusHint = !isPackageRecord
+            ? formatTopupOrderStatusHint(value, t)
+            : '';
+          if (!statusHint) {
+            return statusNode;
+          }
+          return (
+            <AppTooltip title={statusHint}>
+              <span className='router-help-trigger'>
+                {statusNode}
+              </span>
+            </AppTooltip>
+          );
+        },
+      },
+      {
+        title: t('topup.external_topup_orders.columns.amount'),
+        dataIndex: 'amount',
+        key: 'amount',
+        render: (_, order) =>
+          order.amount > 0
+            ? `${order.currency || 'CNY'} ${Number(order.amount || 0).toFixed(2)}`
+            : order.quota > 0
+              ? renderDisplayAmount(order.quota)
+              : '-',
+      },
+      {
+        title: isPackageRecord
+          ? t('topup.external_topup_orders.columns.package_name')
+          : t('topup.external_topup_orders.columns.quota'),
+        dataIndex: isPackageRecord ? 'package_name' : 'quota',
+        key: isPackageRecord ? 'package_name' : 'quota',
+        render: (_, order) =>
+          isPackageRecord
+            ? order.package_name || '-'
+            : order.quota > 0
+              ? renderDisplayAmount(order.quota)
+              : '-',
+      },
+      {
+        title: t('topup.external_topup_orders.columns.action'),
+        key: 'action',
+        render: (_, order) => (
+          <AppToolbar
+            className='router-toolbar-compact'
+            startClassName='router-block-gap-xs'
+            start={
+              <>
+                <AppButton
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    manualRefreshOrder(order.id);
+                  }}
+                  loading={refreshingOrderID === order.id}
+                  disabled={refreshingOrderID === order.id}
+                >
+                  {t('topup.records.refresh_status')}
+                </AppButton>
+                {['created', 'pending'].includes(order.status) ? (
+                  <>
+                    <AppButton
+                      color='blue'
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        continuePay(order);
+                      }}
+                      loading={refreshingOrderID === order.id}
+                      disabled={refreshingOrderID === order.id}
+                    >
+                      {t('topup.records.continue_pay')}
+                    </AppButton>
+                    <AppButton
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        cancelPay(order.id);
+                      }}
+                      loading={refreshingOrderID === order.id}
+                      disabled={refreshingOrderID === order.id}
+                    >
+                      {t('topup.records.cancel_pay')}
+                    </AppButton>
+                  </>
+                ) : null}
+              </>
+            }
+          />
+        ),
+      },
+    ],
+    [
+      cancelPay,
+      continuePay,
+      formatTopupBusinessType,
+      isPackageRecord,
+      manualRefreshOrder,
+      refreshingOrderID,
+      renderDisplayAmount,
+      t,
+    ],
+  );
 
   return (
-    <Card fluid className='router-soft-card'>
-      <Card.Content>
-        <Card.Header className='router-card-header'>
-          <div className='router-toolbar'>
-            <div className='router-toolbar-start'>
-              <Button
-                primary
-                className='router-section-button'
-                onClick={actionButton.onClick}
-              >
-                {actionButton.label}
-              </Button>
-              <Button
-                className='router-section-button'
-                onClick={refreshCurrent}
-                loading={loadingOrders || loadingRedemptionRecords}
-              >
-                {t('topup.records.refresh')}
-              </Button>
-            </div>
-          </div>
-        </Card.Header>
-
-        {isRedemptionRecord ? (
+    <AppSection
+      title={
+        isRedemptionRecord
+          ? t('topup.redemption_records.title', '兑换记录')
+          : isPackageRecord
+            ? t('topup.records.package_title', '套餐订单')
+            : t('topup.records.title', '充值订单')
+      }
+      extra={
+        <>
+        <AppButton
+          color='blue'
+          className='router-section-button'
+          onClick={actionButton.onClick}
+        >
+          {actionButton.label}
+        </AppButton>
+        <AppButton
+          className='router-section-button'
+          onClick={refreshCurrent}
+          loading={loadingOrders || loadingRedemptionRecords}
+        >
+          {t('topup.records.refresh')}
+        </AppButton>
+        </>
+      }
+    >
+      {isRedemptionRecord ? (
           <>
-            <Table basic='very' compact className='router-list-table'>
-              <Table.Header>
-                <Table.Row>
-                  <Table.HeaderCell width={3}>
-                    {t('topup.redemption_records.columns.time')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell width={2}>
-                    {t('topup.redemption_records.columns.amount')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell width={3}>
-                    {t('topup.redemption_records.columns.redemption_code')}
-                  </Table.HeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {redemptionRecords.length === 0 ? (
-                  <Table.Row>
-                    <Table.Cell colSpan='3' className='router-text-muted'>
-                      {loadingRedemptionRecords
-                        ? t('common.loading')
-                        : t('topup.redemption_records.empty')}
-                    </Table.Cell>
-                  </Table.Row>
-                ) : (
-                  redemptionRecords.map((log) => (
-                    <Table.Row
-                      key={log.id || log.trace_id || `${log.created_at}-${log.content}`}
-                    >
-                      <Table.Cell>
-                        {log.created_at ? timestamp2string(log.created_at) : '-'}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {log.yycAmount ? (
-                          <Label basic color='green' className='router-tag'>
-                            {renderDisplayAmount(log.yycAmount)}
-                          </Label>
-                        ) : (
-                          '-'
-                        )}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {log.redemptionCode || '-'}
-                      </Table.Cell>
-                    </Table.Row>
-                  ))
-                )}
-              </Table.Body>
-            </Table>
+            <AppTable
+              className='router-list-table'
+              rowKey={(log) => log.id || log.trace_id || `${log.created_at}-${log.content}`}
+              pagination={false}
+              loading={loadingRedemptionRecords}
+              locale={{ emptyText: t('topup.redemption_records.empty') }}
+              dataSource={redemptionRecords}
+              columns={redemptionColumns}
+            />
             {redemptionTotalPages > 1 ? (
               <div className='router-pagination-wrap-md'>
-                <Pagination
+                <AppPagination
                   className='router-section-pagination'
                   activePage={redemptionPage}
                   totalPages={redemptionTotalPages}
@@ -370,146 +485,24 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
               </div>
             ) : null}
           </>
-        ) : (
+      ) : (
           <>
-            <Table basic='very' compact className='router-list-table'>
-              <Table.Header>
-                <Table.Row>
-                  <Table.HeaderCell width={3}>
-                    {t('topup.external_topup_orders.columns.time')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell width={2}>
-                    {t('topup.external_topup_orders.columns.business_type')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell width={2}>
-                    {t('topup.external_topup_orders.columns.status')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell width={2}>
-                    {t('topup.external_topup_orders.columns.amount')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell>
-                    {isPackageRecord
-                      ? t('topup.external_topup_orders.columns.package_name')
-                      : t('topup.external_topup_orders.columns.quota')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell width={4}>
-                    {t('topup.external_topup_orders.columns.action')}
-                  </Table.HeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {orders.length === 0 ? (
-                  <Table.Row>
-                    <Table.Cell colSpan='6' className='router-text-muted'>
-                      {loadingOrders
-                        ? t('common.loading')
-                        : t('topup.records.order_empty')}
-                    </Table.Cell>
-                  </Table.Row>
-                ) : (
-                  orders.map((order) => (
-                    <Table.Row
-                      key={order.id}
-                      onClick={() => openOrderDetailPage(order)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <Table.Cell>
-                        {order.created_at ? timestamp2string(order.created_at) : '-'}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {formatTopupBusinessType(order.business_type, t)}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {(() => {
-                          const statusNode = renderTopupOrderStatus(order.status, t);
-                          const statusHint =
-                            !isPackageRecord
-                              ? formatTopupOrderStatusHint(order.status, t)
-                              : '';
-                          if (!statusHint) {
-                            return statusNode;
-                          }
-                          return (
-                            <Popup
-                              content={statusHint}
-                              trigger={
-                                <span
-                                  style={{
-                                    display: 'inline-block',
-                                    cursor: 'help',
-                                  }}
-                                >
-                                  {statusNode}
-                                </span>
-                              }
-                            />
-                          );
-                        })()}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {order.amount > 0
-                          ? `${order.currency || 'CNY'} ${Number(order.amount || 0).toFixed(2)}`
-                          : order.quota > 0
-                            ? renderDisplayAmount(order.quota)
-                            : '-'}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {isPackageRecord
-                          ? order.package_name || '-'
-                          : order.quota > 0
-                            ? renderDisplayAmount(order.quota)
-                            : '-'}
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Button
-                          size='tiny'
-                          basic
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            manualRefreshOrder(order.id);
-                          }}
-                          loading={refreshingOrderID === order.id}
-                          disabled={refreshingOrderID === order.id}
-                        >
-                          {t('topup.records.refresh_status')}
-                        </Button>
-                        {['created', 'pending'].includes(order.status) ? (
-                          <>
-                            <Button
-                              size='tiny'
-                              primary
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                continuePay(order);
-                              }}
-                              loading={refreshingOrderID === order.id}
-                              disabled={refreshingOrderID === order.id}
-                            >
-                              {t('topup.records.continue_pay')}
-                            </Button>
-                            <Button
-                              size='tiny'
-                              basic
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                cancelPay(order.id);
-                              }}
-                              loading={refreshingOrderID === order.id}
-                              disabled={refreshingOrderID === order.id}
-                            >
-                              {t('topup.records.cancel_pay')}
-                            </Button>
-                          </>
-                        ) : null}
-                      </Table.Cell>
-                    </Table.Row>
-                  ))
-                )}
-              </Table.Body>
-            </Table>
+            <AppTable
+              className='router-list-table'
+              rowKey='id'
+              pagination={false}
+              loading={loadingOrders}
+              locale={{ emptyText: t('topup.records.order_empty') }}
+              dataSource={orders}
+              columns={orderColumns}
+              onRow={(order) => ({
+                onClick: () => openOrderDetailPage(order),
+                style: { cursor: 'pointer' },
+              })}
+            />
             {ordersTotalPages > 1 ? (
               <div className='router-pagination-wrap-md'>
-                <Pagination
+                <AppPagination
                   className='router-section-pagination'
                   activePage={ordersPage}
                   totalPages={ordersTotalPages}
@@ -520,9 +513,8 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
               </div>
             ) : null}
           </>
-        )}
-      </Card.Content>
-    </Card>
+      )}
+    </AppSection>
   );
 };
 

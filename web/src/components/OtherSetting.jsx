@@ -1,7 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Divider, Form, Grid, Header, Message } from 'semantic-ui-react';
 import { API, showError } from '../helpers';
+import {
+  AppAlert,
+  AppButton,
+  AppDivider,
+  AppField,
+  AppFilterHeader,
+  AppFormActions,
+  AppFormRow,
+  AppSpin,
+  AppTextarea,
+} from '../router-ui';
 
 const optionKeys = [
   'Notice',
@@ -77,68 +87,100 @@ const OtherSetting = ({ section = '' }) => {
   };
 
   return (
-    <Grid columns={1}>
-      <Grid.Column>
-        <Form loading={loading}>
+    <AppSpin spinning={loading}>
+      <div>
           {sectionVisible.notice ? (
             <>
-              <Header as='h3' className='router-section-title'>
-                {t('setting.system.notice', '站点公告')}
-              </Header>
-              <Form.Group widths='equal'>
-                <Form.TextArea
-                  className='router-section-textarea router-code-textarea router-code-textarea-sm'
-                  name='Notice'
-                  value={inputs.Notice}
-                  onChange={handleInputChange}
-                  placeholder={t('setting.system.notice_placeholder', '支持 Markdown')}
-                />
-              </Form.Group>
-              <Form.Button className='router-section-button' onClick={submitNotice}>
-                {t('setting.system.buttons.save')}
-              </Form.Button>
+              <AppFilterHeader
+                title={t('setting.system.notice', '站点公告')}
+                titleClassName='router-ui-section-title'
+                className='router-toolbar-compact'
+              />
+              <AppFormRow>
+                <AppField>
+                  <AppTextarea
+                    className='router-section-textarea router-code-textarea router-code-textarea-sm'
+                    name='Notice'
+                    value={inputs.Notice}
+                    onChange={handleInputChange}
+                    placeholder={t(
+                      'setting.system.notice_placeholder',
+                      '支持 Markdown',
+                    )}
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormActions align='start'>
+                <AppButton
+                  type='button'
+                  className='router-section-button'
+                  onClick={submitNotice}
+                >
+                  {t('setting.system.buttons.save')}
+                </AppButton>
+              </AppFormActions>
 
-              <Message className='router-section-message'>
-                {t('setting.other.copyright.notice')}
-              </Message>
-              {showAllSections && sectionVisible.content ? <Divider /> : null}
+              <AppAlert
+                className='router-section-message'
+                type='info'
+                showIcon
+                title={t('setting.other.copyright.notice')}
+              />
+              {showAllSections && sectionVisible.content ? <AppDivider /> : null}
             </>
           ) : null}
 
           {sectionVisible.content ? (
             <>
-              <Header as='h3' className='router-section-title'>{t('setting.other.content.title')}</Header>
-              <Form.Group widths='equal'>
-                <Form.TextArea
-                  className='router-section-textarea router-code-textarea router-code-textarea-md'
-                  label={t('setting.other.content.homepage.title')}
-                  placeholder={t('setting.other.content.homepage.placeholder')}
-                  value={inputs.HomePageContent}
-                  name='HomePageContent'
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-              <Form.Button className='router-section-button' onClick={() => submitOption('HomePageContent')}>
-                {t('setting.other.content.buttons.save_homepage')}
-              </Form.Button>
-              <Form.Group widths='equal'>
-                <Form.TextArea
-                  className='router-section-textarea router-code-textarea router-code-textarea-md'
-                  label={t('setting.other.content.about.title')}
-                  placeholder={t('setting.other.content.about.placeholder')}
-                  value={inputs.About}
-                  name='About'
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-              <Form.Button className='router-section-button' onClick={submitAbout}>
-                {t('setting.other.content.buttons.save_about')}
-              </Form.Button>
+              <AppFilterHeader
+                title={t('setting.other.content.title')}
+                titleClassName='router-ui-section-title'
+                className='router-toolbar-compact'
+              />
+              <AppFormRow>
+                <AppField label={t('setting.other.content.homepage.title')}>
+                  <AppTextarea
+                    className='router-section-textarea router-code-textarea router-code-textarea-md'
+                    placeholder={t('setting.other.content.homepage.placeholder')}
+                    value={inputs.HomePageContent}
+                    name='HomePageContent'
+                    onChange={handleInputChange}
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormActions align='start'>
+                <AppButton
+                  type='button'
+                  className='router-section-button'
+                  onClick={() => submitOption('HomePageContent')}
+                >
+                  {t('setting.other.content.buttons.save_homepage')}
+                </AppButton>
+              </AppFormActions>
+              <AppFormRow>
+                <AppField label={t('setting.other.content.about.title')}>
+                  <AppTextarea
+                    className='router-section-textarea router-code-textarea router-code-textarea-md'
+                    placeholder={t('setting.other.content.about.placeholder')}
+                    value={inputs.About}
+                    name='About'
+                    onChange={handleInputChange}
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormActions align='start'>
+                <AppButton
+                  type='button'
+                  className='router-section-button'
+                  onClick={submitAbout}
+                >
+                  {t('setting.other.content.buttons.save_about')}
+                </AppButton>
+              </AppFormActions>
             </>
           ) : null}
-        </Form>
-      </Grid.Column>
-    </Grid>
+      </div>
+    </AppSpin>
   );
 };
 

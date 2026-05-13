@@ -1,15 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Button,
-  Dropdown,
-  Form,
-  Icon,
-  Label,
-  Pagination,
-  Popup,
-  Table,
-} from 'semantic-ui-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import UnitDropdown from './UnitDropdown';
 import {
@@ -29,6 +19,19 @@ import {
   loadPublicDisplayCurrencyCatalog,
   resolvePreferredDisplayCurrency,
 } from '../helpers/billing';
+import {
+  AppButton,
+  AppFilterHeader,
+  AppIcon,
+  AppInput,
+  AppMenuDropdown,
+  AppPagination,
+  AppPopconfirm,
+  AppSelect,
+  AppTable,
+  AppTag,
+  AppToolbar,
+} from '../router-ui';
 
 const normalizeTokenRow = (raw) => {
   if (!raw || typeof raw !== 'object') {
@@ -52,33 +55,33 @@ function renderStatus(status, t) {
   switch (status) {
     case 1:
       return (
-        <Label basic color='green' className='router-tag'>
+        <AppTag color='green' className='router-tag'>
           {t('token.table.status_enabled')}
-        </Label>
+        </AppTag>
       );
     case 2:
       return (
-        <Label basic color='red' className='router-tag'>
+        <AppTag color='red' className='router-tag'>
           {t('token.table.status_disabled')}
-        </Label>
+        </AppTag>
       );
     case 3:
       return (
-        <Label basic color='yellow' className='router-tag'>
+        <AppTag color='yellow' className='router-tag'>
           {t('token.table.status_expired')}
-        </Label>
+        </AppTag>
       );
     case 4:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('token.table.status_depleted')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label basic color='black' className='router-tag'>
+        <AppTag color='black' className='router-tag'>
           {t('token.table.status_unknown')}
-        </Label>
+        </AppTag>
       );
   }
 }
@@ -427,82 +430,168 @@ const TokensTable = () => {
 
   return (
     <>
-      <div className='router-toolbar'>
-        <div className='router-toolbar-start'>
-          <Button
-            className='router-page-button'
-            as={Link}
-            to='/token/add'
-          >
-            {t('token.buttons.add')}
-          </Button>
-          <Button
-            className='router-page-button'
-            onClick={refresh}
-            loading={loading}
-          >
-            {t('token.buttons.refresh')}
-          </Button>
-        </div>
-        <div className='router-toolbar-end'>
-          <Dropdown
-            className='router-section-dropdown router-dropdown-min-170'
-            placeholder={t('token.sort.placeholder')}
-            selection
-            options={[
-              { key: '', text: t('token.sort.default'), value: '' },
-              {
-                key: 'remaining_amount',
-                text: t('token.sort.by_remain'),
-                value: 'remain_quota',
-              },
-              {
-                key: 'used_amount',
-                text: t('token.sort.by_used'),
-                value: 'used_quota',
-              },
-            ]}
-            value={orderBy}
-            onChange={handleOrderByChange}
-          />
-          <Form onSubmit={searchTokens} className='router-search-form-xs'>
-            <Form.Input
-              className='router-section-input'
-              icon='search'
-              fluid
-              iconPosition='left'
-              placeholder={t('token.search')}
-              value={searchKeyword}
-              loading={searching}
-              onChange={handleKeywordChange}
+      <AppFilterHeader
+        title={t('header.token')}
+        meta={`${tokens.filter((token) => !token?.deleted).length} / ${totalCount}`}
+        actions={
+          <div className='router-list-toolbar-actions'>
+            <AppButton
+              className='router-page-button'
+              color='blue'
+              as={Link}
+              to='/token/add'
+            >
+              {t('token.buttons.add')}
+            </AppButton>
+            <AppButton
+              className='router-page-button'
+              onClick={refresh}
+              loading={loading}
+            >
+              {t('token.buttons.refresh')}
+            </AppButton>
+          </div>
+        }
+        query={
+          <div className='router-list-toolbar-query router-list-toolbar-query-compact'>
+            <AppSelect
+              className='router-section-dropdown router-dropdown-min-170'
+              placeholder={t('token.sort.placeholder')}
+              options={[
+                { key: '', text: t('token.sort.default'), value: '' },
+                {
+                  key: 'remaining_amount',
+                  text: t('token.sort.by_remain'),
+                  value: 'remain_quota',
+                },
+                {
+                  key: 'used_amount',
+                  text: t('token.sort.by_used'),
+                  value: 'used_quota',
+                },
+              ]}
+              value={orderBy}
+              onChange={handleOrderByChange}
             />
-          </Form>
-        </div>
-      </div>
+            <form
+              className='router-search-form-xs'
+              onSubmit={(event) => {
+                event.preventDefault();
+                searchTokens();
+              }}
+            >
+              <AppInput
+                className='router-section-input'
+                icon='search'
+                fluid
+                iconPosition='left'
+                placeholder={t('token.search')}
+                value={searchKeyword}
+                loading={searching}
+                onChange={handleKeywordChange}
+              />
+            </form>
+          </div>
+        }
+      />
 
-      <Table basic={'very'} compact className='router-list-table'>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortToken('name');
-              }}
-            >
-              {t('token.table.name')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortToken('status');
-              }}
-            >
-              {t('token.table.status')}
-            </Table.HeaderCell>
-            <Table.HeaderCell>{t('token.table.token')}</Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-redemption-face-value-header'
-            >
+      <AppTable
+        className='router-list-table'
+        pagination={false}
+        rowKey='id'
+        dataSource={tokens
+          .slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE)
+          .filter((token) => !token?.deleted)}
+        scroll={{ x: 1200 }}
+        locale={{ emptyText: t('common.no_data', '暂无数据') }}
+        onRow={(token) => ({
+          className: 'router-row-clickable',
+          onClick: () =>
+            navigate(`/token/${token.id}`, {
+              state: {
+                from: currentPagePath,
+              },
+            }),
+        })}
+        columns={[
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortToken('name');
+                }}
+              >
+                {t('token.table.name')}
+              </span>
+            ),
+            dataIndex: 'name',
+            key: 'name',
+            render: (value) => value || t('token.table.no_name'),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortToken('status');
+                }}
+              >
+                {t('token.table.status')}
+              </span>
+            ),
+            dataIndex: 'status',
+            key: 'status',
+            render: (value) => renderStatus(value, t),
+          },
+          {
+            title: t('token.table.token'),
+            dataIndex: 'key',
+            key: 'token',
+            render: (value, token) => (
+              <span
+                className='router-action-group'
+                onClick={(event) => stopRowClick(event)}
+              >
+                <span
+                  role='button'
+                  tabIndex={0}
+                  className='router-text-link'
+                  onClick={() =>
+                    navigate(`/token/${token.id}`, {
+                      state: {
+                        from: currentPagePath,
+                      },
+                    })
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate(`/token/${token.id}`, {
+                        state: {
+                          from: currentPagePath,
+                        },
+                      });
+                    }
+                  }}
+                >
+                  {renderShortToken(value)}
+                </span>
+                <button
+                  type='button'
+                  className='router-icon-button'
+                  onClick={async (event) => {
+                    stopRowClick(event);
+                    await onCopy('', token.key);
+                  }}
+                >
+                  <AppIcon name='copy outline' />
+                </button>
+              </span>
+            ),
+          },
+          {
+            title: (
               <div className='router-table-header-with-control'>
                 <span
                   className='router-sortable-header'
@@ -525,10 +614,14 @@ const TokensTable = () => {
                   }}
                 />
               </div>
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-redemption-face-value-header'
-            >
+            ),
+            dataIndex: 'yycUsed',
+            key: 'usedAmount',
+            render: (value) =>
+              formatDisplayAmountFromYYC(value, displayUnit, currencyIndex),
+          },
+          {
+            title: (
               <div className='router-table-header-with-control'>
                 <span
                   className='router-sortable-header'
@@ -551,193 +644,132 @@ const TokensTable = () => {
                   }}
                 />
               </div>
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortToken('createdTime');
-              }}
-            >
-              {t('token.table.created_time')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortToken('expiredTime');
-              }}
-            >
-              {t('token.table.expired_time')}
-            </Table.HeaderCell>
-            <Table.HeaderCell>{t('token.table.actions')}</Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-
-        <Table.Body>
-          {tokens
-            .slice(
-              (activePage - 1) * ITEMS_PER_PAGE,
-              activePage * ITEMS_PER_PAGE,
-            )
-            .map((token, idx) => {
-              if (token.deleted) return <></>;
-
-              const openLinkOptionsWithHandlers = OPEN_LINK_OPTIONS.map(
-                (option) => ({
-                  ...option,
-                  onClick: async () => {
-                    await onOpenLink(option.value, token.key);
-                  },
-                }),
-              );
+            ),
+            dataIndex: 'yycRemaining',
+            key: 'remainingAmount',
+            render: (value, token) =>
+              token.hasUnlimitedYYCLimit
+                ? t('token.table.unlimited')
+                : formatDisplayAmountFromYYC(value, displayUnit, currencyIndex),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortToken('createdTime');
+                }}
+              >
+                {t('token.table.created_time')}
+              </span>
+            ),
+            dataIndex: 'createdTime',
+            key: 'createdTime',
+            render: (value) => renderTimestamp(value),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortToken('expiredTime');
+                }}
+              >
+                {t('token.table.expired_time')}
+              </span>
+            ),
+            dataIndex: 'expiredTime',
+            key: 'expiredTime',
+            render: (value) =>
+              value === -1 ? t('token.table.never_expire') : renderTimestamp(value),
+          },
+          {
+            title: t('token.table.actions'),
+            key: 'actions',
+            render: (_, token) => {
+              const realIdx = tokens.findIndex((item) => item?.id === token?.id);
+              const openLinkOptionsWithHandlers = OPEN_LINK_OPTIONS.map((option) => ({
+                ...option,
+                onClick: async () => {
+                  await onOpenLink(option.value, token.key);
+                },
+              }));
 
               return (
-                <Table.Row
-                  key={token.id}
-                  className='router-row-clickable'
-                  onClick={() =>
-                    navigate(`/token/${token.id}`, {
-                      state: {
-                        from: currentPagePath,
-                      },
-                    })
-                  }
+                <div
+                  className='router-action-group'
+                  onClick={(event) => stopRowClick(event)}
                 >
-                  <Table.Cell>
-                    {token.name ? token.name : t('token.table.no_name')}
-                  </Table.Cell>
-                  <Table.Cell>{renderStatus(token.status, t)}</Table.Cell>
-                  <Table.Cell onClick={stopRowClick}>
-                    <span className='router-action-group'>
-                      <span
-                        role='button'
-                        tabIndex={0}
-                        className='router-text-link'
-                        onClick={() =>
-                          navigate(`/token/${token.id}`, {
-                            state: {
-                              from: currentPagePath,
-                            },
-                          })
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            navigate(`/token/${token.id}`, {
-                              state: {
-                                from: currentPagePath,
-                              },
-                            });
-                          }
-                        }}
-                      >
-                        {renderShortToken(token.key)}
-                      </span>
-                      <Icon
-                        name='copy outline'
-                        link
-                        onClick={async (event) => {
-                          stopRowClick(event);
-                          await onCopy('', token.key);
-                        }}
-                      />
-                    </span>
-                  </Table.Cell>
-                  <Table.Cell>
-                    {formatDisplayAmountFromYYC(
-                      token.yycUsed,
-                      displayUnit,
-                      currencyIndex,
-                    )}
-                  </Table.Cell>
-                  <Table.Cell>
-                    {token.hasUnlimitedYYCLimit
-                      ? t('token.table.unlimited')
-                      : formatDisplayAmountFromYYC(
-                          token.yycRemaining,
-                          displayUnit,
-                          currencyIndex,
-                        )}
-                  </Table.Cell>
-                  <Table.Cell>{renderTimestamp(token.createdTime)}</Table.Cell>
-                  <Table.Cell>
-                    {token.expiredTime === -1
-                      ? t('token.table.never_expire')
-                      : renderTimestamp(token.expiredTime)}
-                  </Table.Cell>
-                  <Table.Cell onClick={stopRowClick}>
-                    <div className='router-action-group'>
-                      <Button.Group color='olive'>
-                        <Button
-                          className='router-inline-button'
-                          positive
-                          onClick={() => onOpenLink('', token.key)}
-                        >
-                          {t('token.buttons.chat')}
-                        </Button>
-                        <Dropdown
-                          className='button icon router-inline-button'
-                          floating
-                          options={openLinkOptionsWithHandlers}
-                          trigger={<></>}
-                        />
-                      </Button.Group>{' '}
-                      <Popup
-                        trigger={
-                          <Button className='router-inline-button' negative>
-                            {t('token.buttons.delete')}
-                          </Button>
-                        }
-                        on='click'
-                        flowing
-                        hoverable
-                      >
-                        <Button
-                          className='router-inline-button'
-                          negative
-                          onClick={() => {
-                            manageToken(token.id, 'delete', idx);
-                          }}
-                        >
-                          {t('token.buttons.confirm_delete')} {token.name}
-                        </Button>
-                      </Popup>
-                      <Button
-                        className='router-inline-button'
-                        onClick={() => {
-                          manageToken(
-                            token.id,
-                            token.status === 1 ? 'disable' : 'enable',
-                            idx,
-                          );
-                        }}
-                      >
-                        {token.status === 1
-                          ? t('token.buttons.disable')
-                          : t('token.buttons.enable')}
-                      </Button>
-                    </div>
-                  </Table.Cell>
-                </Table.Row>
+                  <div className='router-action-group-tight'>
+                    <AppButton
+                      className='router-inline-button'
+                      color='blue'
+                      type='button'
+                      onClick={() => onOpenLink('', token.key)}
+                    >
+                      {t('token.buttons.chat')}
+                    </AppButton>
+                    <AppMenuDropdown
+                      className='router-token-action-menu'
+                      menuClassName='router-token-action-menu-overlay'
+                      items={openLinkOptionsWithHandlers.map((option) => ({
+                        key: option.value,
+                        label: option.text,
+                        onClick: option.onClick,
+                      }))}
+                    >
+                      <AppButton className='router-inline-button' type='button'>
+                        <AppIcon name='right chevron' />
+                      </AppButton>
+                    </AppMenuDropdown>
+                  </div>
+                  <AppPopconfirm
+                    title={`${t('token.buttons.confirm_delete')} ${token.name || ''}`}
+                    onConfirm={() => {
+                      manageToken(token.id, 'delete', realIdx);
+                    }}
+                    okText={t('common.confirm')}
+                    cancelText={t('common.cancel')}
+                  >
+                    <AppButton className='router-inline-button' color='red' type='button'>
+                      {t('token.buttons.delete')}
+                    </AppButton>
+                  </AppPopconfirm>
+                  <AppButton
+                    className='router-inline-button'
+                    type='button'
+                    onClick={() => {
+                      manageToken(
+                        token.id,
+                        token.status === 1 ? 'disable' : 'enable',
+                        realIdx,
+                      );
+                    }}
+                  >
+                    {token.status === 1
+                      ? t('token.buttons.disable')
+                      : t('token.buttons.enable')}
+                  </AppButton>
+                </div>
               );
-            })}
-        </Table.Body>
-
-        <Table.Footer>
-          <Table.Row>
-            <Table.HeaderCell colSpan='8'>
-              <div className='router-toolbar'>
-                <Pagination
-                  className='router-page-pagination'
-                  activePage={activePage}
-                  onPageChange={onPaginationChange}
-                  siblingRange={1}
-                  totalPages={totalPages}
-                />
-              </div>
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Footer>
-      </Table>
+            },
+          },
+        ]}
+        footer={() => (
+          <AppToolbar
+            className='router-toolbar-compact'
+            start={
+              <AppPagination
+                className='router-page-pagination'
+                activePage={activePage}
+                onPageChange={onPaginationChange}
+                siblingRange={1}
+                totalPages={totalPages}
+              />
+            }
+          />
+        )}
+      />
     </>
   );
 };

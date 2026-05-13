@@ -1,16 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Button,
-  Form,
-  Grid,
-  Header,
-  Image,
-  Card,
-  Message,
-} from 'semantic-ui-react';
 import { useTranslation } from 'react-i18next';
 import { API, copy, getLogo, showError, showNotice } from '../helpers';
 import { useSearchParams } from 'react-router-dom';
+import { AppAlert, AppButton, AppInput, AppSection } from '../router-ui';
 
 const PasswordResetConfirm = () => {
   const { t } = useTranslation();
@@ -70,22 +62,16 @@ const PasswordResetConfirm = () => {
   }
 
   return (
-    <Grid textAlign='center' className='router-auth-shell'>
-      <Grid.Column>
-        <Card fluid className='chart-card router-auth-card'>
-          <Card.Content>
-            <Card.Header>
-              <Header
-                as='h2'
-                textAlign='center'
-                className='router-auth-title router-auth-header'
-              >
-                <Image src={logo} className='router-auth-logo' />
-                <Header.Content>{t('auth.reset.confirm.title')}</Header.Content>
-              </Header>
-            </Card.Header>
-            <Form className='router-auth-form'>
-              <Form.Input
+    <div className='router-auth-shell'>
+      <div className='router-auth-panel'>
+        <AppSection className='router-auth-card'>
+          <div className='router-auth-card-body'>
+            <div className='router-auth-title router-auth-header'>
+              <img src={logo} alt='logo' className='router-auth-logo' />
+              <h2>{t('auth.reset.confirm.title')}</h2>
+            </div>
+            <div className='router-auth-form'>
+              <AppInput
                 className='router-auth-input'
                 fluid
                 icon='mail'
@@ -96,7 +82,7 @@ const PasswordResetConfirm = () => {
                 readOnly
               />
               {newPassword && (
-                <Form.Input
+                <AppInput
                   className='router-auth-input router-auth-input-clickable'
                   fluid
                   icon='lock'
@@ -112,7 +98,7 @@ const PasswordResetConfirm = () => {
                   }}
                 />
               )}
-              <Button
+              <AppButton
                 className='router-auth-button router-auth-primary'
                 fluid
                 onClick={handleSubmit}
@@ -122,19 +108,20 @@ const PasswordResetConfirm = () => {
                 {disableButton
                   ? t('auth.reset.confirm.button_disabled')
                   : t('auth.reset.confirm.button')}
-              </Button>
-            </Form>
+              </AppButton>
+            </div>
             {newPassword && (
-              <Message className='router-auth-message'>
-                <p className='router-auth-secondary-text'>
-                  {t('auth.reset.confirm.notice')}
-                </p>
-              </Message>
+              <AppAlert
+                type='info'
+                showIcon
+                className='router-auth-message'
+                title={t('auth.reset.confirm.notice')}
+              />
             )}
-          </Card.Content>
-        </Card>
-      </Grid.Column>
-    </Grid>
+          </div>
+        </AppSection>
+      </div>
+    </div>
   );
 };
 

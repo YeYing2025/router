@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Card, Header } from 'semantic-ui-react';
 import { showError } from '../../helpers';
 import { buildTopUpReturnURL, useTopUpWorkspace } from './shared.jsx';
+import { AppButton, AppSection } from '../../router-ui';
 
 const renderPlanAmount = (amount, currency) =>
   `${Number(amount || 0)} ${String(currency || 'CNY').toUpperCase()}`;
@@ -46,44 +46,49 @@ const BalanceTopUpPage = () => {
   };
 
   return (
-    <Card fluid className='router-soft-card router-soft-card-fill'>
-      <Card.Content className='router-card-fill'>
-        <Card.Header className='router-card-header'>
-          <Header as='h3' className='router-section-title router-title-accent-primary'>
-            {t('topup.external_topup.title')}
-          </Header>
-        </Card.Header>
-        <Card.Description className='router-card-fill'>
-          <div className='router-card-body-spread'>
-            <div className='router-grid-top-md' style={{ width: '100%' }}>
-              <Card.Group itemsPerRow={5} stackable>
-                {(Array.isArray(topupPlans) ? topupPlans : []).map((plan, index) => {
-                  const planID = resolvePlanID(plan);
-                  return (
-                  <Card key={planID || plan?.name || `plan-${index}`} className='router-soft-card'>
-                    <Card.Content>
-                      <Card.Header>{plan.name || renderPlanAmount(plan.amount, plan.amount_currency)}</Card.Header>
-                      <Card.Meta style={{ marginTop: '0.5rem' }}>
+    <AppSection
+      className='router-section-fill'
+      title={
+        <div className='router-title-accent-primary'>
+          {t('topup.external_topup.title')}
+        </div>
+      }
+    >
+      <div className='router-section-stack-spread'>
+        <div className='router-grid-top-md router-balance-topup-panel'>
+          <div className='router-balance-topup-grid'>
+            {(Array.isArray(topupPlans) ? topupPlans : []).map((plan, index) => {
+              const planID = resolvePlanID(plan);
+              return (
+              <article
+                key={planID || plan?.name || `plan-${index}`}
+                className='router-balance-topup-card'
+              >
+                    <div>
+                      <div className='router-balance-topup-card-title'>
+                        {plan.name || renderPlanAmount(plan.amount, plan.amount_currency)}
+                      </div>
+                      <div className='router-balance-topup-payline'>
                         {t('topup.external_topup.pay_label', {
                           amount: renderPlanAmount(plan.amount, plan.amount_currency),
                         })}
-                      </Card.Meta>
-                      <Card.Description style={{ marginTop: '0.75rem' }}>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>
+                      </div>
+                      <div className='router-balance-topup-summary'>
+                        <div className='router-balance-topup-quota'>
                           {renderPlanQuota(plan.quota_amount, plan.quota_currency)}
                         </div>
-                        <div className='router-text-muted' style={{ marginTop: '0.35rem' }}>
+                        <div className='router-text-muted router-balance-topup-muted-line'>
                           {t('topup.external_topup.credited_label')}
                         </div>
-                        <div className='router-text-muted' style={{ marginTop: '0.35rem' }}>
+                        <div className='router-text-muted router-balance-topup-muted-line'>
                           {t('topup.external_topup.validity_label')}：{renderPlanValidity(plan.validity_days, t)}
                         </div>
-                      </Card.Description>
-                    </Card.Content>
-                    <Card.Content extra>
-                      <Button
+                      </div>
+                    </div>
+                    <div className='router-balance-topup-card-footer'>
+                      <AppButton
                         fluid
-                        primary
+                        color='blue'
                         className='router-section-button'
                         disabled={creatingPlanID !== ''}
                         loading={creatingPlanID === planID}
@@ -92,16 +97,14 @@ const BalanceTopUpPage = () => {
                         {creatingPlanID === planID
                           ? t('topup.external_topup.creating')
                           : t('topup.external_topup.button')}
-                      </Button>
-                    </Card.Content>
-                  </Card>
-                )})}
-              </Card.Group>
-            </div>
+                      </AppButton>
+                    </div>
+                  </article>
+              )})}
           </div>
-        </Card.Description>
-      </Card.Content>
-    </Card>
+        </div>
+      </div>
+    </AppSection>
   );
 };
 

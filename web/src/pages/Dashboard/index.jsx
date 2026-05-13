@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Card, Dropdown, Input } from 'semantic-ui-react';
 import {
   Bar,
   BarChart,
@@ -21,6 +20,16 @@ import {
   loadPublicDisplayCurrencyCatalog,
 } from '../../helpers/billing';
 import { formatAmountWithUnit } from '../../helpers/render';
+import {
+  AppButton,
+  AppFilterHeader,
+  AppInput,
+  AppInputNumber,
+  AppSegmented,
+  AppSection,
+  AppSelect,
+  AppToolbar,
+} from '../../router-ui';
 import './Dashboard.css';
 
 // 在 Dashboard 组件内添加自定义配置
@@ -143,6 +152,27 @@ const normalizeOverviewSummary = (data) => ({
   period_cost: Number(data?.period_yyc_cost ?? data?.period_cost ?? 0),
   period_revenue: Number(data?.period_yyc_revenue ?? data?.period_revenue ?? 0),
 });
+
+const CALENDAR_VIEW_OPTIONS = [
+  { value: 'calendar', labelKey: 'dashboard.spending.calendar.view.calendar' },
+  { value: 'bar', labelKey: 'dashboard.spending.calendar.view.bar' },
+];
+
+const CALENDAR_GRANULARITY_OPTIONS = [
+  'hour',
+  'day',
+  'week',
+  'month',
+  'year',
+].map((value) => ({
+  value,
+  labelKey: `dashboard.spending.calendar.granularity.${value}`,
+}));
+
+const CALENDAR_UNIT_OPTIONS = [
+  { value: 'usd', labelKey: 'dashboard.spending.calendar.unit.usd' },
+  { value: 'token', labelKey: 'dashboard.spending.calendar.unit.token' },
+];
 
 const startOfWeek = (date) => {
   const next = startOfDay(date);
@@ -991,23 +1021,49 @@ const Dashboard = () => {
     return formatYycAsUsdWithUnit(dailyPackageBalanceSummary.yycUsed || 0);
   }, [dailyPackageBalanceSummary, formatYycAsUsdWithUnit]);
 
+  const calendarViewOptions = useMemo(
+    () =>
+      CALENDAR_VIEW_OPTIONS.map((item) => ({
+        value: item.value,
+        label: t(item.labelKey),
+      })),
+    [t],
+  );
+
+  const calendarGranularityOptions = useMemo(
+    () =>
+      CALENDAR_GRANULARITY_OPTIONS.map((item) => ({
+        value: item.value,
+        label: t(item.labelKey),
+      })),
+    [t],
+  );
+
+  const calendarUnitOptions = useMemo(
+    () =>
+      CALENDAR_UNIT_OPTIONS.map((item) => ({
+        value: item.value,
+        label: t(item.labelKey),
+      })),
+    [t],
+  );
+
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card dashboard-spend-card'>
-        <Card.Content>
-          <div className='dashboard-package-header-row'>
-            <Card.Header className='router-card-header router-section-title'>
-              {t('dashboard.spending.package_daily.title')}
-            </Card.Header>
-            <Button
-              type='button'
-              className='router-inline-button'
-              loading={dailyPackageBalanceLoading}
-              onClick={() => fetchDailyPackageBalanceSummary()}
-            >
-              {t('dashboard.admin.buttons.refresh')}
-            </Button>
-          </div>
+      <AppSection
+        className='dashboard-spend-card'
+        title={t('dashboard.spending.package_daily.title')}
+        extra={
+          <AppButton
+            type='button'
+            className='router-inline-button'
+            loading={dailyPackageBalanceLoading}
+            onClick={() => fetchDailyPackageBalanceSummary()}
+          >
+            {t('dashboard.admin.buttons.refresh')}
+          </AppButton>
+        }
+      >
           <div className='dashboard-spend-summary'>
             <div className='dashboard-spend-period-row'>
               <div className='dashboard-spend-label'>
@@ -1044,24 +1100,23 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-        </Card.Content>
-      </Card>
+      </AppSection>
       <div className='dashboard-spend-section'>
         <div className='dashboard-spend-stack'>
-          <Card fluid className='chart-card dashboard-spend-card'>
-            <Card.Content>
-              <Card.Header className='router-card-header router-section-title'>{t('dashboard.spending.overview.title')}</Card.Header>
+          <AppSection
+            className='dashboard-spend-card'
+            title={t('dashboard.spending.overview.title')}
+            extra={
+              <AppSelect
+                className='dashboard-spend-period router-section-dropdown'
+                fluid
+                options={overviewPeriodOptions}
+                value={overviewPeriod}
+                onChange={(e, { value }) => setOverviewPeriod(value)}
+              />
+            }
+          >
               <div className='dashboard-spend-summary'>
-                <div className='dashboard-spend-period-row'>
-                  <Dropdown
-                    className='dashboard-spend-period router-section-dropdown'
-                    selection
-                    fluid
-                    options={overviewPeriodOptions}
-                    value={overviewPeriod}
-                    onChange={(e, { value }) => setOverviewPeriod(value)}
-                  />
-                </div>
                 <div className='dashboard-spend-summary-row'>
                   <div className='dashboard-spend-metric'>
                     <div className='dashboard-spend-label'>
@@ -1124,63 +1179,44 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
-            </Card.Content>
-          </Card>
-          <Card fluid className='chart-card dashboard-spend-card'>
-            <Card.Content>
-              <Card.Header className='router-card-header router-section-title'>{t('dashboard.spending.calendar.title')}</Card.Header>
-              <div className='dashboard-calendar-toolbar'>
-                <div className='calendar-view-toggle'>
-                  <Button.Group>
-                    <Button
-                      className='router-inline-button'
-                      active={calendarView === 'calendar'}
-                      onClick={() => setCalendarView('calendar')}
-                    >
-                      {t('dashboard.spending.calendar.view.calendar')}
-                    </Button>
-                    <Button
-                      className='router-inline-button'
-                      active={calendarView === 'bar'}
-                      onClick={() => setCalendarView('bar')}
-                    >
-                      {t('dashboard.spending.calendar.view.bar')}
-                    </Button>
-                  </Button.Group>
-                </div>
-                <div className='calendar-granularity-toggle'>
-                  <Button.Group>
-                    {['hour', 'day', 'week', 'month', 'year'].map((unit) => (
-                      <Button
-                        key={unit}
-                        className='router-inline-button'
-                        active={calendarGranularity === unit}
-                        onClick={() => setCalendarGranularity(unit)}
-                      >
-                        {t(`dashboard.spending.calendar.granularity.${unit}`)}
-                      </Button>
-                    ))}
-                  </Button.Group>
-                </div>
-                <div className='calendar-unit-toggle'>
-                  <Button.Group>
-                    <Button
-                      className='router-inline-button'
-                      active={calendarUnit === 'usd'}
-                      onClick={() => setCalendarUnit('usd')}
-                    >
-                      {t('dashboard.spending.calendar.unit.usd')}
-                    </Button>
-                    <Button
-                      className='router-inline-button'
-                      active={calendarUnit === 'token'}
-                      onClick={() => setCalendarUnit('token')}
-                    >
-                      {t('dashboard.spending.calendar.unit.token')}
-                    </Button>
-                  </Button.Group>
-                </div>
-              </div>
+          </AppSection>
+          <AppSection
+            className='dashboard-spend-card'
+            title={t('dashboard.spending.calendar.title')}
+          >
+              <AppToolbar
+                className='dashboard-calendar-toolbar'
+                start={
+                  <div className='calendar-view-toggle'>
+                    <AppSegmented
+                      className='dashboard-calendar-segmented'
+                      options={calendarViewOptions}
+                      value={calendarView}
+                      onChange={(e, { value }) => setCalendarView(value)}
+                    />
+                  </div>
+                }
+                end={
+                  <>
+                    <div className='calendar-granularity-toggle'>
+                      <AppSegmented
+                        className='dashboard-calendar-segmented'
+                        options={calendarGranularityOptions}
+                        value={calendarGranularity}
+                        onChange={(e, { value }) => setCalendarGranularity(value)}
+                      />
+                    </div>
+                    <div className='calendar-unit-toggle'>
+                      <AppSegmented
+                        className='dashboard-calendar-segmented'
+                        options={calendarUnitOptions}
+                        value={calendarUnit}
+                        onChange={(e, { value }) => setCalendarUnit(value)}
+                      />
+                    </div>
+                  </>
+                }
+              />
               {calendarView === 'calendar' ? (
                 <>
                   {calendarGranularity === 'day' && (
@@ -1260,37 +1296,36 @@ const Dashboard = () => {
                   </ResponsiveContainer>
                 </div>
               )}
-            </Card.Content>
-          </Card>
+          </AppSection>
         </div>
       </div>
-      <Card fluid className='chart-card dashboard-analysis-card'>
-        <Card.Content>
-          <Card.Header className='router-card-header router-section-title'>
-            {t('dashboard.spending.analysis.title')}
-          </Card.Header>
-          <div className='dashboard-filter-toolbar'>
-            <div className='dashboard-filter-toolbar-left'>
-              <Dropdown
+      <AppSection
+        className='dashboard-analysis-card'
+        title={t('dashboard.spending.analysis.title')}
+      >
+          <AppFilterHeader
+            className='dashboard-filter-toolbar router-block-gap-xs'
+            picker={
+              <AppSelect
                 className='dashboard-add-condition'
-                button
-                floating
-                text={t('dashboard.filters.add_condition')}
                 options={addConditionOptions}
+                placeholder={t('dashboard.filters.add_condition')}
                 disabled={addConditionOptions.length === 0}
                 onChange={handleAddFilterCondition}
               />
-              {activeFilters.length > 0 && (
-                <Button
+            }
+            actions={
+              activeFilters.length > 0 ? (
+                <AppButton
                   className='router-inline-button'
                   type='button'
                   onClick={handleClearFilterConditions}
                 >
                   {t('dashboard.filters.clear_conditions')}
-                </Button>
-              )}
-            </div>
-          </div>
+                </AppButton>
+              ) : null
+            }
+          />
           {hasTimeFilter && (
             <div className='dashboard-active-condition dashboard-time-condition'>
               <span className='dashboard-condition-tag'>
@@ -1298,9 +1333,8 @@ const Dashboard = () => {
               </span>
               <div className='dashboard-inline-field'>
                 <span className='dashboard-inline-label'>{t('dashboard.filters.granularity')}</span>
-                <Dropdown
+                <AppSelect
                   className='dashboard-inline-dropdown'
-                  selection
                   options={granularityOptions}
                   value={granularity}
                   onChange={handleGranularityChange}
@@ -1308,7 +1342,7 @@ const Dashboard = () => {
               </div>
               <div className='dashboard-inline-field'>
                 <span className='dashboard-inline-label'>{t('dashboard.filters.start')}</span>
-                <Input
+                <AppInput
                   className='dashboard-inline-input'
                   type='date'
                   value={startDate}
@@ -1317,9 +1351,8 @@ const Dashboard = () => {
               </div>
               <div className='dashboard-inline-field'>
                 <span className='dashboard-inline-label'>{t('dashboard.filters.span')}</span>
-                <Input
+                <AppInputNumber
                   className={`dashboard-inline-input dashboard-inline-number ${spanAuto ? 'dashboard-muted' : ''}`.trim()}
-                  type='number'
                   min={1}
                   max={spanLimits[granularity]}
                   value={span}
@@ -1328,20 +1361,20 @@ const Dashboard = () => {
               </div>
               <div className='dashboard-inline-field'>
                 <span className='dashboard-inline-label'>{t('dashboard.filters.end')}</span>
-                <Input
+                <AppInput
                   className={`dashboard-inline-input ${endAuto ? 'dashboard-muted' : ''}`.trim()}
                   type='date'
                   value={endDate}
                   onChange={handleEndChange}
                 />
               </div>
-              <Button
+              <AppButton
                 className='router-inline-button'
                 type='button'
                 onClick={() => handleRemoveFilterCondition('time')}
               >
                 {t('dashboard.filters.remove_condition')}
-              </Button>
+              </AppButton>
             </div>
           )}
           {hasModelFilter && (
@@ -1349,24 +1382,23 @@ const Dashboard = () => {
               <span className='dashboard-condition-tag'>
                 {t('dashboard.filters.conditions.models')}
               </span>
-              <Dropdown
+              <AppSelect
                 className='dashboard-model-condition-dropdown'
                 multiple
                 search
-                selection
                 options={modelFilterOptions}
                 value={selectedModels}
                 placeholder={t('dashboard.filters.model_placeholder')}
                 noResultsMessage={t('dashboard.filters.no_providers')}
                 onChange={handleModelsFilterChange}
               />
-              <Button
+              <AppButton
                 className='router-inline-button'
                 type='button'
                 onClick={() => handleRemoveFilterCondition('models')}
               >
                 {t('dashboard.filters.remove_condition')}
-              </Button>
+              </AppButton>
             </div>
           )}
           {!hasTimeFilter && !hasModelFilter && (
@@ -1425,8 +1457,7 @@ const Dashboard = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </Card.Content>
-      </Card>
+      </AppSection>
     </div>
   );
 };

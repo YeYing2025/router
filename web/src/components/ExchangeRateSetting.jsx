@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Form, Grid, Header, Modal, Table } from 'semantic-ui-react';
 import {
   API,
   showError,
@@ -8,6 +7,17 @@ import {
   timestamp2string,
 } from '../helpers';
 import { formatDecimalNumber } from '../helpers/render';
+import {
+  AppButton,
+  AppField,
+  AppFilterHeader,
+  AppFormActions,
+  AppFormRow,
+  AppInputNumber,
+  AppModal,
+  AppSpin,
+  AppTable,
+} from '../router-ui';
 
 const YYC_CODE = 'YYC';
 const MANUAL_RATE_ROW_PREFIX = 'manual:';
@@ -206,155 +216,153 @@ const ExchangeRateSetting = ({ section = '' }) => {
   }
 
   return (
-    <Grid columns={1}>
-      <Grid.Column>
-        <Form>
-          <Header as='h3' className='router-section-title'>
-            {t('setting.exchange.title')}
-          </Header>
-          <div className='router-settings-note'>
-            {t('setting.exchange.subtitle')}
-          </div>
-          <div className='router-table-scroll-x'>
-            <Table compact celled className='router-detail-table'>
-              <Table.Header>
-                <Table.Row>
-                  <Table.HeaderCell collapsing>
-                    {t('setting.exchange.columns.pair')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell>
-                    {t('setting.exchange.columns.rate')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell collapsing>
-                    {t('setting.exchange.columns.provider')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell style={rateDateColumnStyle}>
-                    {t('setting.exchange.columns.rate_date')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell style={createdAtColumnStyle}>
-                    {t('setting.exchange.columns.created_at')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell style={updatedAtColumnStyle}>
-                    {t('setting.exchange.columns.updated_at')}
-                  </Table.HeaderCell>
-                  <Table.HeaderCell collapsing>
-                    {t('setting.exchange.columns.action')}
-                  </Table.HeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {loading ? (
-                  <Table.Row>
-                    <Table.Cell colSpan={7} textAlign='center' className='router-empty-cell'>
-                      {t('common.loading')}
-                    </Table.Cell>
-                  </Table.Row>
-                ) : rates.length === 0 ? (
-                  <Table.Row>
-                    <Table.Cell colSpan={7} textAlign='center' className='router-empty-cell'>
-                      {t('setting.exchange.empty')}
-                    </Table.Cell>
-                  </Table.Row>
-                ) : (
-                  rates.map((row) => (
-                      <Table.Row key={row.id || row.pair || `${row.base}-${row.quote}`}>
-                        <Table.Cell>{row.pair || '-'}</Table.Cell>
-                        <Table.Cell style={rateColumnStyle}>
-                          {t('setting.exchange.rate_display', {
-                            base: row.base || '-',
-                            value: formatDecimalNumber(row.rate || 0, 6),
-                            quote: row.quote || '-',
-                          })}
-                        </Table.Cell>
-                        <Table.Cell>{row.provider || '-'}</Table.Cell>
-                        <Table.Cell style={rateDateColumnStyle}>
-                          {row.rate_date || '-'}
-                        </Table.Cell>
-                        <Table.Cell style={createdAtColumnStyle}>
-                          {row.created_at ? timestamp2string(row.created_at) : '-'}
-                        </Table.Cell>
-                        <Table.Cell style={updatedAtColumnStyle}>
-                          {row.updated_at ? timestamp2string(row.updated_at) : '-'}
-                        </Table.Cell>
-                        <Table.Cell>
-                          {row.row_type === 'manual' ? (
-                            <Button
-                              className='router-table-action-button'
-                              type='button'
-                              primary
-                              loading={savingKey === row.id}
-                              disabled={syncing || savingKey === row.id}
-                              onClick={() => openEditModal(row)}
-                            >
-                              {t('setting.exchange.buttons.edit')}
-                            </Button>
-                          ) : (
-                            <Button
-                              className='router-table-action-button'
-                              type='button'
-                              loading={syncing}
-                              disabled={syncing || savingKey !== ''}
-                              onClick={syncRates}
-                            >
-                              {t('setting.exchange.buttons.sync')}
-                            </Button>
-                          )}
-                        </Table.Cell>
-                      </Table.Row>
-                    ))
-                )}
-              </Table.Body>
-            </Table>
-          </div>
-        </Form>
-      </Grid.Column>
-      <Modal
+    <AppSpin spinning={loading}>
+      <div>
+        <AppFilterHeader
+          title={t('setting.exchange.title')}
+          titleClassName='router-ui-section-title'
+          className='router-toolbar-compact'
+        />
+        <div className='router-settings-note'>
+          {t('setting.exchange.subtitle')}
+        </div>
+        <div className='router-table-scroll-x'>
+          <AppTable
+            className='router-detail-table'
+            pagination={false}
+            rowKey={(row) => row.id || row.pair || `${row.base}-${row.quote}`}
+            dataSource={rates}
+            locale={{
+              emptyText: loading ? t('common.loading') : t('setting.exchange.empty'),
+            }}
+            columns={[
+              {
+                title: t('setting.exchange.columns.pair'),
+                dataIndex: 'pair',
+                key: 'pair',
+                render: (value) => value || '-',
+              },
+              {
+                title: t('setting.exchange.columns.rate'),
+                key: 'rate',
+                width: rateColumnStyle.width,
+                render: (_, row) =>
+                  t('setting.exchange.rate_display', {
+                    base: row.base || '-',
+                    value: formatDecimalNumber(row.rate || 0, 6),
+                    quote: row.quote || '-',
+                  }),
+              },
+              {
+                title: t('setting.exchange.columns.provider'),
+                dataIndex: 'provider',
+                key: 'provider',
+                render: (value) => value || '-',
+              },
+              {
+                title: t('setting.exchange.columns.rate_date'),
+                dataIndex: 'rate_date',
+                key: 'rate_date',
+                width: rateDateColumnStyle.width,
+                render: (value) => value || '-',
+              },
+              {
+                title: t('setting.exchange.columns.created_at'),
+                dataIndex: 'created_at',
+                key: 'created_at',
+                width: createdAtColumnStyle.width,
+                render: (value) => (value ? timestamp2string(value) : '-'),
+              },
+              {
+                title: t('setting.exchange.columns.updated_at'),
+                dataIndex: 'updated_at',
+                key: 'updated_at',
+                width: updatedAtColumnStyle.width,
+                render: (value) => (value ? timestamp2string(value) : '-'),
+              },
+              {
+                title: t('setting.exchange.columns.action'),
+                key: 'action',
+                render: (_, row) =>
+                  row.row_type === 'manual' ? (
+                    <AppButton
+                      className='router-table-action-button'
+                      type='button'
+                      color='blue'
+                      loading={savingKey === row.id}
+                      disabled={syncing || savingKey === row.id}
+                      onClick={() => openEditModal(row)}
+                    >
+                      {t('setting.exchange.buttons.edit')}
+                    </AppButton>
+                  ) : (
+                    <AppButton
+                      className='router-table-action-button'
+                      type='button'
+                      loading={syncing}
+                      disabled={syncing || savingKey !== ''}
+                      onClick={syncRates}
+                    >
+                      {t('setting.exchange.buttons.sync')}
+                    </AppButton>
+                  ),
+              },
+            ]}
+          />
+        </div>
+      </div>
+      <AppModal
         size='tiny'
         open={!!editingRow}
         onClose={closeEditModal}
         closeOnDimmerClick={!savingKey}
-        closeOnEscape={!savingKey}
+        title={t('setting.exchange.dialogs.edit_title')}
+        footer={null}
       >
-        <Modal.Header>
-          {t('setting.exchange.dialogs.edit_title')}
-        </Modal.Header>
-        <Modal.Content>
-          <Form>
-            <Form.Field>
-              <label>{t('setting.exchange.columns.pair')}</label>
+        <div className='router-page-stack'>
+          <AppFormRow>
+            <AppField label={t('setting.exchange.columns.pair')} readOnly>
               <div className='router-readonly-value'>
                 {editingRow?.pair || '-'}
               </div>
-            </Form.Field>
-            <Form.Input
-              className='router-section-input'
-              label={t('setting.exchange.dialogs.rate_label')}
-              type='number'
-              min='0'
-              step='0.000001'
-              value={editingRate}
-              onChange={(e, { value }) => setEditingRate(value)}
-              placeholder='0.000000'
-              autoFocus
-            />
-          </Form>
-        </Modal.Content>
-        <Modal.Actions>
-          <Button type='button' onClick={closeEditModal} disabled={!!savingKey}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            primary
-            type='button'
-            loading={!!savingKey}
-            disabled={!!savingKey}
-            onClick={saveManualRate}
-          >
-            {t('common.confirm')}
-          </Button>
-        </Modal.Actions>
-      </Modal>
-    </Grid>
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField label={t('setting.exchange.dialogs.rate_label')}>
+              <AppInputNumber
+                className='router-section-input'
+                min={0}
+                step={0.000001}
+                precision={6}
+                fluid
+                value={editingRate}
+                onChange={(_, { value }) => setEditingRate(value)}
+                placeholder='0.000000'
+                autoFocus
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormActions>
+            <AppButton
+              type='button'
+              onClick={closeEditModal}
+              disabled={!!savingKey}
+            >
+              {t('common.cancel')}
+            </AppButton>
+            <AppButton
+              color='blue'
+              type='button'
+              loading={!!savingKey}
+              disabled={!!savingKey}
+              onClick={saveManualRate}
+            >
+              {t('common.confirm')}
+            </AppButton>
+          </AppFormActions>
+        </div>
+      </AppModal>
+    </AppSpin>
   );
 };
 

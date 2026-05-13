@@ -1,15 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Button,
-  Icon,
-  Form,
-  Label,
-  Pagination,
-  Popup,
-  Table,
-  Dropdown,
-} from 'semantic-ui-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { API, copy, isRoot, showError, showSuccess, timestamp2string } from '../helpers';
 import { useTranslation } from 'react-i18next';
 import UnitDropdown from './UnitDropdown';
@@ -26,26 +16,38 @@ import {
   resolvePreferredDisplayCurrency,
   yycToBillingInputValue,
 } from '../helpers/billing';
+import {
+  AppButton,
+  AppFilterHeader,
+  AppIcon,
+  AppInput,
+  AppMenuDropdown,
+  AppPagination,
+  AppSelect,
+  AppTable,
+  AppTag,
+  AppTooltip,
+} from '../router-ui';
 
 function renderRole(role, t) {
   switch (role) {
     case 1:
       return (
-        <Label className='router-tag'>
+        <AppTag className='router-tag'>
           {t('user.table.role_types.normal')}
-        </Label>
+        </AppTag>
       );
     case 10:
       return (
-        <Label color='yellow' className='router-tag'>
+        <AppTag color='yellow' className='router-tag'>
           {t('user.table.role_types.admin')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label color='red' className='router-tag'>
+        <AppTag color='red' className='router-tag'>
           {t('user.table.role_types.unknown')}
-        </Label>
+        </AppTag>
       );
   }
 }
@@ -188,21 +190,21 @@ const UsersTable = () => {
     switch (status) {
       case 1:
         return (
-          <Label basic className='router-tag'>
+          <AppTag className='router-tag'>
             {t('user.table.status_types.activated')}
-          </Label>
+          </AppTag>
         );
       case 2:
         return (
-          <Label basic color='red' className='router-tag'>
+          <AppTag color='red' className='router-tag'>
             {t('user.table.status_types.banned')}
-          </Label>
+          </AppTag>
         );
       default:
         return (
-          <Label basic color='grey' className='router-tag'>
+          <AppTag color='grey' className='router-tag'>
             {t('user.table.status_types.unknown')}
-          </Label>
+          </AppTag>
         );
     }
   };
@@ -280,10 +282,9 @@ const UsersTable = () => {
   };
 
   const renderCountValue = (value) => (
-    <Popup
-      content={formatFullNumber(value)}
-      trigger={<span>{formatCompactNumber(value)}</span>}
-    />
+    <AppTooltip title={formatFullNumber(value)}>
+      <span>{formatCompactNumber(value)}</span>
+    </AppTooltip>
   );
 
   const balanceUnitOptions = useMemo(
@@ -293,79 +294,143 @@ const UsersTable = () => {
 
   return (
     <>
-      <div className='router-toolbar router-block-gap-sm'>
-        <div className='router-toolbar-start'>
-          <Button
-            className='router-page-button'
-            as={Link}
-            to='/user/add'
-          >
-            {t('user.buttons.add')}
-          </Button>
-          <Button
-            className='router-page-button'
-            loading={loading}
-            disabled={loading}
-            onClick={refresh}
-          >
-            {t('user.buttons.refresh')}
-          </Button>
-        </div>
-        <div className='router-toolbar-end'>
-          <Dropdown
-            className='router-section-dropdown router-dropdown-min-170'
-            placeholder={t('user.table.sort_by')}
-            selection
-            options={[
-              { key: '', text: t('user.table.sort.default'), value: '' },
-              {
-                key: 'request_count',
-                text: t('user.table.sort.by_request_count'),
-                value: 'request_count',
-              },
-            ]}
-            value={orderBy}
-            onChange={handleOrderByChange}
-          />
-          <Form onSubmit={searchUsers} className='router-search-form-xs'>
-            <Form.Input
-              className='router-section-input'
-              icon='search'
-              iconPosition='left'
-              placeholder={t('user.search')}
-              value={searchKeyword}
-              loading={searching}
-              onChange={handleKeywordChange}
+      <AppFilterHeader
+        title={t('header.user')}
+        meta={`${users.filter((user) => !user?.deleted).length} / ${totalCount}`}
+        actions={
+          <div className='router-list-toolbar-actions'>
+            <AppButton
+              className='router-page-button'
+              color='blue'
+              onClick={() => navigate('/user/add')}
+            >
+              {t('user.buttons.add')}
+            </AppButton>
+            <AppButton
+              className='router-page-button'
+              loading={loading}
+              disabled={loading}
+              onClick={refresh}
+            >
+              {t('user.buttons.refresh')}
+            </AppButton>
+          </div>
+        }
+        query={
+          <div className='router-list-toolbar-query router-list-toolbar-query-compact'>
+            <AppSelect
+              className='router-section-dropdown router-dropdown-min-170'
+              placeholder={t('user.table.sort_by')}
+              options={[
+                { key: '', text: t('user.table.sort.default'), value: '' },
+                {
+                  key: 'request_count',
+                  text: t('user.table.sort.by_request_count'),
+                  value: 'request_count',
+                },
+              ]}
+              value={orderBy}
+              onChange={handleOrderByChange}
             />
-          </Form>
-        </div>
-      </div>
+            <div className='router-search-form-xs'>
+              <AppInput
+                className='router-section-input'
+                icon='search'
+                iconPosition='left'
+                fluid
+                placeholder={t('user.search')}
+                value={searchKeyword}
+                loading={searching}
+                onChange={handleKeywordChange}
+              />
+            </div>
+          </div>
+        }
+      />
 
-      <Table
-        basic={'very'}
-        compact
+      <AppTable
         className='router-hover-table router-list-table'
-      >
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortUser('username');
-              }}
-            >
-              {t('user.table.username')}
-            </Table.HeaderCell>
-            <Table.HeaderCell>{t('user.table.wallet')}</Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortUser('active_package_name');
-              }}
-            >
-              {t('user.table.package')}
-            </Table.HeaderCell>
-            <Table.HeaderCell className='router-redemption-face-value-header'>
+        pagination={false}
+        rowKey={(user) => user.id}
+        dataSource={users
+          .slice(
+            (activePage - 1) * ITEMS_PER_PAGE,
+            activePage * ITEMS_PER_PAGE,
+          )
+          .filter((user) => !user?.deleted)}
+        onRow={(user, idx) => ({
+          className: 'router-row-clickable',
+          onClick: () => navigate(`/user/detail/${user.id}`),
+        })}
+        columns={[
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortUser('username');
+                }}
+              >
+                {t('user.table.username')}
+              </span>
+            ),
+            dataIndex: 'username',
+            key: 'username',
+            render: (_, user) => (
+              <AppTooltip
+                title={
+                  <div>
+                    <div>{user.username}</div>
+                    <div>{user.email ? user.email : '未绑定邮箱地址'}</div>
+                  </div>
+                }
+              >
+                <span>{renderText(user.username, 15)}</span>
+              </AppTooltip>
+            ),
+          },
+          {
+            title: t('user.table.wallet'),
+            dataIndex: 'wallet_address',
+            key: 'wallet_address',
+            render: (value) =>
+              value ? (
+                <span className='router-action-group'>
+                  <AppTooltip title={value}>
+                    <span>{maskWalletAddress(value)}</span>
+                  </AppTooltip>
+                  <button
+                    type='button'
+                    className='router-icon-button'
+                    onClick={(event) => {
+                      stopRowClick(event);
+                      copyWalletAddress(value);
+                    }}
+                  >
+                    <AppIcon name='copy outline' />
+                  </button>
+                </span>
+              ) : (
+                '-'
+              ),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortUser('active_package_name');
+                }}
+              >
+                {t('user.table.package')}
+              </span>
+            ),
+            dataIndex: 'active_package_name',
+            key: 'active_package_name',
+            render: (value) => (value ? renderText(value, 18) : '-'),
+          },
+          {
+            title: (
               <div className='router-table-header-with-control'>
                 <span>{t('user.table.balance')}</span>
                 <UnitDropdown
@@ -381,182 +446,150 @@ const UsersTable = () => {
                   }}
                 />
               </div>
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortUser('request_count');
-              }}
-            >
-              {t('user.table.request_count')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortUser('created_at');
-              }}
-            >
-              {t('user.table.created_at')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortUser('updated_at');
-              }}
-            >
-              {t('user.table.updated_at')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortUser('role');
-              }}
-            >
-              {t('user.table.role_text')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortUser('status');
-              }}
-            >
-              {t('user.table.status_text')}
-            </Table.HeaderCell>
-            <Table.HeaderCell>{t('user.table.actions')}</Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-
-        <Table.Body>
-          {users
-            .slice(
-              (activePage - 1) * ITEMS_PER_PAGE,
-              activePage * ITEMS_PER_PAGE,
-            )
-            .map((user, idx) => {
-              if (user.deleted) return <></>;
+            ),
+            key: 'balance',
+            className: 'router-redemption-face-value-header',
+            render: (_, user) =>
+              yycToBillingInputValue(
+                user.yyc_balance ?? user.quota,
+                balanceUnit,
+                currencyIndex,
+              ),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortUser('request_count');
+                }}
+              >
+                {t('user.table.request_count')}
+              </span>
+            ),
+            dataIndex: 'request_count',
+            key: 'request_count',
+            render: (value) => renderCountValue(value),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortUser('created_at');
+                }}
+              >
+                {t('user.table.created_at')}
+              </span>
+            ),
+            dataIndex: 'created_at',
+            key: 'created_at',
+            render: (value) => (value ? timestamp2string(value) : '-'),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortUser('updated_at');
+                }}
+              >
+                {t('user.table.updated_at')}
+              </span>
+            ),
+            dataIndex: 'updated_at',
+            key: 'updated_at',
+            render: (value) => (value ? timestamp2string(value) : '-'),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortUser('role');
+                }}
+              >
+                {t('user.table.role_text')}
+              </span>
+            ),
+            dataIndex: 'role',
+            key: 'role',
+            render: (value) => renderRole(value, t),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortUser('status');
+                }}
+              >
+                {t('user.table.status_text')}
+              </span>
+            ),
+            dataIndex: 'status',
+            key: 'status',
+            render: (value) => renderStatus(value),
+          },
+          {
+            title: t('user.table.actions'),
+            key: 'actions',
+            render: (_, user, idx) => {
               const isAdminUser = Number(user.role) >= 10;
               const canManageAdminUser = !isAdminUser || isRoot();
               return (
-                <Table.Row
-                  key={user.id}
-                  className='router-row-clickable'
-                  onClick={() => navigate(`/user/detail/${user.id}`)}
-                >
-                  <Table.Cell>
-                    <Popup
-                      content={user.email ? user.email : '未绑定邮箱地址'}
-                      key={user.username}
-                      header={user.username}
-                      trigger={<span>{renderText(user.username, 15)}</span>}
-                      hoverable
-                    />
-                  </Table.Cell>
-                  <Table.Cell onClick={stopRowClick}>
-                    {user.wallet_address ? (
-                      <span className='router-action-group'>
-                        <Popup
-                          content={user.wallet_address}
-                          trigger={
-                            <span>
-                              {maskWalletAddress(user.wallet_address)}
-                            </span>
-                          }
-                        />
-                        <Icon
-                          name='copy outline'
-                          link
-                          onClick={() => copyWalletAddress(user.wallet_address)}
-                        />
-                      </span>
-                    ) : (
-                      '-'
-                    )}
-                  </Table.Cell>
-                  <Table.Cell>
-                    {user.active_package_name
-                      ? renderText(user.active_package_name, 18)
-                      : '-'}
-                  </Table.Cell>
-                  <Table.Cell>
-                    {yycToBillingInputValue(
-                      user.yyc_balance ?? user.quota,
-                      balanceUnit,
-                      currencyIndex,
-                    )}
-                  </Table.Cell>
-                  <Table.Cell>
-                    {renderCountValue(user.request_count)}
-                  </Table.Cell>
-                  <Table.Cell>{user.created_at ? timestamp2string(user.created_at) : '-'}</Table.Cell>
-                  <Table.Cell>{user.updated_at ? timestamp2string(user.updated_at) : '-'}</Table.Cell>
-                  <Table.Cell>
-                    {renderRole(user.role, t)}
-                  </Table.Cell>
-                  <Table.Cell>{renderStatus(user.status)}</Table.Cell>
-                  <Table.Cell onClick={stopRowClick}>
-                    <div className='router-action-group'>
-                      <Popup
-                        trigger={
-                          <Button
-                            className='router-inline-button'
-                            negative
-                            disabled={!canManageAdminUser}
-                          >
-                            {t('user.buttons.delete')}
-                          </Button>
-                        }
-                        on='click'
-                        flowing
-                        hoverable
-                      >
-                        <Button
-                          className='router-inline-button'
-                          negative
-                          disabled={!canManageAdminUser}
-                          onClick={() => {
-                            manageUser(user.username, 'delete', idx);
-                          }}
-                        >
-                          {t('user.buttons.delete_user')} {user.username}
-                        </Button>
-                      </Popup>
-                      <Button
-                        className='router-inline-button'
-                        onClick={() => {
-                          manageUser(
-                            user.username,
-                            user.status === 1 ? 'disable' : 'enable',
-                            idx,
-                          );
-                        }}
-                        disabled={!canManageAdminUser}
-                      >
-                        {user.status === 1
-                          ? t('user.buttons.disable')
-                          : t('user.buttons.enable')}
-                      </Button>
-                    </div>
-                  </Table.Cell>
-                </Table.Row>
+                <div className='router-action-group' onClick={stopRowClick}>
+                  <AppButton
+                    className='router-inline-button'
+                    color={user.status === 1 ? undefined : 'blue'}
+                    onClick={() => {
+                      manageUser(
+                        user.username,
+                        user.status === 1 ? 'disable' : 'enable',
+                        idx,
+                      );
+                    }}
+                    disabled={!canManageAdminUser}
+                  >
+                    {user.status === 1
+                      ? t('user.buttons.disable')
+                      : t('user.buttons.enable')}
+                  </AppButton>
+                  <AppMenuDropdown
+                    disabled={!canManageAdminUser}
+                    items={[
+                      {
+                        key: 'delete',
+                        label: t('user.buttons.delete'),
+                        danger: true,
+                        onClick: () => {
+                          manageUser(user.username, 'delete', idx);
+                        },
+                      },
+                    ]}
+                  >
+                    <AppButton
+                      className='router-inline-button'
+                      disabled={!canManageAdminUser}
+                    >
+                      {t('common.operation')}
+                    </AppButton>
+                  </AppMenuDropdown>
+                </div>
               );
-            })}
-        </Table.Body>
-
-        <Table.Footer>
-          <Table.Row>
-            <Table.HeaderCell colSpan='10'>
-              <Pagination
-                className='router-page-pagination'
-                floated='right'
-                activePage={activePage}
-                onPageChange={onPaginationChange}
-                siblingRange={1}
-                totalPages={totalPages}
-              />
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Footer>
-      </Table>
+            },
+          },
+        ]}
+      />
+      <div className='router-pagination-wrap'>
+        <AppPagination
+          className='router-page-pagination'
+          activePage={activePage}
+          onPageChange={onPaginationChange}
+          siblingRange={1}
+          totalPages={totalPages}
+        />
+      </div>
     </>
   );
 };

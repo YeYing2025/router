@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Breadcrumb, Button, Card, Popup, Table } from 'semantic-ui-react';
 import {
   API,
   showError,
@@ -15,6 +14,14 @@ import {
   renderTopupOrderStatus,
   useTopUpWorkspace,
 } from './shared.jsx';
+import {
+  AppBreadcrumb,
+  AppButton,
+  AppDescriptions,
+  AppFilterHeader,
+  AppSection,
+  AppTooltip,
+} from '../../router-ui';
 
 const resolveRecordKeyFromBusinessType = (businessType = '') => {
   return String(businessType || '').trim() === 'package_purchase'
@@ -167,165 +174,149 @@ const TopUpOrderDetailInner = () => {
       : t('topup.external_topup_orders.detail_path_topup');
 
   const detailPathOrderID = String(order?.id || id || '').trim() || '-';
+  const detailRows = useMemo(() => {
+    const rows = [
+      {
+        key: 'order_id',
+        label: t('topup.external_topup_orders.columns.order_id'),
+        value: order?.id || '-',
+      },
+      {
+        key: 'business_type',
+        label: t('topup.external_topup_orders.columns.business_type'),
+        value: formatTopupBusinessType(order?.business_type, t),
+      },
+      {
+        key: 'status',
+        label: t('topup.external_topup_orders.columns.status'),
+        value: statusHint ? (
+          <AppTooltip title={statusHint}>
+            <span className='router-help-trigger'>
+              {renderTopupOrderStatus(order?.status, t)}
+            </span>
+          </AppTooltip>
+        ) : (
+          renderTopupOrderStatus(order?.status, t)
+        ),
+      },
+      {
+        key: 'status_message',
+        label: t('topup.external_topup_orders.fields.status_message'),
+        value: order?.status_message || '-',
+      },
+      {
+        key: 'amount',
+        label: t('topup.external_topup_orders.columns.amount'),
+        value:
+          Number(order?.amount || 0) > 0
+            ? `${order?.currency || 'CNY'} ${Number(order?.amount || 0).toFixed(2)}`
+            : Number(order?.quota || 0) > 0
+              ? renderDisplayAmount(order?.quota)
+              : '-',
+      },
+      {
+        key: 'title',
+        label: t('topup.external_topup_orders.fields.title'),
+        value: order?.title || '-',
+      },
+      {
+        key: 'transaction_id',
+        label: t('topup.external_topup_orders.columns.transaction_id'),
+        value: order?.transaction_id || '-',
+      },
+      {
+        key: 'provider_order_id',
+        label: t('topup.external_topup_orders.fields.provider_order_id'),
+        value: order?.provider_order_id || '-',
+      },
+      {
+        key: 'created_at',
+        label: t('topup.external_topup_orders.columns.time'),
+        value: order?.created_at ? timestamp2string(order?.created_at) : '-',
+      },
+      {
+        key: 'updated_at',
+        label: t('topup.external_topup_orders.fields.updated_at'),
+        value: order?.updated_at ? timestamp2string(order?.updated_at) : '-',
+      },
+    ];
+    if (recordKey === 'package') {
+      rows.splice(2, 0, {
+        key: 'package_name',
+        label: t('topup.external_topup_orders.columns.package_name'),
+        value: order?.package_name || '-',
+      });
+    }
+    return rows;
+  }, [order, recordKey, renderDisplayAmount, statusHint, t]);
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <div className='router-entity-detail-page'>
+      <AppSection>
+        <div className='router-entity-detail-page'>
             <div className='router-entity-detail-breadcrumb'>
-              <Breadcrumb size='small'>
-                <Breadcrumb.Section link onClick={() => navigate(listPath)}>
-                  {detailPathLabel}
-                </Breadcrumb.Section>
-                <Breadcrumb.Divider icon='right chevron' />
-                <Breadcrumb.Section active>
-                  {detailPathOrderID}
-                </Breadcrumb.Section>
-              </Breadcrumb>
+              <AppBreadcrumb
+                items={[
+                  {
+                    key: 'topup-order-list',
+                    label: detailPathLabel,
+                    onClick: () => navigate(listPath),
+                  },
+                  {
+                    key: 'topup-order-current',
+                    label: detailPathOrderID,
+                    active: true,
+                  },
+                ]}
+              />
             </div>
 
-            <div className='router-toolbar'>
-              <div className='router-toolbar-start'>
-                <div className='router-detail-section-title'>{detailTitle}</div>
-              </div>
-              <div className='router-toolbar-end'>
-                <Button
+            <AppFilterHeader
+              title={detailTitle}
+              className='router-block-gap-sm'
+              titleClassName='router-detail-section-title'
+              actions={
+                <>
+                <AppButton
                   className='router-section-button'
                   onClick={refreshOrderStatus}
                   loading={refreshing}
                   disabled={!order}
                 >
                   {t('topup.records.refresh_status')}
-                </Button>
+                </AppButton>
                 {['created', 'pending'].includes(String(order?.status || '').trim()) ? (
                   <>
-                    <Button
-                      primary
+                    <AppButton
+                      color='blue'
                       className='router-section-button'
                       onClick={continuePay}
                       loading={refreshing}
                       disabled={!order}
                     >
                       {t('topup.records.continue_pay')}
-                    </Button>
-                    <Button
+                    </AppButton>
+                    <AppButton
                       className='router-section-button'
                       onClick={cancelPay}
                       loading={canceling}
                       disabled={!order}
                     >
                       {t('topup.records.cancel_pay')}
-                    </Button>
+                    </AppButton>
                   </>
-                ) : null}
-              </div>
-            </div>
+                  ) : null}
+                </>
+              }
+            />
 
             {loading ? (
               <div className='router-empty-cell'>{t('common.loading')}</div>
             ) : (
-              <Table basic='very' compact='very'>
-                <Table.Body>
-                  <Table.Row>
-                    <Table.Cell width={5}>
-                      {t('topup.external_topup_orders.columns.order_id')}
-                    </Table.Cell>
-                    <Table.Cell>{order?.id || '-'}</Table.Cell>
-                  </Table.Row>
-                  <Table.Row>
-                    <Table.Cell width={5}>
-                      {t('topup.external_topup_orders.columns.business_type')}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {formatTopupBusinessType(order?.business_type, t)}
-                    </Table.Cell>
-                  </Table.Row>
-                  {recordKey === 'package' ? (
-                    <Table.Row>
-                      <Table.Cell width={5}>
-                        {t('topup.external_topup_orders.columns.package_name')}
-                      </Table.Cell>
-                      <Table.Cell>{order?.package_name || '-'}</Table.Cell>
-                    </Table.Row>
-                  ) : null}
-                  <Table.Row>
-                    <Table.Cell width={5}>
-                      {t('topup.external_topup_orders.columns.status')}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {statusHint ? (
-                        <Popup
-                          content={statusHint}
-                          trigger={
-                            <span style={{ display: 'inline-block', cursor: 'help' }}>
-                              {renderTopupOrderStatus(order?.status, t)}
-                            </span>
-                          }
-                        />
-                      ) : (
-                        renderTopupOrderStatus(order?.status, t)
-                      )}
-                    </Table.Cell>
-                  </Table.Row>
-                  <Table.Row>
-                    <Table.Cell width={5}>
-                      {t('topup.external_topup_orders.fields.status_message')}
-                    </Table.Cell>
-                    <Table.Cell>{order?.status_message || '-'}</Table.Cell>
-                  </Table.Row>
-                  <Table.Row>
-                    <Table.Cell width={5}>
-                      {t('topup.external_topup_orders.columns.amount')}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {Number(order?.amount || 0) > 0
-                        ? `${order?.currency || 'CNY'} ${Number(order?.amount || 0).toFixed(2)}`
-                        : Number(order?.quota || 0) > 0
-                          ? renderDisplayAmount(order?.quota)
-                          : '-'}
-                    </Table.Cell>
-                  </Table.Row>
-                  <Table.Row>
-                    <Table.Cell width={5}>
-                      {t('topup.external_topup_orders.fields.title')}
-                    </Table.Cell>
-                    <Table.Cell>{order?.title || '-'}</Table.Cell>
-                  </Table.Row>
-                  <Table.Row>
-                    <Table.Cell width={5}>
-                      {t('topup.external_topup_orders.columns.transaction_id')}
-                    </Table.Cell>
-                    <Table.Cell>{order?.transaction_id || '-'}</Table.Cell>
-                  </Table.Row>
-                  <Table.Row>
-                    <Table.Cell width={5}>
-                      {t('topup.external_topup_orders.fields.provider_order_id')}
-                    </Table.Cell>
-                    <Table.Cell>{order?.provider_order_id || '-'}</Table.Cell>
-                  </Table.Row>
-                  <Table.Row>
-                    <Table.Cell width={5}>
-                      {t('topup.external_topup_orders.columns.time')}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {order?.created_at ? timestamp2string(order?.created_at) : '-'}
-                    </Table.Cell>
-                  </Table.Row>
-                  <Table.Row>
-                    <Table.Cell width={5}>
-                      {t('topup.external_topup_orders.fields.updated_at')}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {order?.updated_at ? timestamp2string(order?.updated_at) : '-'}
-                    </Table.Cell>
-                  </Table.Row>
-                </Table.Body>
-              </Table>
+              <AppDescriptions items={detailRows} />
             )}
-          </div>
-        </Card.Content>
-      </Card>
+        </div>
+      </AppSection>
     </div>
   );
 };

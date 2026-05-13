@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Breadcrumb, Card, Label } from 'semantic-ui-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { API, showError, timestamp2string } from '../../helpers';
+import { AppBreadcrumb, AppDetailSection, AppIcon, AppSection, AppTag } from '../../router-ui';
 
 const readOnlyText = (value) => {
   const normalized = (value || '').toString().trim();
@@ -37,45 +37,45 @@ const renderTopupStatus = (status, t) => {
   switch (normalizeTopupStatus(status)) {
     case 'created':
       return (
-        <Label basic className='router-tag'>
+        <AppTag className='router-tag'>
           {t('topup.external_topup_orders.status.created')}
-        </Label>
+        </AppTag>
       );
     case 'pending':
       return (
-        <Label basic color='blue' className='router-tag'>
+        <AppTag color='blue' className='router-tag'>
           {t('topup.external_topup_orders.status.pending')}
-        </Label>
+        </AppTag>
       );
     case 'paid':
       return (
-        <Label basic color='teal' className='router-tag'>
+        <AppTag color='teal' className='router-tag'>
           {t('topup.external_topup_orders.status.paid')}
-        </Label>
+        </AppTag>
       );
     case 'fulfilled':
       return (
-        <Label basic color='green' className='router-tag'>
+        <AppTag color='green' className='router-tag'>
           {t('topup.external_topup_orders.status.fulfilled')}
-        </Label>
+        </AppTag>
       );
     case 'failed':
       return (
-        <Label basic color='red' className='router-tag'>
+        <AppTag color='red' className='router-tag'>
           {t('topup.external_topup_orders.status.failed')}
-        </Label>
+        </AppTag>
       );
     case 'canceled':
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('topup.external_topup_orders.status.canceled')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {readOnlyText(status)}
-        </Label>
+        </AppTag>
       );
   }
 };
@@ -132,25 +132,31 @@ const TopupDetail = () => {
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <div className='router-entity-detail-page'>
+      <AppSection>
+        <div className='router-entity-detail-page'>
             <div className='router-entity-detail-breadcrumb'>
-              <Breadcrumb size='small'>
-                <Breadcrumb.Section link onClick={() => navigate(listPath)}>
-                  {t('flow.topup.title')}
-                </Breadcrumb.Section>
-                <Breadcrumb.Divider icon='right chevron' />
-                <Breadcrumb.Section active>
-                  {readOnlyText(record?.id || id)}
-                </Breadcrumb.Section>
-              </Breadcrumb>
+              <AppBreadcrumb
+                items={[
+                  {
+                    key: 'flow-topup-list',
+                    label: t('flow.topup.title'),
+                    onClick: () => navigate(listPath),
+                  },
+                  {
+                    key: 'flow-topup-current',
+                    label: readOnlyText(record?.id || id),
+                    active: true,
+                  },
+                ]}
+              />
             </div>
 
-            <div className='router-detail-section'>
-              <div className='router-detail-section-title'>
-                {t('flow.topup.title')}
-              </div>
+            <AppDetailSection
+              className='router-detail-section'
+              title={t('flow.topup.title')}
+              titleTag='div'
+              titleClassName='router-detail-section-title'
+            >
               {loading ? (
                 <div className='router-empty-cell'>{t('common.loading')}</div>
               ) : (
@@ -253,19 +259,20 @@ const TopupDetail = () => {
                   </div>
                 </div>
               )}
-            </div>
+            </AppDetailSection>
 
-            <div className='router-detail-section'>
-              <div className='router-detail-section-title'>
-                {t('flow.topup_reconcile.detail.sections.message')}
-              </div>
+            <AppDetailSection
+              className='router-detail-section'
+              title={t('flow.topup_reconcile.detail.sections.message')}
+              titleTag='div'
+              titleClassName='router-detail-section-title'
+            >
               <pre className='router-detail-pre'>
                 {readOnlyText(record?.status_message)}
               </pre>
-            </div>
-          </div>
-        </Card.Content>
-      </Card>
+            </AppDetailSection>
+        </div>
+      </AppSection>
     </div>
   );
 };

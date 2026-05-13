@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Breadcrumb, Button, Card, Dropdown, Form, Header, Icon, Label, Modal, Table } from 'semantic-ui-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { API, copy, isRoot, showError, showInfo, showSuccess } from '../../helpers';
 import {
@@ -11,6 +10,23 @@ import {
   resolveBillingInputStep,
 } from '../../helpers/billing';
 import UnitDropdown from '../../components/UnitDropdown';
+import {
+  AppBreadcrumb,
+  AppButton,
+  AppDetailSection,
+  AppField,
+  AppFilterHeader,
+  AppFormActions,
+  AppFormRow,
+  AppInput,
+  AppInputNumber,
+  AppModal,
+  AppSection,
+  AppSelect,
+  AppTable,
+  AppTag,
+  AppToolbar,
+} from '../../router-ui';
 import {
   formatAmountWithUnit,
 } from '../../helpers/render';
@@ -23,18 +39,18 @@ const ROLE_OPTIONS = (t) => [
 const renderRoleLabel = (role, t) => {
   switch (Number(role)) {
     case 1:
-      return <Label className='router-tag'>{t('user.table.role_types.normal')}</Label>;
+      return <AppTag className='router-tag'>{t('user.table.role_types.normal')}</AppTag>;
     case 10:
       return (
-        <Label color='yellow' className='router-tag'>
+        <AppTag color='yellow' className='router-tag'>
           {t('user.table.role_types.admin')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label color='red' className='router-tag'>
+        <AppTag color='red' className='router-tag'>
           {t('user.table.role_types.unknown')}
-        </Label>
+        </AppTag>
       );
   }
 };
@@ -43,21 +59,21 @@ const renderStatusLabel = (status, t) => {
   switch (Number(status)) {
     case 1:
       return (
-        <Label basic className='router-tag'>
+        <AppTag className='router-tag'>
           {t('user.table.status_types.activated')}
-        </Label>
+        </AppTag>
       );
     case 2:
       return (
-        <Label basic color='red' className='router-tag'>
+        <AppTag color='red' className='router-tag'>
           {t('user.table.status_types.banned')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('user.table.status_types.unknown')}
-        </Label>
+        </AppTag>
       );
   }
 };
@@ -98,39 +114,39 @@ const renderPackageStatusLabel = (status, t) => {
   switch (Number(status)) {
     case 1:
       return (
-        <Label basic color='green' className='router-tag'>
+        <AppTag color='green' className='router-tag'>
           {t('user.detail.package_status_types.active')}
-        </Label>
+        </AppTag>
       );
     case 2:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('user.detail.package_status_types.expired')}
-        </Label>
+        </AppTag>
       );
     case 3:
       return (
-        <Label basic color='blue' className='router-tag'>
+        <AppTag color='blue' className='router-tag'>
           {t('user.detail.package_status_types.replaced')}
-        </Label>
+        </AppTag>
       );
     case 4:
       return (
-        <Label basic color='red' className='router-tag'>
+        <AppTag color='red' className='router-tag'>
           {t('user.detail.package_status_types.canceled')}
-        </Label>
+        </AppTag>
       );
     case 5:
       return (
-        <Label basic color='teal' className='router-tag'>
+        <AppTag color='teal' className='router-tag'>
           {t('user.detail.package_status_types.pending')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('user.detail.package_status_types.unknown')}
-        </Label>
+        </AppTag>
       );
   }
 };
@@ -139,27 +155,27 @@ const renderBalanceLotStatusLabel = (status, t) => {
   switch ((status || '').toString().trim()) {
     case 'active':
       return (
-        <Label basic color='green' className='router-tag'>
+        <AppTag color='green' className='router-tag'>
           {t('topup.balance_lots.status.active')}
-        </Label>
+        </AppTag>
       );
     case 'exhausted':
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('topup.balance_lots.status.exhausted')}
-        </Label>
+        </AppTag>
       );
     case 'expired':
       return (
-        <Label basic color='orange' className='router-tag'>
+        <AppTag color='orange' className='router-tag'>
           {t('topup.balance_lots.status.expired')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {readOnlyValue(status)}
-        </Label>
+        </AppTag>
       );
   }
 };
@@ -722,9 +738,8 @@ const UserDetail = () => {
 
   const roleControl = useMemo(() => {
     return (
-      <Dropdown
+      <AppSelect
         className='router-section-input'
-        selection
         options={ROLE_OPTIONS(t)}
         value={Number(inputs.role || 1)}
         disabled={!canManageRole || loading || actionLoading !== '' || editSection !== ''}
@@ -1049,13 +1064,12 @@ const UserDetail = () => {
 
   const renderBalanceAmountField = useCallback(
     ({ label, name, value }) => (
-      <Form.Field className='router-section-input'>
-        <label>{label}</label>
+      <AppField label={label} readOnly>
         <div className='router-section-input-with-unit'>
-          <Form.Input
+          <AppInputNumber
             className='router-section-input router-section-input-with-unit-field'
-            type='number'
-            min='0'
+            fluid
+            min={0}
             step={balanceInputStep}
             name={name}
             value={value}
@@ -1069,177 +1083,177 @@ const UserDetail = () => {
             disabled={loading || actionLoading !== '' || billingUnitOptions.length === 0}
           />
         </div>
-      </Form.Field>
+      </AppField>
     ),
     [
       actionLoading,
       balanceInputStep,
       balanceUnit,
+      billingCurrencyIndex,
+      billingUnitOptions,
       handleBalanceUnitChange,
       loading,
-      billingUnitOptions,
     ],
   );
 
   const renderReadonlyMetaField = useCallback(
     ({ label, value, action = null }) => (
-      <Form.Field className='router-section-input'>
-        <label>{label}</label>
+      <AppField className='router-section-input' label={label} readOnly>
         <div className='router-inline-meta-card'>
           <div className='router-inline-meta-value'>{value}</div>
           {action ? <div className='router-inline-meta-action'>{action}</div> : null}
         </div>
-      </Form.Field>
+      </AppField>
     ),
     [],
   );
 
   const renderReadonlyAmountField = useCallback(
     ({ label, value }) => (
-      <Form.Field className='router-section-input'>
-        <label>{label}</label>
+      <AppField className='router-section-input' label={label} readOnly>
         <div className='router-inline-amount-card'>
           <div className='router-inline-meta-value'>{value}</div>
         </div>
-      </Form.Field>
+      </AppField>
     ),
     [],
   );
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <div className='router-entity-detail-page'>
+      <AppSection>
+        <div className='router-entity-detail-page'>
             <div className='router-entity-detail-breadcrumb'>
-              <Breadcrumb size='small'>
-                <Breadcrumb.Section link onClick={backToList}>
-                  {t('header.user')}
-                </Breadcrumb.Section>
-                <Breadcrumb.Divider icon='right chevron' />
-                <Breadcrumb.Section active>
-                  {readOnlyValue(inputs.username || userId)}
-                </Breadcrumb.Section>
-              </Breadcrumb>
+              <AppBreadcrumb
+                items={[
+                  {
+                    key: 'user-list',
+                    label: t('header.user'),
+                    onClick: backToList,
+                  },
+                  {
+                    key: 'user-current',
+                    label: readOnlyValue(inputs.username || userId),
+                    active: true,
+                  },
+                ]}
+              />
             </div>
-            <Form
-              loading={loading || actionLoading === 'save-basic'}
-              autoComplete='new-password'
-            >
-              <section className='router-entity-detail-section'>
-                <div className='router-entity-detail-section-header'>
-                  <Header as='h3' className='router-entity-detail-section-title'>
-                    {t('common.basic_info')}
-                  </Header>
-                  <div className='router-toolbar-start'>
-                    {renderStatusLabel(inputs.status, t)}
-                    {editSection === 'basic' ? (
-                      <>
-                        <Button
-                          type='button'
-                          className='router-page-button'
-                          onClick={cancelBasicEditing}
-                          disabled={actionLoading !== ''}
-                        >
-                          {t('user.edit.buttons.cancel')}
-                        </Button>
-                        <Button
-                          type='button'
-                          positive
-                          className='router-page-button'
-                          onClick={submitBasic}
-                          loading={actionLoading === 'save-basic'}
-                          disabled={actionLoading !== ''}
-                        >
-                          {t('user.edit.buttons.submit')}
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
+            <div className='router-page-stack'>
+              <AppDetailSection
+                title={t('common.basic_info')}
+                headerStart={renderStatusLabel(inputs.status, t)}
+                headerEnd={
+                  editSection === 'basic' ? (
+                    <>
+                      <AppButton
                         type='button'
                         className='router-page-button'
-                        onClick={startBasicEditing}
-                        disabled={loading || actionLoading !== '' || editSection !== ''}
+                        onClick={cancelBasicEditing}
+                        disabled={actionLoading !== ''}
                       >
-                        {t('user.detail.buttons.edit')}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                <Form.Input
-                  className='router-section-input'
-                  label={t('user.detail.user_id')}
-                  value={readOnlyValue(userId)}
-                  readOnly
-                />
-
-                <Form.Group widths='equal'>
-                  {editSection === 'basic' ? (
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('user.edit.username')}
-                      name='username'
-                      value={basicEditInputs.username}
-                      placeholder={t('user.edit.username_placeholder')}
-                      onChange={handleBasicEditInputChange}
-                      autoComplete='off'
-                    />
+                        {t('user.edit.buttons.cancel')}
+                      </AppButton>
+                      <AppButton
+                        type='button'
+                        color='blue'
+                        className='router-page-button'
+                        onClick={submitBasic}
+                        loading={actionLoading === 'save-basic'}
+                        disabled={actionLoading !== ''}
+                      >
+                        {t('user.edit.buttons.submit')}
+                      </AppButton>
+                    </>
                   ) : (
-                    <Form.Input
+                    <AppButton
+                      type='button'
+                      className='router-page-button'
+                      onClick={startBasicEditing}
+                      disabled={loading || actionLoading !== '' || editSection !== ''}
+                    >
+                      {t('user.detail.buttons.edit')}
+                    </AppButton>
+                  )
+                }
+              >
+                <AppFormRow>
+                  <AppField label={t('user.detail.user_id')} readOnly>
+                    <AppInput
                       className='router-section-input'
-                      label={t('user.edit.username')}
-                      value={readOnlyValue(inputs.username)}
+                      value={readOnlyValue(userId)}
                       readOnly
                     />
+                  </AppField>
+                </AppFormRow>
+
+                <AppFormRow>
+                  {editSection === 'basic' ? (
+                    <AppField label={t('user.edit.username')} required>
+                      <AppInput
+                        className='router-section-input'
+                        name='username'
+                        value={basicEditInputs.username}
+                        placeholder={t('user.edit.username_placeholder')}
+                        onChange={handleBasicEditInputChange}
+                        autoComplete='off'
+                      />
+                    </AppField>
+                  ) : (
+                    <AppField label={t('user.edit.username')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={readOnlyValue(inputs.username)}
+                        readOnly
+                      />
+                    </AppField>
                   )}
-                  <Form.Field className='router-section-input'>
-                    <label>{t('user.table.role_text')}</label>
+                  <AppField label={t('user.table.role_text')}>
                     <div>{roleControl}</div>
-                  </Form.Field>
-                </Form.Group>
+                  </AppField>
+                </AppFormRow>
 
-                <Form.Group widths='equal'>
+                <AppFormRow>
                   {editSection === 'basic' ? (
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('user.edit.email')}
-                      name='email'
-                      value={basicEditInputs.email}
-                      placeholder={t('user.edit.email_placeholder')}
-                      onChange={handleBasicEditInputChange}
-                      autoComplete='off'
-                    />
+                    <AppField label={t('user.edit.email')}>
+                      <AppInput
+                        className='router-section-input'
+                        name='email'
+                        value={basicEditInputs.email}
+                        placeholder={t('user.edit.email_placeholder')}
+                        onChange={handleBasicEditInputChange}
+                        autoComplete='off'
+                      />
+                    </AppField>
                   ) : (
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('user.edit.email')}
-                      name='email'
-                      value={readOnlyValue(inputs.email)}
-                      autoComplete='new-password'
-                      readOnly
-                    />
+                    <AppField label={t('user.edit.email')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        name='email'
+                        value={readOnlyValue(inputs.email)}
+                        autoComplete='new-password'
+                        readOnly
+                      />
+                    </AppField>
                   )}
                   {renderReadonlyMetaField({
                     label: t('user.table.wallet'),
                     value: readOnlyValue(inputs.wallet_address),
                     action:
                       inputs.wallet_address && inputs.wallet_address.toString().trim() !== '' ? (
-                        <Button
+                        <AppButton
                           type='button'
                           basic
-                          compact
-                          size='mini'
                           className='router-inline-meta-copy'
                           onClick={copyWalletAddress}
                         >
-                          <Icon name='copy outline' />
-                        </Button>
+                          <AppIcon name='copy outline' />
+                        </AppButton>
                       ) : null,
                   })}
-                </Form.Group>
+                </AppFormRow>
 
-                <Form.Group widths='equal'>
+                <AppFormRow>
                   {renderReadonlyMetaField({
                     label: t('user.table.created_at'),
                     value: formatDateTime(inputs.created_at),
@@ -1248,16 +1262,14 @@ const UserDetail = () => {
                     label: t('user.table.updated_at'),
                     value: formatDateTime(inputs.updated_at),
                   })}
-                </Form.Group>
-              </section>
+                </AppFormRow>
+              </AppDetailSection>
 
-              <section className='router-entity-detail-section'>
-                <div className='router-entity-detail-section-header'>
-                  <Header as='h3' className='router-entity-detail-section-title'>
-                    {t('user.detail.package_mode_title')}
-                  </Header>
-                  <div className='router-toolbar-start'>
-                    <Button
+              <AppDetailSection
+                title={t('user.detail.package_mode_title')}
+                headerEnd={
+                  <>
+                    <AppButton
                       type='button'
                       className='router-inline-button'
                       loading={activePackageLoading}
@@ -1265,59 +1277,65 @@ const UserDetail = () => {
                       onClick={() => loadActivePackage()}
                     >
                       {t('user.buttons.refresh')}
-                    </Button>
-                    <Button
+                    </AppButton>
+                    <AppButton
                       type='button'
                       className='router-page-button'
                       disabled={loading || actionLoading !== '' || editSection !== ''}
                       onClick={openAssignPackageModal}
                     >
                       {t('user.detail.buttons.gift_package')}
-                    </Button>
-                    <Button
+                    </AppButton>
+                    <AppButton
                       type='button'
                       className='router-page-button'
                       disabled={loading || actionLoading !== '' || editSection !== ''}
                       onClick={openPackageManagement}
                     >
                       {t('package_manage.title')}
-                    </Button>
-                  </div>
-                </div>
-              <Form.Group widths='equal'>
-                <Form.Input
+                    </AppButton>
+                  </>
+                }
+              >
+                <AppFormRow>
+                <AppField label={t('user.detail.package_name')} readOnly>
+                  <AppInput
+                    className='router-section-input'
+                    value={
+                      hasActivePackage
+                        ? readOnlyValue(activePackageSubscription?.package_name)
+                        : t('user.detail.package_none')
+                    }
+                    readOnly
+                  />
+                </AppField>
+                <AppField label={t('user.detail.package_group')} readOnly>
+                  <AppInput
+                    className='router-section-input'
+                    value={
+                      hasActivePackage
+                        ? readOnlyValue(
+                            activePackageSubscription?.group_name ||
+                              activePackageSubscription?.group_id,
+                          )
+                        : '-'
+                    }
+                    readOnly
+                  />
+                </AppField>
+                <AppField
                   className='router-section-input'
-                  label={t('user.detail.package_name')}
-                  value={
-                    hasActivePackage
-                      ? readOnlyValue(activePackageSubscription?.package_name)
-                      : t('user.detail.package_none')
-                  }
+                  label={t('user.detail.package_status')}
                   readOnly
-                />
-                <Form.Input
-                  className='router-section-input'
-                  label={t('user.detail.package_group')}
-                  value={
-                    hasActivePackage
-                      ? readOnlyValue(
-                          activePackageSubscription?.group_name ||
-                            activePackageSubscription?.group_id,
-                        )
-                      : '-'
-                  }
-                  readOnly
-                />
-                <Form.Field className='router-section-input'>
-                  <label>{t('user.detail.package_status')}</label>
+                >
                   <div className='router-inline-status-card'>
                     {hasActivePackage
                       ? renderPackageStatusLabel(activePackageSubscription?.status, t)
                       : '-'}
                   </div>
-                </Form.Field>
-              </Form.Group>
-              <Form.Group widths='equal'>
+                </AppField>
+              </AppFormRow>
+              <AppFormRow>
                 {renderReadonlyAmountField({
                   label: t('user.detail.package_daily_limit'),
                   value:
@@ -1338,8 +1356,8 @@ const UserDetail = () => {
                         )
                       : '-'
                 })}
-              </Form.Group>
-              <Form.Group widths='equal'>
+              </AppFormRow>
+              <AppFormRow>
                 {renderReadonlyAmountField({
                   label: t('user.detail.package_daily_used'),
                   value:
@@ -1374,8 +1392,8 @@ const UserDetail = () => {
                         : '-'
                       : '-'
                 })}
-              </Form.Group>
-              <Form.Group widths='equal'>
+              </AppFormRow>
+              <AppFormRow>
                 {renderReadonlyMetaField({
                   label: t('user.detail.package_source'),
                   value:
@@ -1405,17 +1423,15 @@ const UserDetail = () => {
                         ? formatDateTime(activePackageSubscription?.expires_at)
                         : t('common.unlimited')
                       : '-'
-                })}
-              </Form.Group>
-              </section>
+                  })}
+                </AppFormRow>
+              </AppDetailSection>
 
-              <section className='router-entity-detail-section'>
-                <div className='router-entity-detail-section-header'>
-                  <Header as='h3' className='router-entity-detail-section-title'>
-                    {t('user.detail.balance_mode_title')}
-                  </Header>
-                  <div className='router-toolbar-start'>
-                    <Button
+              <AppDetailSection
+                title={t('user.detail.balance_mode_title')}
+                headerEnd={
+                  <>
+                    <AppButton
                       type='button'
                       className='router-inline-button'
                       loading={loading}
@@ -1423,26 +1439,27 @@ const UserDetail = () => {
                       onClick={refreshBalanceSection}
                     >
                       {t('user.buttons.refresh')}
-                    </Button>
-                    <Button
+                    </AppButton>
+                    <AppButton
                       type='button'
                       className='router-page-button'
                       disabled={loading || actionLoading !== '' || editSection !== ''}
                       onClick={openAssignTopupModal}
                     >
                       {t('user.detail.buttons.gift_topup')}
-                    </Button>
-                    <Button
+                    </AppButton>
+                    <AppButton
                       type='button'
                       className='router-page-button'
                       disabled={loading || actionLoading !== '' || editSection !== ''}
                       onClick={openTopupManagement}
                     >
                       {t('user.detail.buttons.balance_manage')}
-                    </Button>
-                  </div>
-                </div>
-                <Form.Group widths='equal'>
+                    </AppButton>
+                  </>
+                }
+              >
+                <AppFormRow>
                   {renderBalanceAmountField({
                     label: t('user.detail.remaining_amount'),
                     name: 'amount',
@@ -1453,29 +1470,27 @@ const UserDetail = () => {
                     name: 'yyc_used',
                     value: usedDisplayValue,
                   })}
-                  <Form.Field className='router-section-input'>
-                    <label>{t('user.table.request_count')}</label>
+                  <AppField
+                    className='router-section-input'
+                    label={t('user.table.request_count')}
+                    readOnly
+                  >
                     <div className='router-inline-stat-card'>
                       <div className='router-inline-meta-value'>
                         {formatCountValue(inputs.request_count)}
                       </div>
                     </div>
-                  </Form.Field>
-                </Form.Group>
+                  </AppField>
+                </AppFormRow>
 
-                <div
-                  className='router-toolbar router-block-gap-sm'
-                  style={{ marginTop: '0.5rem', marginBottom: '0.75rem' }}
-                >
-                  <div className='router-toolbar-start'>
-                    <Header as='h4' className='router-entity-detail-section-title' style={{ margin: 0 }}>
-                      {t('user.detail.balance_lots.title')}
-                    </Header>
-                  </div>
-                  <div className='router-toolbar-end'>
-                    <Dropdown
+                <AppFilterHeader
+                  className='router-block-gap-sm'
+                  title={t('user.detail.balance_lots.title')}
+                  titleClassName='router-entity-detail-section-title'
+                  end={
+                    <>
+                    <AppSelect
                       className='router-mini-dropdown'
-                      selection
                       options={balanceLotSourceOptions}
                       value={balanceLotFilters.source_type}
                       disabled={loading || actionLoading !== '' || editSection !== '' || balanceLotsLoading}
@@ -1486,9 +1501,8 @@ const UserDetail = () => {
                         }))
                       }
                     />
-                    <Dropdown
+                    <AppSelect
                       className='router-mini-dropdown'
-                      selection
                       options={balanceLotStatusOptions}
                       value={balanceLotFilters.status}
                       disabled={loading || actionLoading !== '' || editSection !== '' || balanceLotsLoading}
@@ -1499,9 +1513,8 @@ const UserDetail = () => {
                         }))
                       }
                     />
-                    <Dropdown
+                    <AppSelect
                       className='router-mini-dropdown'
-                      selection
                       options={balanceLotPositiveOnlyOptions}
                       value={balanceLotFilters.positive_only ? '1' : '0'}
                       disabled={loading || actionLoading !== '' || editSection !== '' || balanceLotsLoading}
@@ -1512,7 +1525,7 @@ const UserDetail = () => {
                         }))
                       }
                     />
-                    <Button
+                    <AppButton
                       type='button'
                       className='router-inline-button'
                       loading={balanceLotsLoading}
@@ -1520,140 +1533,184 @@ const UserDetail = () => {
                       onClick={() => loadBalanceLots()}
                     >
                       {t('user.buttons.refresh')}
-                    </Button>
-                  </div>
-                </div>
+                    </AppButton>
+                    </>
+                  }
+                />
 
                 {balanceLots.length === 0 ? (
                   <div className='router-empty'>{t('user.detail.balance_lots.empty')}</div>
                 ) : (
                   <div className='router-table-scroll-x'>
-                    <Table celled className='router-table router-list-table'>
-                      <Table.Header>
-                        <Table.Row>
-                          <Table.HeaderCell>{t('user.detail.balance_lots.columns.source')}</Table.HeaderCell>
-                          <Table.HeaderCell>{t('user.detail.balance_lots.columns.source_id')}</Table.HeaderCell>
-                          <Table.HeaderCell>{t('user.detail.balance_lots.columns.remaining')}</Table.HeaderCell>
-                          <Table.HeaderCell>{t('user.detail.balance_lots.columns.total')}</Table.HeaderCell>
-                          <Table.HeaderCell>{t('user.detail.balance_lots.columns.status')}</Table.HeaderCell>
-                          <Table.HeaderCell>{t('user.detail.balance_lots.columns.granted_at')}</Table.HeaderCell>
-                          <Table.HeaderCell>{t('user.detail.balance_lots.columns.expires_at')}</Table.HeaderCell>
-                        </Table.Row>
-                      </Table.Header>
-                      <Table.Body>
-                        {balanceLots.map((lot) => (
-                          <Table.Row key={lot.id || `${lot.source_type}-${lot.source_id}`}>
-                            <Table.Cell>{formatBalanceLotSource(lot.source_type, t)}</Table.Cell>
-                            <Table.Cell>{readOnlyValue(lot.source_id)}</Table.Cell>
-                            <Table.Cell>{formatAmountBySelectedUnit(lot.remaining_yyc || 0)}</Table.Cell>
-                            <Table.Cell>{formatAmountBySelectedUnit(lot.total_yyc || 0)}</Table.Cell>
-                            <Table.Cell>{renderBalanceLotStatusLabel(lot.status, t)}</Table.Cell>
-                            <Table.Cell>{formatDateTime(lot.granted_at)}</Table.Cell>
-                            <Table.Cell>
-                              {Number(lot.expires_at || 0) > 0
-                                ? formatDateTime(lot.expires_at)
-                                : t('common.never')}
-                            </Table.Cell>
-                          </Table.Row>
-                        ))}
-                      </Table.Body>
-                    </Table>
+                    <AppTable
+                      className='router-table router-list-table'
+                      pagination={false}
+                      rowKey={(lot) => lot.id || `${lot.source_type}-${lot.source_id}`}
+                      dataSource={balanceLots}
+                      columns={[
+                        {
+                          title: t('user.detail.balance_lots.columns.source'),
+                          key: 'source',
+                          render: (_, lot) => formatBalanceLotSource(lot.source_type, t),
+                        },
+                        {
+                          title: t('user.detail.balance_lots.columns.source_id'),
+                          dataIndex: 'source_id',
+                          key: 'source_id',
+                          render: (value) => readOnlyValue(value),
+                        },
+                        {
+                          title: t('user.detail.balance_lots.columns.remaining'),
+                          key: 'remaining_yyc',
+                          render: (_, lot) =>
+                            formatAmountBySelectedUnit(lot.remaining_yyc || 0),
+                        },
+                        {
+                          title: t('user.detail.balance_lots.columns.total'),
+                          key: 'total_yyc',
+                          render: (_, lot) =>
+                            formatAmountBySelectedUnit(lot.total_yyc || 0),
+                        },
+                        {
+                          title: t('user.detail.balance_lots.columns.status'),
+                          key: 'status',
+                          render: (_, lot) => renderBalanceLotStatusLabel(lot.status, t),
+                        },
+                        {
+                          title: t('user.detail.balance_lots.columns.granted_at'),
+                          dataIndex: 'granted_at',
+                          key: 'granted_at',
+                          render: (value) => formatDateTime(value),
+                        },
+                        {
+                          title: t('user.detail.balance_lots.columns.expires_at'),
+                          dataIndex: 'expires_at',
+                          key: 'expires_at',
+                          render: (value) =>
+                            Number(value || 0) > 0
+                              ? formatDateTime(value)
+                              : t('common.never'),
+                        },
+                      ]}
+                    />
                   </div>
                 )}
-              </section>
-            </Form>
+              </AppDetailSection>
+            </div>
+        </div>
+      </AppSection>
+
+      <AppModal
+        open={assignPackageOpen}
+        onClose={closeAssignPackageModal}
+        size='small'
+        title={t('user.detail.buttons.gift_package')}
+        footer={
+          <AppFormActions>
+            <AppButton
+              type='button'
+              onClick={closeAssignPackageModal}
+              disabled={actionLoading === 'assign-package'}
+            >
+              {t('common.cancel')}
+            </AppButton>
+            <AppButton
+              type='button'
+              color='blue'
+              loading={actionLoading === 'assign-package'}
+              onClick={submitAssignPackage}
+            >
+              {t('common.confirm')}
+            </AppButton>
+          </AppFormActions>
+        }
+      >
+          <div className='router-page-stack'>
+            <AppFormRow>
+              <AppField label={t('user.detail.assign.package')}>
+                <AppSelect
+                  className='router-section-input'
+                  search
+                  clearable
+                  loading={packageOptionsLoading}
+                  placeholder={t('user.detail.assign.package_placeholder')}
+                  options={packageOptions}
+                  value={assignPackageForm.package_id}
+                  onChange={(e, { value }) =>
+                    setAssignPackageForm((prev) => ({
+                      ...prev,
+                      package_id: (value || '').toString(),
+                    }))
+                  }
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField label={t('package_manage.assign.start_at')}>
+                <AppInput
+                  className='router-section-input'
+                  type='datetime-local'
+                  placeholder={t('package_manage.assign.start_at_placeholder')}
+                  value={assignPackageForm.start_at}
+                  onChange={(e, { value }) =>
+                    setAssignPackageForm((prev) => ({
+                      ...prev,
+                      start_at: value || '',
+                    }))
+                  }
+                />
+              </AppField>
+            </AppFormRow>
           </div>
-        </Card.Content>
-      </Card>
+      </AppModal>
 
-      <Modal open={assignPackageOpen} onClose={closeAssignPackageModal} size='small'>
-        <Modal.Header>{t('user.detail.buttons.gift_package')}</Modal.Header>
-        <Modal.Content>
-          <Form>
-            <Form.Select
-              className='router-section-input'
-              search
-              selection
-              clearable
-              loading={packageOptionsLoading}
-              label={t('user.detail.assign.package')}
-              placeholder={t('user.detail.assign.package_placeholder')}
-              options={packageOptions}
-              value={assignPackageForm.package_id}
-              onChange={(e, { value }) =>
-                setAssignPackageForm((prev) => ({
-                  ...prev,
-                  package_id: (value || '').toString(),
-                }))
-              }
-            />
-            <Form.Input
-              className='router-section-input'
-              type='datetime-local'
-              label={t('package_manage.assign.start_at')}
-              placeholder={t('package_manage.assign.start_at_placeholder')}
-              value={assignPackageForm.start_at}
-              onChange={(e, { value }) =>
-                setAssignPackageForm((prev) => ({
-                  ...prev,
-                  start_at: value || '',
-                }))
-              }
-            />
-          </Form>
-        </Modal.Content>
-        <Modal.Actions>
-          <Button type='button' onClick={closeAssignPackageModal} disabled={actionLoading === 'assign-package'}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            type='button'
-            color='blue'
-            loading={actionLoading === 'assign-package'}
-            onClick={submitAssignPackage}
-          >
-            {t('common.confirm')}
-          </Button>
-        </Modal.Actions>
-      </Modal>
-
-      <Modal open={assignTopupOpen} onClose={closeAssignTopupModal} size='small'>
-        <Modal.Header>{t('user.detail.buttons.gift_topup')}</Modal.Header>
-        <Modal.Content>
-          <Form>
-            <Form.Select
-              className='router-section-input'
-              search
-              selection
-              clearable
-              loading={topupPlanOptionsLoading}
-              label={t('user.detail.assign.topup_plan')}
-              placeholder={t('user.detail.assign.topup_plan_placeholder')}
-              options={topupPlanOptions}
-              value={assignTopupForm.plan_id}
-              onChange={(e, { value }) =>
-                setAssignTopupForm((prev) => ({
-                  ...prev,
-                  plan_id: (value || '').toString(),
-                }))
-              }
-            />
-          </Form>
-        </Modal.Content>
-        <Modal.Actions>
-          <Button type='button' onClick={closeAssignTopupModal} disabled={actionLoading === 'assign-topup'}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            type='button'
-            color='blue'
-            loading={actionLoading === 'assign-topup'}
-            onClick={submitAssignTopup}
-          >
-            {t('common.confirm')}
-          </Button>
-        </Modal.Actions>
-      </Modal>
+      <AppModal
+        open={assignTopupOpen}
+        onClose={closeAssignTopupModal}
+        size='small'
+        title={t('user.detail.buttons.gift_topup')}
+        footer={
+          <AppFormActions>
+            <AppButton
+              type='button'
+              onClick={closeAssignTopupModal}
+              disabled={actionLoading === 'assign-topup'}
+            >
+              {t('common.cancel')}
+            </AppButton>
+            <AppButton
+              type='button'
+              color='blue'
+              loading={actionLoading === 'assign-topup'}
+              onClick={submitAssignTopup}
+            >
+              {t('common.confirm')}
+            </AppButton>
+          </AppFormActions>
+        }
+      >
+          <div className='router-page-stack'>
+            <AppFormRow>
+              <AppField label={t('user.detail.assign.topup_plan')}>
+                <AppSelect
+                  className='router-section-input'
+                  search
+                  clearable
+                  loading={topupPlanOptionsLoading}
+                  placeholder={t('user.detail.assign.topup_plan_placeholder')}
+                  options={topupPlanOptions}
+                  value={assignTopupForm.plan_id}
+                  onChange={(e, { value }) =>
+                    setAssignTopupForm((prev) => ({
+                      ...prev,
+                      plan_id: (value || '').toString(),
+                    }))
+                  }
+                />
+              </AppField>
+            </AppFormRow>
+          </div>
+      </AppModal>
     </div>
   );
 };

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { Button, Card, Dropdown, Input } from 'semantic-ui-react';
 import {
   Bar,
   BarChart,
@@ -20,6 +19,16 @@ import {
   convertYYCToDisplayAmount,
   formatCompactDisplayAmount,
 } from '../../helpers/billing';
+import {
+  AppButton,
+  AppFilterHeader,
+  AppInput,
+  AppSegmented,
+  AppSection,
+  AppSelect,
+  AppTable,
+  AppToolbar,
+} from '../../router-ui';
 import '../Dashboard/Dashboard.css';
 import './AdminDashboard.css';
 
@@ -215,6 +224,24 @@ const AdminDashboard = () => {
     [t],
   );
 
+  const usageRankPeriodOptions = useMemo(
+    () =>
+      USAGE_RANK_PERIOD_OPTIONS.map((value) => ({
+        value,
+        label: t(`dashboard.spending.period.${value}`),
+      })),
+    [t],
+  );
+
+  const trendMetricOptions = useMemo(
+    () =>
+      TREND_METRIC_OPTIONS.map((metric) => ({
+        value: metric,
+        label: t(`dashboard.admin.trend.metrics.${metric}`),
+      })),
+    [t],
+  );
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -359,36 +386,118 @@ const AdminDashboard = () => {
     return formatCount(value);
   };
 
+  const usageRankColumns = useMemo(
+    () => [
+      {
+        title: t('dashboard.admin.usage_rank.columns.rank'),
+        key: 'rank',
+        width: 72,
+        render: (_, __, index) => (
+          <span className='admin-dashboard-rank-index'>{index + 1}</span>
+        ),
+      },
+      {
+        title: t('dashboard.admin.usage_rank.columns.user'),
+        dataIndex: 'username',
+        key: 'user',
+        width: 180,
+        ellipsis: true,
+        render: (_, record) => (
+          <span
+            className='admin-dashboard-rank-user'
+            title={record.username || record.user_id || '-'}
+          >
+            {record.username || record.user_id || '-'}
+          </span>
+        ),
+      },
+      {
+        title: t('dashboard.admin.usage_rank.columns.requests'),
+        dataIndex: 'request_count',
+        key: 'request_count',
+        width: 120,
+        render: (value) => formatCount(value),
+      },
+      {
+        title: t('dashboard.admin.usage_rank.columns.tokens'),
+        dataIndex: 'total_tokens',
+        key: 'total_tokens',
+        width: 140,
+        render: (value) => formatCount(value),
+      },
+      {
+        title: t('dashboard.admin.usage_rank.columns.spend'),
+        dataIndex: 'spend_yyc',
+        key: 'spend_yyc',
+        width: 120,
+        render: (value) => formatUsd(value),
+      },
+      {
+        title: t('dashboard.admin.usage_rank.columns.share'),
+        dataIndex: 'share_rate',
+        key: 'share_rate',
+        width: 220,
+        render: (value) => (
+          <span className='admin-dashboard-rank-share-cell'>
+            <span className='admin-dashboard-rank-share-text'>
+              {formatPercent(value)}
+            </span>
+            <span className='admin-dashboard-rank-share-track'>
+              <span
+                className='admin-dashboard-rank-share-bar'
+                style={{
+                  '--admin-dashboard-share-width': `${Math.max(
+                    4,
+                    toPercent(value),
+                  )}%`,
+                }}
+              />
+            </span>
+          </span>
+        ),
+      },
+      {
+        title: t('dashboard.admin.usage_rank.columns.last_used_at'),
+        dataIndex: 'last_used_at',
+        key: 'last_used_at',
+        width: 180,
+        render: (value) => formatUpdatedAt(value),
+      },
+    ],
+    [formatUsd, t],
+  );
+
   const renderToolbar = () => (
-    <div className='admin-dashboard-toolbar'>
-      <div className='admin-dashboard-period'>
-        <span className='admin-dashboard-period-label'>
-          {t('dashboard.admin.period.label')}
-        </span>
-        <Dropdown
-          className='router-section-dropdown'
-          selection
-          options={periodOptions}
-          value={period}
-          onChange={(e, { value }) => setPeriod(value)}
-        />
-      </div>
-      <div className='admin-dashboard-toolbar-right'>
-        <span className='admin-dashboard-updated'>
-          {t('dashboard.admin.updated_at', {
-            time: formatUpdatedAt(dashboard.generated_at),
-          })}
-        </span>
-        <Button
+    <AppFilterHeader
+      className='admin-dashboard-toolbar'
+      meta={t('dashboard.admin.updated_at', {
+        time: formatUpdatedAt(dashboard.generated_at),
+      })}
+      picker={
+        <div className='admin-dashboard-period'>
+          <span className='admin-dashboard-period-label'>
+            {t('dashboard.admin.period.label')}
+          </span>
+          <AppSelect
+            className='router-section-dropdown'
+            options={periodOptions}
+            value={period}
+            onChange={(e, { value }) => setPeriod(value)}
+          />
+        </div>
+      }
+      actions={
+        <AppButton
           className='router-inline-button'
           type='button'
           loading={loading}
           onClick={loadData}
         >
           {t('dashboard.admin.buttons.refresh')}
-        </Button>
-      </div>
-    </div>
+        </AppButton>
+      }
+      endClassName='admin-dashboard-toolbar-end'
+    />
   );
 
   const applyUsageKeyword = useCallback(() => {
@@ -401,11 +510,7 @@ const AdminDashboard = () => {
   }, []);
 
   const renderOverviewSection = () => (
-    <Card fluid className='chart-card'>
-      <Card.Content>
-        <Card.Header className='router-card-header router-section-title'>
-          {activeSectionTitle}
-        </Card.Header>
+    <AppSection title={activeSectionTitle}>
         {renderToolbar()}
         <div className='admin-dashboard-kpi-grid'>
           <div className='admin-dashboard-kpi-item'>
@@ -500,53 +605,51 @@ const AdminDashboard = () => {
         <div className='admin-dashboard-usage-rank'>
           <div className='admin-dashboard-subsection-header'>
             <div className='admin-dashboard-subsection-header-main'>
-              <div className='admin-dashboard-subsection-title'>
+              <div className='admin-dashboard-subsection-title admin-dashboard-subsection-title-strong'>
                 {t('dashboard.admin.usage_rank.title')}
               </div>
               <div className='admin-dashboard-subsection-description'>
                 {t('dashboard.admin.usage_rank.description')}
               </div>
             </div>
-            <div className='admin-dashboard-usage-rank-toolbar'>
-              <Button.Group basic size='small'>
-                {USAGE_RANK_PERIOD_OPTIONS.map((value) => (
-                  <Button
-                    key={value}
-                    active={period === value}
-                    className='router-inline-button'
-                    onClick={() => setPeriod(value)}
-                  >
-                    {t(`dashboard.spending.period.${value}`)}
-                  </Button>
-                ))}
-              </Button.Group>
-              <Input
-                className='admin-dashboard-usage-rank-search'
-                value={usageKeywordInput}
-                placeholder={t('dashboard.admin.usage_rank.search.placeholder')}
-                onChange={(e) => setUsageKeywordInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    applyUsageKeyword();
-                  }
-                }}
-                action={{
-                  color: 'blue',
-                  icon: 'search',
-                  content: t('dashboard.admin.usage_rank.search.submit'),
-                  onClick: applyUsageKeyword,
-                }}
-              />
-              {usageKeyword ? (
-                <Button
-                  type='button'
-                  className='router-inline-button'
-                  onClick={clearUsageKeyword}
-                >
-                  {t('dashboard.admin.usage_rank.search.reset')}
-                </Button>
-              ) : null}
-            </div>
+            <AppToolbar
+              className='admin-dashboard-usage-rank-toolbar'
+              end={
+                <>
+                  <AppSegmented
+                    className='admin-dashboard-segmented'
+                    options={usageRankPeriodOptions}
+                    value={period}
+                    onChange={(e, { value }) => setPeriod(value)}
+                  />
+                  <div className='router-list-toolbar-query router-list-toolbar-query-compact'>
+                    <AppInput
+                      className='admin-dashboard-usage-rank-search'
+                      value={usageKeywordInput}
+                      placeholder={t('dashboard.admin.usage_rank.search.placeholder')}
+                      onChange={(e, { value }) => setUsageKeywordInput(value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          applyUsageKeyword();
+                        }
+                      }}
+                    />
+                    <AppButton color='blue' type='button' onClick={applyUsageKeyword}>
+                      {t('dashboard.admin.usage_rank.search.submit')}
+                    </AppButton>
+                    {usageKeyword ? (
+                      <AppButton
+                        type='button'
+                        className='router-inline-button'
+                        onClick={clearUsageKeyword}
+                      >
+                        {t('dashboard.admin.usage_rank.search.reset')}
+                      </AppButton>
+                    ) : null}
+                  </div>
+                </>
+              }
+            />
           </div>
           {dashboard.usage_rank.length === 0 ? (
             <div className='admin-dashboard-empty'>
@@ -631,73 +734,37 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
-              <div className='admin-dashboard-rank-table'>
-                <div className='admin-dashboard-rank-head'>
-                  <span>{t('dashboard.admin.usage_rank.columns.rank')}</span>
-                  <span>{t('dashboard.admin.usage_rank.columns.user')}</span>
-                  <span>{t('dashboard.admin.usage_rank.columns.requests')}</span>
-                  <span>{t('dashboard.admin.usage_rank.columns.tokens')}</span>
-                  <span>{t('dashboard.admin.usage_rank.columns.spend')}</span>
-                  <span>{t('dashboard.admin.usage_rank.columns.share')}</span>
-                  <span>{t('dashboard.admin.usage_rank.columns.last_used_at')}</span>
-                </div>
-                <div className='admin-dashboard-rank-body'>
-                  {dashboard.usage_rank.map((item, index) => (
-                    <div className='admin-dashboard-rank-row' key={`${item.user_id || item.username}-${index}`}>
-                      <span className='admin-dashboard-rank-index'>{index + 1}</span>
-                      <span
-                        className='admin-dashboard-rank-user'
-                        title={item.username || item.user_id || '-'}
-                      >
-                        {item.username || item.user_id || '-'}
-                      </span>
-                      <span>{formatCount(item.request_count)}</span>
-                      <span>{formatCount(item.total_tokens)}</span>
-                      <span>{formatUsd(item.spend_yyc)}</span>
-                      <span className='admin-dashboard-rank-share-cell'>
-                        <span className='admin-dashboard-rank-share-text'>
-                          {formatPercent(item.share_rate)}
-                        </span>
-                        <span className='admin-dashboard-rank-share-track'>
-                          <span
-                            className='admin-dashboard-rank-share-bar'
-                            style={{ width: `${Math.max(4, toPercent(item.share_rate))}%` }}
-                          />
-                        </span>
-                      </span>
-                      <span>{formatUpdatedAt(item.last_used_at)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <AppTable
+                className='admin-dashboard-rank-table'
+                columns={usageRankColumns}
+                dataSource={dashboard.usage_rank}
+                pagination={false}
+                rowKey={(record) =>
+                  record.user_id ||
+                  `${record.username || 'unknown'}-${record.last_used_at || 0}`
+                }
+                scroll={{ x: 980 }}
+              />
             </>
           )}
         </div>
-      </Card.Content>
-    </Card>
+    </AppSection>
   );
 
   const renderTrendSection = () => (
-    <Card fluid className='chart-card admin-dashboard-section'>
-      <Card.Content>
-        <Card.Header className='router-card-header router-section-title'>
-          {activeSectionTitle}
-        </Card.Header>
+    <AppSection className='admin-dashboard-section' title={activeSectionTitle}>
         {renderToolbar()}
-        <div className='admin-dashboard-trend-toolbar'>
-          <Button.Group>
-            {TREND_METRIC_OPTIONS.map((metric) => (
-              <Button
-                key={metric}
-                className='router-inline-button'
-                active={trendMetric === metric}
-                onClick={() => setTrendMetric(metric)}
-              >
-                {t(`dashboard.admin.trend.metrics.${metric}`)}
-              </Button>
-            ))}
-          </Button.Group>
-        </div>
+        <AppToolbar
+          className='admin-dashboard-trend-toolbar'
+          start={
+            <AppSegmented
+              className='admin-dashboard-segmented'
+              options={trendMetricOptions}
+              value={trendMetric}
+              onChange={(e, { value }) => setTrendMetric(value)}
+            />
+          }
+        />
         {dashboard.trend.length === 0 ? (
           <div className='admin-dashboard-empty'>
             {t('dashboard.admin.empty.trend')}
@@ -750,16 +817,11 @@ const AdminDashboard = () => {
             </ResponsiveContainer>
           </div>
         )}
-      </Card.Content>
-    </Card>
+    </AppSection>
   );
 
   const renderHealthSection = () => (
-    <Card fluid className='chart-card admin-dashboard-section'>
-      <Card.Content>
-        <Card.Header className='router-card-header router-section-title'>
-          {activeSectionTitle}
-        </Card.Header>
+    <AppSection className='admin-dashboard-section' title={activeSectionTitle}>
         {renderToolbar()}
         {channelHealthData.length === 0 ? (
           <div className='admin-dashboard-empty'>
@@ -970,8 +1032,7 @@ const AdminDashboard = () => {
             </div>
           </>
         )}
-      </Card.Content>
-    </Card>
+    </AppSection>
   );
 
   return (

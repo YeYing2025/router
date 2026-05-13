@@ -1,13 +1,11 @@
 import React from 'react';
-import { Segment, Dimmer, Loader } from 'semantic-ui-react';
+import { AppSpin } from '../router-ui';
 
 const Loading = ({ prompt: name = 'page' }) => {
   return (
-    <Segment className='router-loading-segment'>
-      <Dimmer active inverted>
-        <Loader indeterminate>加载{name}中...</Loader>
-      </Dimmer>
-    </Segment>
+    <div className='router-loading-shell'>
+      <AppSpin size='large' description={`加载${name}中...`} />
+    </div>
   );
 };
 

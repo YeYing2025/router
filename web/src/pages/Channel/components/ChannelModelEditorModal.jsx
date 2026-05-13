@@ -1,5 +1,16 @@
 import React from 'react';
-import { Button, Checkbox, Dropdown, Form, Modal, Table } from 'semantic-ui-react';
+import {
+  AppButton,
+  AppField,
+  AppFormActions,
+  AppFormRow,
+  AppInput,
+  AppInputNumber,
+  AppModal,
+  AppSelect,
+  AppSwitch,
+  AppTable,
+} from '../../../router-ui';
 
 const priceUnitOptions = [
   { key: 'per_1k_tokens', value: 'per_1k_tokens', text: 'per_1k_tokens' },
@@ -65,44 +76,65 @@ const ChannelModelEditorModal = ({
   };
 
   return (
-    <Modal
+    <AppModal
       size='small'
       open={open}
       onClose={onClose}
       closeOnDimmerClick={!detailModelMutating}
       closeOnEscape={!detailModelMutating}
       className='router-channel-model-editor-modal'
+      title={`${t('common.edit')} · ${detailEditingModelRow?.upstream_model || '-'}`}
+      footer={
+        <AppFormActions>
+          <AppButton
+            type='button'
+            className='router-modal-button'
+            onClick={onClose}
+            disabled={detailModelMutating}
+          >
+            {t('channel.edit.buttons.cancel')}
+          </AppButton>
+          <AppButton
+            type='button'
+            className='router-modal-button'
+            color='blue'
+            loading={detailModelMutating}
+            disabled={detailModelMutating}
+            onClick={saveDetailModelsConfig}
+          >
+            {t('channel.edit.buttons.save')}
+          </AppButton>
+        </AppFormActions>
+      }
     >
-      <Modal.Header>
-        {`${t('common.edit')} · ${detailEditingModelRow?.upstream_model || '-'}`}
-      </Modal.Header>
-      <Modal.Content>
-        {detailEditingModelRow ? (
-          <Form className='router-channel-model-editor-form'>
-            <div className='router-channel-model-editor-card'>
-              <div className='router-channel-model-editor-section-title'>
-                {t('channel.edit.model_selector.editor.info_title')}
-              </div>
-              <Form.Group widths='equal'>
-                <Form.Input
+      {detailEditingModelRow ? (
+        <div className='router-channel-model-editor-form'>
+          <div className='router-channel-model-editor-card'>
+            <div className='router-channel-model-editor-section-title'>
+              {t('channel.edit.model_selector.editor.info_title')}
+            </div>
+            <AppFormRow>
+              <AppField label={t('channel.edit.model_selector.table.name')} readOnly>
+                <AppInput
                   className='router-modal-input'
-                  label={t('channel.edit.model_selector.table.name')}
                   value={detailEditingModelRow.upstream_model || '-'}
                   readOnly
                 />
-                <Form.Input
+              </AppField>
+              <AppField label={t('channel.edit.model_selector.table.type')} readOnly>
+                <AppInput
                   className='router-modal-input'
-                  label={t('channel.edit.model_selector.table.type')}
                   value={t(
                     `channel.model_types.${normalizeChannelModelType(detailEditingModelRow.type)}`,
                   )}
                   readOnly
                 />
-              </Form.Group>
-              <Form.Group widths='equal'>
-                <Form.Input
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField label={t('channel.edit.model_selector.table.alias')}>
+                <AppInput
                   className='router-modal-input'
-                  label={t('channel.edit.model_selector.table.alias')}
                   value={detailEditingModelRow.model || ''}
                   onChange={(e, { value }) =>
                     updateModelConfigField(
@@ -112,193 +144,201 @@ const ChannelModelEditorModal = ({
                     )
                   }
                 />
-              </Form.Group>
-              <Form.Field>
-                <label>{t('channel.edit.model_selector.table.providers')}</label>
-                <div className='router-channel-model-editor-provider-row'>
-                  <Dropdown
-                    selection
-                    fluid
-                    className='router-modal-dropdown'
-                    placeholder={t(
-                      'channel.edit.model_selector.editor.provider_placeholder',
-                    )}
-                    options={getProviderSelectOptionsForModel(
-                      detailEditingModelRow,
-                    )}
-                    value={resolvePreferredProviderForModel(
-                      detailEditingModelRow,
-                    )}
-                    disabled={
-                      providerCatalogLoading ||
-                      getProviderSelectOptionsForModel(detailEditingModelRow)
-                        .length === 0
-                    }
-                    onChange={(e, { value }) =>
-                      updateModelConfigField(
-                        detailEditingModelRow.upstream_model,
-                        'provider',
-                        value || '',
-                      )
-                    }
-                  />
-                  {getProviderSelectOptionsForModel(detailEditingModelRow)
-                    .length === 0 ? (
-                    <>
-                      <span className='router-text-meta'>
-                        {t('channel.edit.model_selector.editor.provider_empty')}
-                      </span>
-                      <Button
-                        type='button'
-                        className='router-inline-button'
-                        basic
-                        onClick={() => openAppendProviderModal(detailEditingModelRow)}
-                      >
-                        {t('channel.edit.model_selector.provider_add')}
-                      </Button>
-                    </>
-                  ) : null}
-                </div>
-              </Form.Field>
-            </div>
-
-            <div className='router-channel-model-editor-card'>
-              <div className='router-channel-model-editor-section-title'>
-                {t('channel.edit.model_selector.editor.status_title')}
-              </div>
-              <div className='router-channel-model-editor-toggle-row'>
-                <div className='router-channel-model-editor-toggle-copy'>
-                  <div className='router-channel-model-editor-toggle-label'>
-                    {t('channel.edit.model_selector.table.selected')}
-                  </div>
-                  <div className='router-channel-model-editor-toggle-hint'>
-                    {t('channel.edit.model_selector.editor.status_hint')}
-                  </div>
-                </div>
-                <Checkbox
-                  toggle
-                  checked={!!detailEditingModelRow.selected}
+              </AppField>
+            </AppFormRow>
+            <AppField label={t('channel.edit.model_selector.table.providers')}>
+              <div className='router-channel-model-editor-provider-row'>
+                <AppSelect
+                  fluid
+                  className='router-modal-dropdown'
+                  placeholder={t(
+                    'channel.edit.model_selector.editor.provider_placeholder',
+                  )}
+                  options={getProviderSelectOptionsForModel(
+                    detailEditingModelRow,
+                  )}
+                  value={resolvePreferredProviderForModel(
+                    detailEditingModelRow,
+                  )}
                   disabled={
-                    detailModelMutating ||
                     providerCatalogLoading ||
-                    (!canSelectChannelModel(detailEditingModelRow) &&
-                      !detailEditingModelRow.selected)
+                    getProviderSelectOptionsForModel(detailEditingModelRow)
+                      .length === 0
                   }
-                  onChange={(e, { checked }) =>
-                    toggleModelSelection(
+                  onChange={(e, { value }) =>
+                    updateModelConfigField(
                       detailEditingModelRow.upstream_model,
-                      checked,
+                      'provider',
+                      value || '',
                     )
                   }
                 />
+                {getProviderSelectOptionsForModel(detailEditingModelRow)
+                  .length === 0 ? (
+                  <>
+                    <span className='router-text-meta'>
+                      {t('channel.edit.model_selector.editor.provider_empty')}
+                    </span>
+                    <AppButton
+                      type='button'
+                      className='router-inline-button'
+                      basic
+                      onClick={() => openAppendProviderModal(detailEditingModelRow)}
+                    >
+                      {t('channel.edit.model_selector.provider_add')}
+                    </AppButton>
+                  </>
+                ) : null}
               </div>
-            </div>
+            </AppField>
+          </div>
 
-            <div className='router-channel-model-editor-card'>
-              <div className='router-channel-model-editor-section-title'>
-                {t('channel.edit.model_selector.editor.pricing_title')}
-              </div>
-              {hasComponentPricing ? (
-                <div className='router-channel-model-editor-table-wrap'>
-                  <Table
-                    celled
-                    compact
-                    className='router-detail-subtable router-channel-model-editor-pricing-table'
-                  >
-                    <colgroup>
-                      <col style={{ width: '17%' }} />
-                      <col style={{ width: '16%' }} />
-                      <col style={{ width: '13%' }} />
-                      <col style={{ width: '13%' }} />
-                      <col style={{ width: '27%' }} />
-                      <col style={{ width: '14%' }} />
-                    </colgroup>
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.HeaderCell>
-                        {t('channel.edit.model_selector.pricing_detail_table.component')}
-                      </Table.HeaderCell>
-                      <Table.HeaderCell>
-                        {t('channel.edit.model_selector.pricing_detail_table.condition')}
-                      </Table.HeaderCell>
-                      <Table.HeaderCell>
-                        {t('channel.edit.model_selector.table.input_price')}
-                      </Table.HeaderCell>
-                      <Table.HeaderCell>
-                        {t('channel.edit.model_selector.table.output_price')}
-                      </Table.HeaderCell>
-                      <Table.HeaderCell>
-                        {t('channel.edit.model_selector.table.price_unit')}
-                      </Table.HeaderCell>
-                      <Table.HeaderCell>
-                        {t('channel.edit.model_selector.pricing_detail_table.currency')}
-                      </Table.HeaderCell>
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {effectivePriceComponents.map((component, index) => (
-                      <Table.Row
-                        key={`${component.component || 'component'}-${component.condition || 'default'}-${index}`}
-                      >
-                        <Table.Cell>{component.component || '-'}</Table.Cell>
-                        <Table.Cell>{component.condition || '-'}</Table.Cell>
-                        <Table.Cell>
-                          <Form.Input
-                            className='router-modal-input'
-                            type='number'
-                            min='0'
-                            step='0.000001'
-                            value={component.input_price ?? 0}
-                            onChange={(e, { value }) =>
-                              updatePriceComponentField(index, 'input_price', value)
-                            }
-                          />
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Form.Input
-                            className='router-modal-input'
-                            type='number'
-                            min='0'
-                            step='0.000001'
-                            value={component.output_price ?? 0}
-                            onChange={(e, { value }) =>
-                              updatePriceComponentField(index, 'output_price', value)
-                            }
-                          />
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Form.Select
-                            className='router-modal-dropdown'
-                            options={priceUnitOptions}
-                            value={component.price_unit || 'per_1k_tokens'}
-                            onChange={(e, { value }) =>
-                              updatePriceComponentField(
-                                index,
-                                'price_unit',
-                                value || 'per_1k_tokens',
-                              )
-                            }
-                          />
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Form.Input
-                            className='router-modal-input'
-                            value={component.currency || 'USD'}
-                            onChange={(e, { value }) =>
-                              updatePriceComponentField(index, 'currency', value || 'USD')
-                            }
-                          />
-                        </Table.Cell>
-                      </Table.Row>
-                    ))}
-                  </Table.Body>
-                  </Table>
+          <div className='router-channel-model-editor-card'>
+            <div className='router-channel-model-editor-section-title'>
+              {t('channel.edit.model_selector.editor.status_title')}
+            </div>
+            <div className='router-channel-model-editor-toggle-row'>
+              <div className='router-channel-model-editor-toggle-copy'>
+                <div className='router-channel-model-editor-toggle-label'>
+                  {t('channel.edit.model_selector.table.selected')}
                 </div>
-              ) : (
-                <Form.Group widths='equal'>
-                  <Form.Select
+                <div className='router-channel-model-editor-toggle-hint'>
+                  {t('channel.edit.model_selector.editor.status_hint')}
+                </div>
+              </div>
+              <AppSwitch
+                checked={!!detailEditingModelRow.selected}
+                disabled={
+                  detailModelMutating ||
+                  providerCatalogLoading ||
+                  (!canSelectChannelModel(detailEditingModelRow) &&
+                    !detailEditingModelRow.selected)
+                }
+                onChange={(_, { checked }) =>
+                  toggleModelSelection(
+                    detailEditingModelRow.upstream_model,
+                    checked === true,
+                  )
+                }
+              />
+            </div>
+          </div>
+
+          <div className='router-channel-model-editor-card'>
+            <div className='router-channel-model-editor-section-title'>
+              {t('channel.edit.model_selector.editor.pricing_title')}
+            </div>
+            {hasComponentPricing ? (
+              <div className='router-channel-model-editor-table-wrap'>
+                <AppTable
+                  className='router-detail-table router-channel-model-editor-pricing-table'
+                  pagination={false}
+                  scroll={{ x: 820 }}
+                  rowKey={(component) =>
+                    [
+                      component?.component || 'component',
+                      component?.condition || 'default',
+                      component?.price_unit || 'unit',
+                      component?.source || 'source',
+                    ].join('-')
+                  }
+                  dataSource={effectivePriceComponents}
+                  columns={[
+                    {
+                      title: t('channel.edit.model_selector.pricing_detail_table.component'),
+                      dataIndex: 'component',
+                      key: 'component',
+                      width: '17%',
+                      render: (value) => value || '-',
+                    },
+                    {
+                      title: t('channel.edit.model_selector.pricing_detail_table.condition'),
+                      dataIndex: 'condition',
+                      key: 'condition',
+                      width: '16%',
+                      render: (value) => value || '-',
+                    },
+                    {
+                      title: t('channel.edit.model_selector.table.input_price'),
+                      dataIndex: 'input_price',
+                      key: 'input_price',
+                      width: '13%',
+                      render: (value, _record, index) => (
+                        <AppInputNumber
+                          className='router-modal-input'
+                          min={0}
+                          step={0.000001}
+                          precision={6}
+                          fluid
+                          value={value ?? 0}
+                          onChange={(e, { value: nextValue }) =>
+                            updatePriceComponentField(index, 'input_price', nextValue)
+                          }
+                        />
+                      ),
+                    },
+                    {
+                      title: t('channel.edit.model_selector.table.output_price'),
+                      dataIndex: 'output_price',
+                      key: 'output_price',
+                      width: '13%',
+                      render: (value, _record, index) => (
+                        <AppInputNumber
+                          className='router-modal-input'
+                          min={0}
+                          step={0.000001}
+                          precision={6}
+                          fluid
+                          value={value ?? 0}
+                          onChange={(e, { value: nextValue }) =>
+                            updatePriceComponentField(index, 'output_price', nextValue)
+                          }
+                        />
+                      ),
+                    },
+                    {
+                      title: t('channel.edit.model_selector.table.price_unit'),
+                      dataIndex: 'price_unit',
+                      key: 'price_unit',
+                      width: '27%',
+                      render: (value, _record, index) => (
+                        <AppSelect
+                          className='router-modal-dropdown'
+                          options={priceUnitOptions}
+                          value={value || 'per_1k_tokens'}
+                          onChange={(e, { value: nextValue }) =>
+                            updatePriceComponentField(
+                              index,
+                              'price_unit',
+                              nextValue || 'per_1k_tokens',
+                            )
+                          }
+                        />
+                      ),
+                    },
+                    {
+                      title: t('channel.edit.model_selector.pricing_detail_table.currency'),
+                      dataIndex: 'currency',
+                      key: 'currency',
+                      width: '14%',
+                      render: (value, _record, index) => (
+                        <AppInput
+                          className='router-modal-input'
+                          value={value || 'USD'}
+                          onChange={(e, { value: nextValue }) =>
+                            updatePriceComponentField(index, 'currency', nextValue || 'USD')
+                          }
+                        />
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+            ) : (
+              <AppFormRow>
+                <AppField label={t('channel.edit.model_selector.table.price_unit')}>
+                  <AppSelect
                     className='router-modal-dropdown'
-                    label={t('channel.edit.model_selector.table.price_unit')}
                     options={priceUnitOptions}
                     value={detailEditingModelRow.price_unit || 'per_1k_tokens'}
                     onChange={(e, { value }) =>
@@ -309,12 +349,14 @@ const ChannelModelEditorModal = ({
                       )
                     }
                   />
-                  <Form.Input
+                </AppField>
+                <AppField label={t('channel.edit.model_selector.table.input_price')}>
+                  <AppInputNumber
                     className='router-modal-input'
-                    type='number'
-                    min='0'
-                    step='0.000001'
-                    label={t('channel.edit.model_selector.table.input_price')}
+                    min={0}
+                    step={0.000001}
+                    precision={6}
+                    fluid
                     placeholder='-'
                     value={detailEditingModelRow.input_price ?? ''}
                     onChange={(e, { value }) =>
@@ -325,12 +367,14 @@ const ChannelModelEditorModal = ({
                       )
                     }
                   />
-                  <Form.Input
+                </AppField>
+                <AppField label={t('channel.edit.model_selector.table.output_price')}>
+                  <AppInputNumber
                     className='router-modal-input'
-                    type='number'
-                    min='0'
-                    step='0.000001'
-                    label={t('channel.edit.model_selector.table.output_price')}
+                    min={0}
+                    step={0.000001}
+                    precision={6}
+                    fluid
                     placeholder='-'
                     value={detailEditingModelRow.output_price ?? ''}
                     onChange={(e, { value }) =>
@@ -341,33 +385,13 @@ const ChannelModelEditorModal = ({
                       )
                     }
                   />
-                </Form.Group>
-              )}
-            </div>
-          </Form>
-        ) : null}
-      </Modal.Content>
-      <Modal.Actions>
-        <Button
-          type='button'
-          className='router-modal-button'
-          onClick={onClose}
-          disabled={detailModelMutating}
-        >
-          {t('channel.edit.buttons.cancel')}
-        </Button>
-        <Button
-          type='button'
-          className='router-modal-button'
-          color='blue'
-          loading={detailModelMutating}
-          disabled={detailModelMutating}
-          onClick={saveDetailModelsConfig}
-        >
-          {t('channel.edit.buttons.save')}
-        </Button>
-      </Modal.Actions>
-    </Modal>
+                </AppField>
+              </AppFormRow>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </AppModal>
   );
 };
 

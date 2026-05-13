@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Breadcrumb, Card } from 'semantic-ui-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { API, showError, timestamp2string } from '../../helpers';
 import { formatAmountWithUnit } from '../../helpers/render';
+import { AppBreadcrumb, AppDetailSection, AppIcon, AppSection } from '../../router-ui';
 
 const readOnlyText = (value) => {
   const normalized = (value || '').toString().trim();
@@ -78,25 +78,31 @@ const RedemptionDetail = () => {
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <div className='router-entity-detail-page'>
+      <AppSection>
+        <div className='router-entity-detail-page'>
             <div className='router-entity-detail-breadcrumb'>
-              <Breadcrumb size='small'>
-                <Breadcrumb.Section link onClick={() => navigate(listPath)}>
-                  {t('flow.redemption.title')}
-                </Breadcrumb.Section>
-                <Breadcrumb.Divider icon='right chevron' />
-                <Breadcrumb.Section active>
-                  {readOnlyText(record?.id || id)}
-                </Breadcrumb.Section>
-              </Breadcrumb>
+              <AppBreadcrumb
+                items={[
+                  {
+                    key: 'flow-redemption-list',
+                    label: t('flow.redemption.title'),
+                    onClick: () => navigate(listPath),
+                  },
+                  {
+                    key: 'flow-redemption-current',
+                    label: readOnlyText(record?.id || id),
+                    active: true,
+                  },
+                ]}
+              />
             </div>
 
-            <div className='router-detail-section'>
-              <div className='router-detail-section-title'>
-                {t('flow.redemption.title')}
-              </div>
+            <AppDetailSection
+              className='router-detail-section'
+              title={t('flow.redemption.title')}
+              titleTag='div'
+              titleClassName='router-detail-section-title'
+            >
               {loading ? (
                 <div className='router-empty-cell'>{t('common.loading')}</div>
               ) : (
@@ -173,10 +179,9 @@ const RedemptionDetail = () => {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        </Card.Content>
-      </Card>
+            </AppDetailSection>
+        </div>
+      </AppSection>
     </div>
   );
 };

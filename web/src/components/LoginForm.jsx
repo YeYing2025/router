@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { Button, Divider, Form, Image, Message } from 'semantic-ui-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { UserContext } from '../context/User';
@@ -7,6 +6,7 @@ import { StatusContext } from '../context/Status';
 import { API, getLogo, showError } from '../helpers';
 import { toastConstants } from '../constants';
 import { loginWithWallet } from '../services/web3Auth';
+import { AppAlert, AppButton, AppDivider, AppInput } from '../router-ui';
 import './LoginForm.css';
 
 const LoginForm = () => {
@@ -156,29 +156,32 @@ const LoginForm = () => {
         <div className='router-login-hero'>
           <div className='router-login-card'>
             <div className='router-login-section'>
-              <Button
+              <AppButton
                 fluid
                 className='router-login-main-btn router-auth-button router-wallet-button'
                 onClick={onWalletLoginClicked}
                 disabled={walletLoginDisabled}
               >
                 {t('auth.login.wallet_button', '使用钱包登录')}
-              </Button>
+              </AppButton>
               {walletLoginDisabled && (
-                <Message warning className='router-auth-message'>
-                  {t(
+                <AppAlert
+                  type='warning'
+                  showIcon
+                  className='router-auth-message'
+                  title={t(
                     'auth.login.wallet_disabled',
                     '钱包登录未开启，请联系管理员',
                   )}
-                </Message>
+                />
               )}
             </div>
 
-            <Divider horizontal>或</Divider>
+            <AppDivider horizontal>或</AppDivider>
 
             <div className='router-login-section'>
               {walletLoginEnabled && passwordLoginEnabled && (
-                <Button
+                <AppButton
                   basic
                   fluid
                   className='router-login-main-btn router-auth-button router-password-toggle'
@@ -187,22 +190,25 @@ const LoginForm = () => {
                   }
                 >
                   {t('auth.login.password_button', '使用账密登录')}
-                </Button>
+                </AppButton>
               )}
 
               {passwordLoginDisabled && (
-                <Message warning className='router-auth-message'>
-                  {t(
+                <AppAlert
+                  type='warning'
+                  showIcon
+                  className='router-auth-message'
+                  title={t(
                     'auth.login.password_disabled',
                     '用户名密码登录未开启，请联系管理员',
                   )}
-                </Message>
+                />
               )}
 
               {showPasswordLogin && passwordLoginEnabled && (
                 <>
-                  <Form className='router-login-form'>
-                    <Form.Input
+                  <div className='router-login-form router-auth-form'>
+                    <AppInput
                       className='router-auth-input'
                       fluid
                       icon='user'
@@ -212,7 +218,7 @@ const LoginForm = () => {
                       value={username}
                       onChange={handleChange}
                     />
-                    <Form.Input
+                    <AppInput
                       className='router-auth-input'
                       fluid
                       icon='lock'
@@ -223,14 +229,14 @@ const LoginForm = () => {
                       value={password}
                       onChange={handleChange}
                     />
-                    <Button
+                    <AppButton
                       fluid
                       className='router-auth-button router-password-submit'
                       onClick={handleSubmit}
                     >
                       {t('auth.login.button')}
-                    </Button>
-                  </Form>
+                    </AppButton>
+                  </div>
 
                   <div className='router-login-links'>
                     <div>

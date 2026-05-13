@@ -1,7 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Divider, Form, Header, Message, Segment } from 'semantic-ui-react';
 import { useTranslation } from 'react-i18next';
 import { API, showError, showSuccess } from '../helpers';
+import {
+  AppAlert,
+  AppButton,
+  AppDivider,
+  AppField,
+  AppFilterHeader,
+  AppFormActions,
+  AppFormRow,
+  AppInput,
+  AppSwitch,
+  AppTextarea,
+  AppSpin,
+} from '../router-ui';
 
 const SystemSetting = ({ section = '' }) => {
   const { t } = useTranslation();
@@ -104,127 +116,189 @@ const SystemSetting = ({ section = '' }) => {
   };
 
   return (
-    <Segment loading={loading} basic>
+    <AppSpin spinning={loading}>
+      <div>
       {sectionVisible.general ? (
         <>
-          <Header as='h3' className='router-section-title'>{t('setting.system.general.title')}</Header>
-          <Form>
-            <Form.Input
-              className='router-section-input'
-              label={t('setting.system.general.system_name')}
-              name='SystemName'
-              value={inputs.SystemName}
-              onChange={handleChange}
-            />
-            <Form.Input
-              className='router-section-input'
-              label={t('setting.system.general.logo')}
-              name='Logo'
-              value={inputs.Logo}
-              onChange={handleChange}
-            />
-            <Form.TextArea
-              className='router-section-textarea'
-              label='Footer HTML'
-              name='Footer'
-              value={inputs.Footer}
-              onChange={handleChange}
-            />
-            <Button className='router-section-button' primary onClick={submitGeneral}>
-              {t('setting.system.buttons.save')}
-            </Button>
-          </Form>
-          {shouldRenderDividerAfter('general') ? <Divider /> : null}
+          <AppFilterHeader
+            title={t('setting.system.general.title')}
+            titleClassName='router-ui-section-title'
+            className='router-toolbar-compact'
+          />
+          <div>
+            <AppFormRow>
+              <AppField label={t('setting.system.general.system_name')}>
+                <AppInput
+                  className='router-section-input'
+                  name='SystemName'
+                  value={inputs.SystemName}
+                  onChange={handleChange}
+                />
+              </AppField>
+              <AppField label={t('setting.system.general.logo')}>
+                <AppInput
+                  className='router-section-input'
+                  name='Logo'
+                  value={inputs.Logo}
+                  onChange={handleChange}
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField label='Footer HTML'>
+                <AppTextarea
+                  className='router-section-textarea'
+                  name='Footer'
+                  value={inputs.Footer}
+                  onChange={handleChange}
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormActions align='start'>
+              <AppButton className='router-section-button' color='blue' onClick={submitGeneral}>
+                {t('setting.system.buttons.save')}
+              </AppButton>
+            </AppFormActions>
+          </div>
+          {shouldRenderDividerAfter('general') ? <AppDivider /> : null}
         </>
       ) : null}
 
       {sectionVisible.smtp ? (
         <>
-          <Header as='h3' className='router-section-title'>{t('setting.system.smtp.title')}</Header>
-          <Message className='router-section-message'>{t('setting.system.smtp.subtitle')}</Message>
-          <Form>
-            <Form.Group widths={3}>
-              <Form.Input
-                className='router-section-input'
-                label={t('setting.system.smtp.server')}
-                placeholder={t('setting.system.smtp.server_placeholder')}
-                name='SMTPServer'
-                onChange={handleChange}
-                value={inputs.SMTPServer}
-              />
-              <Form.Input
-                className='router-section-input'
-                label={t('setting.system.smtp.port')}
-                placeholder={t('setting.system.smtp.port_placeholder')}
-                name='SMTPPort'
-                onChange={handleChange}
-                value={inputs.SMTPPort}
-              />
-              <Form.Input
-                className='router-section-input'
-                label={t('setting.system.smtp.account')}
-                placeholder={t('setting.system.smtp.account_placeholder')}
-                name='SMTPAccount'
-                onChange={handleChange}
-                value={inputs.SMTPAccount}
-              />
-            </Form.Group>
-            <Form.Group widths={2}>
-              <Form.Input
-                className='router-section-input'
-                label={t('setting.system.smtp.from')}
-                placeholder={t('setting.system.smtp.from_placeholder')}
-                name='SMTPFrom'
-                onChange={handleChange}
-                value={inputs.SMTPFrom}
-              />
-              <Form.Input
-                className='router-section-input'
-                label={t('setting.system.smtp.token')}
-                placeholder={t('setting.system.smtp.token_placeholder')}
-                name='SMTPToken'
-                onChange={handleChange}
-                value={inputs.SMTPToken}
-              />
-            </Form.Group>
-            <Button className='router-section-button' primary onClick={submitSMTP}>
-              {t('setting.system.buttons.save')}
-            </Button>
-          </Form>
-          {shouldRenderDividerAfter('smtp') ? <Divider /> : null}
+          <AppFilterHeader
+            title={t('setting.system.smtp.title')}
+            titleClassName='router-ui-section-title'
+            className='router-toolbar-compact'
+          />
+          <AppAlert
+            className='router-section-message'
+            type='info'
+            showIcon
+            title={t('setting.system.smtp.subtitle')}
+          />
+          <div>
+            <AppFormRow>
+              <AppField label={t('setting.system.smtp.server')}>
+                <AppInput
+                  className='router-section-input'
+                  placeholder={t('setting.system.smtp.server_placeholder')}
+                  name='SMTPServer'
+                  onChange={handleChange}
+                  value={inputs.SMTPServer}
+                />
+              </AppField>
+              <AppField label={t('setting.system.smtp.port')}>
+                <AppInput
+                  className='router-section-input'
+                  placeholder={t('setting.system.smtp.port_placeholder')}
+                  name='SMTPPort'
+                  onChange={handleChange}
+                  value={inputs.SMTPPort}
+                />
+              </AppField>
+              <AppField label={t('setting.system.smtp.account')}>
+                <AppInput
+                  className='router-section-input'
+                  placeholder={t('setting.system.smtp.account_placeholder')}
+                  name='SMTPAccount'
+                  onChange={handleChange}
+                  value={inputs.SMTPAccount}
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField label={t('setting.system.smtp.from')}>
+                <AppInput
+                  className='router-section-input'
+                  placeholder={t('setting.system.smtp.from_placeholder')}
+                  name='SMTPFrom'
+                  onChange={handleChange}
+                  value={inputs.SMTPFrom}
+                />
+              </AppField>
+              <AppField label={t('setting.system.smtp.token')}>
+                <AppInput
+                  className='router-section-input'
+                  placeholder={t('setting.system.smtp.token_placeholder')}
+                  name='SMTPToken'
+                  onChange={handleChange}
+                  value={inputs.SMTPToken}
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormActions align='start'>
+              <AppButton className='router-section-button' color='blue' onClick={submitSMTP}>
+                {t('setting.system.buttons.save')}
+              </AppButton>
+            </AppFormActions>
+          </div>
+          {shouldRenderDividerAfter('smtp') ? <AppDivider /> : null}
         </>
       ) : null}
 
       {sectionVisible.login ? (
         <>
-          <Header as='h3' className='router-section-title'>{t('setting.system.login.title')}</Header>
-          <Form>
-            <Form.Checkbox
-              className='router-section-checkbox'
-              label={t('setting.system.login.password_login')}
-              name='PasswordLoginEnabled'
-              checked={inputs.PasswordLoginEnabled === 'true' || inputs.PasswordLoginEnabled === true}
-              onChange={(_, data) => handleChange(_, { ...data, value: data.checked ? 'true' : 'false' })}
-            />
-            <Form.Checkbox
-              className='router-section-checkbox'
-              label={t('setting.system.login.password_register')}
-              name='PasswordRegisterEnabled'
-              checked={inputs.PasswordRegisterEnabled === 'true' || inputs.PasswordRegisterEnabled === true}
-              onChange={(_, data) => handleChange(_, { ...data, value: data.checked ? 'true' : 'false' })}
-            />
-            <Form.Checkbox
-              className='router-section-checkbox'
-              label={t('setting.system.login.registration')}
-              name='RegisterEnabled'
-              checked={inputs.RegisterEnabled === 'true' || inputs.RegisterEnabled === true}
-              onChange={(_, data) => handleChange(_, { ...data, value: data.checked ? 'true' : 'false' })}
-            />
-            <Button className='router-section-button' onClick={submitAuth}>{t('setting.system.buttons.save')}</Button>
-          </Form>
+          <AppFilterHeader
+            title={t('setting.system.login.title')}
+            titleClassName='router-ui-section-title'
+            className='router-toolbar-compact'
+          />
+          <div className='router-page-stack'>
+            <AppFormRow>
+              <AppField label={t('setting.system.login.password_login')}>
+                <AppSwitch
+                  checked={
+                    inputs.PasswordLoginEnabled === 'true' ||
+                    inputs.PasswordLoginEnabled === true
+                  }
+                  onChange={(_, { checked }) =>
+                    handleChange(null, {
+                      name: 'PasswordLoginEnabled',
+                      value: checked ? 'true' : 'false',
+                    })
+                  }
+                />
+              </AppField>
+              <AppField label={t('setting.system.login.password_register')}>
+                <AppSwitch
+                  checked={
+                    inputs.PasswordRegisterEnabled === 'true' ||
+                    inputs.PasswordRegisterEnabled === true
+                  }
+                  onChange={(_, { checked }) =>
+                    handleChange(null, {
+                      name: 'PasswordRegisterEnabled',
+                      value: checked ? 'true' : 'false',
+                    })
+                  }
+                />
+              </AppField>
+              <AppField label={t('setting.system.login.registration')}>
+                <AppSwitch
+                  checked={
+                    inputs.RegisterEnabled === 'true' ||
+                    inputs.RegisterEnabled === true
+                  }
+                  onChange={(_, { checked }) =>
+                    handleChange(null, {
+                      name: 'RegisterEnabled',
+                      value: checked ? 'true' : 'false',
+                    })
+                  }
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormActions align='start'>
+              <AppButton className='router-section-button' onClick={submitAuth}>
+                {t('setting.system.buttons.save')}
+              </AppButton>
+            </AppFormActions>
+          </div>
         </>
       ) : null}
-    </Segment>
+      </div>
+    </AppSpin>
   );
 };
 

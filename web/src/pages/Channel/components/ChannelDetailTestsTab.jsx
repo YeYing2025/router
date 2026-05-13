@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Button,
-  Checkbox,
-  Dropdown,
-  Form,
-  Label,
-  Message,
-  Popup,
-  Table,
-} from 'semantic-ui-react';
+  AppAlert,
+  AppButton,
+  AppDetailSection,
+  AppFilterHeader,
+  AppPopover,
+  AppSelect,
+  AppSwitch,
+  AppTable,
+  AppTag,
+} from '../../../router-ui';
 
 const ChannelDetailTestsTab = ({
   t,
@@ -82,6 +83,7 @@ const ChannelDetailTestsTab = ({
       text: t(`channel.model_types.${value}`),
     }));
   }, [rowsWithMeta, t]);
+
   const audioLanguageOptions = useMemo(
     () => [
       {
@@ -276,64 +278,75 @@ const ChannelDetailTestsTab = ({
     });
   };
 
-  const displayedColumnWidths = useMemo(() => {
-    if (batchSelectionMode) {
-      return columnWidths;
-    }
-    return columnWidths.slice(1);
-  }, [batchSelectionMode, columnWidths]);
+  const displayedColumnWidths = useMemo(
+    () => (batchSelectionMode ? columnWidths : columnWidths.slice(1)),
+    [batchSelectionMode, columnWidths],
+  );
+  const tableRowSelection = batchSelectionMode
+    ? {
+        columnWidth: displayedColumnWidths[0],
+        selectedRowKeys: modelTestTargetModels,
+        getTitleCheckboxProps: () => ({
+          checked: filteredAllSelected,
+          indeterminate: filteredPartiallySelected,
+          disabled: disabledBase || filteredRows.length === 0,
+        }),
+        getCheckboxProps: () => ({
+          disabled: disabledBase,
+        }),
+        onSelect: (record, selected) => {
+          toggleModelTestTarget(record.model, selected);
+        },
+        onSelectAll: (selected) => {
+          toggleFilteredTargets(selected);
+        },
+      }
+    : undefined;
 
   return (
-    <section className='router-entity-detail-section'>
-      <div className='router-entity-detail-section-header'>
-        <div className='router-toolbar-start'>
-          <span className='router-entity-detail-section-title'>
-            {t('channel.edit.model_tester.title')}
-          </span>
-        </div>
-      </div>
-      <Form.Field>
-        <Message info className='router-section-message'>
-          {t('channel.edit.model_tester.hint')}
-        </Message>
-        <div className='router-toolbar router-block-gap-sm'>
-          <div className='router-toolbar-start router-block-gap-sm'>
-            <Dropdown
-              selection
+    <AppDetailSection title={t('channel.edit.model_tester.title')} titleTag='span'>
+      <div>
+        <AppAlert
+          type='info'
+          showIcon
+          className='router-section-message'
+          title={t('channel.edit.model_tester.hint')}
+        />
+        <AppFilterHeader
+          className='router-toolbar-compact'
+          startClassName='router-block-gap-sm'
+          endClassName='router-block-gap-sm'
+          picker={
+            <>
+            <AppSelect
               className='router-section-dropdown router-detail-filter-dropdown router-dropdown-min-170'
               options={providerOptions}
               value={providerFilter || undefined}
               disabled={disabledBase || providerOptions.length === 0}
               placeholder={t('channel.edit.model_tester.filters.provider')}
-              onChange={(e, { value }) =>
-                {
-                  const nextValue = (value || '').toString();
-                  setProviderFilter(nextValue);
-                  if (nextValue !== '') {
-                    window.localStorage.setItem(providerStorageKey, nextValue);
-                  }
+              onChange={(e, { value }) => {
+                const nextValue = (value || '').toString();
+                setProviderFilter(nextValue);
+                if (nextValue !== '') {
+                  window.localStorage.setItem(providerStorageKey, nextValue);
                 }
-              }
+              }}
             />
-            <Dropdown
-              selection
+            <AppSelect
               className='router-section-dropdown router-detail-filter-dropdown router-dropdown-min-170'
               options={typeOptions}
               value={typeFilter || undefined}
               disabled={disabledBase || typeOptions.length === 0}
               placeholder={t('channel.edit.model_tester.filters.type')}
-              onChange={(e, { value }) =>
-                {
-                  const nextValue = (value || '').toString();
-                  setTypeFilter(nextValue);
-                  if (nextValue !== '') {
-                    window.localStorage.setItem(typeStorageKey, nextValue);
-                  }
+              onChange={(e, { value }) => {
+                const nextValue = (value || '').toString();
+                setTypeFilter(nextValue);
+                if (nextValue !== '') {
+                  window.localStorage.setItem(typeStorageKey, nextValue);
                 }
-              }
+              }}
             />
-            <Dropdown
-              selection
+            <AppSelect
               clearable
               className='router-section-dropdown router-detail-filter-dropdown router-dropdown-min-170'
               options={batchEndpointOptions}
@@ -347,50 +360,38 @@ const ChannelDetailTestsTab = ({
                 updateAllModelTestEndpoints(value, filteredModelIDs);
               }}
             />
-            <Popup
-              basic
-              on='click'
+            <AppPopover
+              trigger='click'
               open={settingsOpen}
-              onClose={() => setSettingsOpen(false)}
-              position='bottom left'
-              trigger={
-                <Button
-                  type='button'
-                  className='router-page-button'
-                  basic
-                  disabled={disabledBase || filteredRows.length === 0}
-                  onClick={() => setSettingsOpen((prev) => !prev)}
-                >
-                  {t('channel.edit.model_tester.settings_button')}
-                </Button>
-              }
+              onOpenChange={setSettingsOpen}
+              placement='bottomLeft'
               content={
                 <div className='router-log-filter-editor'>
                   <div className='router-log-filter-editor-title'>
                     {t('channel.edit.model_tester.settings_title')}
                   </div>
                   {streamCapableRows.length > 0 ? (
-                    <Form.Field style={{ marginBottom: 0 }}>
-                      <Checkbox
-                        toggle
-                        label={t('channel.edit.model_tester.settings_stream')}
+                    <div className='router-checkbox-block router-inline-field'>
+                      <AppSwitch
                         checked={batchStreamValue}
                         disabled={disabledBase}
-                        onChange={(e, { checked }) =>
+                        onChange={(_, { checked }) =>
                           updateAllModelTestStreams(
-                            !!checked,
+                            checked === true,
                             streamCapableModelIDs,
                           )
                         }
                       />
-                    </Form.Field>
+                      <span>
+                        {t('channel.edit.model_tester.settings_stream')}
+                      </span>
+                    </div>
                   ) : null}
-                  <Form.Field style={{ marginBottom: 0, marginTop: 12 }}>
+                  <div className='router-block-gap-xs'>
                     <label>
                       {t('channel.edit.model_tester.settings_audio_language')}
                     </label>
-                    <Dropdown
-                      selection
+                    <AppSelect
                       className='router-section-dropdown router-dropdown-min-170'
                       options={audioLanguageOptions}
                       value={audioTestLanguage || 'zh-CN'}
@@ -398,23 +399,32 @@ const ChannelDetailTestsTab = ({
                         setAudioTestLanguage((value || 'zh-CN').toString())
                       }
                     />
-                  </Form.Field>
+                  </div>
                 </div>
               }
-            />
-          </div>
-          <div className='router-toolbar-end router-block-gap-sm'>
-            <Button
+            >
+              <AppButton
+                type='button'
+                className='router-page-button'
+                disabled={disabledBase || filteredRows.length === 0}
+              >
+                {t('channel.edit.model_tester.settings_button')}
+              </AppButton>
+            </AppPopover>
+            </>
+          }
+          actions={
+            <>
+            <AppButton
               type='button'
-              className='router-section-button'
               color='blue'
+              className='router-section-button'
               loading={modelTesting && modelTestingScope === 'batch'}
               disabled={
                 disabledBase ||
                 modelTesting ||
                 (batchSelectionMode &&
-                  (filteredSelectedCount === 0 ||
-                    selectedModelTestHasActiveTasks))
+                  (filteredSelectedCount === 0 || selectedModelTestHasActiveTasks))
               }
               onClick={() => {
                 if (!batchSelectionMode) {
@@ -432,22 +442,20 @@ const ChannelDetailTestsTab = ({
                   ? 'channel.edit.model_tester.button_run_batch'
                   : 'channel.edit.model_tester.button_enter_batch',
               )}
-            </Button>
+            </AppButton>
             {batchSelectionMode && (
-              <Button
+              <AppButton
                 type='button'
                 className='router-page-button'
-                basic
                 disabled={disabledBase || modelTesting}
                 onClick={() => setBatchSelectionMode(false)}
               >
                 {t('common.cancel')}
-              </Button>
+              </AppButton>
             )}
-            <Button
+            <AppButton
               type='button'
               className='router-page-button'
-              basic
               onClick={() =>
                 openChannelTaskView({
                   type: 'channel_model_test',
@@ -455,77 +463,72 @@ const ChannelDetailTestsTab = ({
               }
             >
               {t('channel.edit.model_tester.history_tasks')}
-            </Button>
-          </div>
-        </div>
+            </AppButton>
+            </>
+          }
+        />
         {modelTestError && (
           <div className='router-error-text router-block-gap-sm'>
             {modelTestError}
           </div>
         )}
-        <Table
-          celled
-          stackable
+        <AppTable
           className='router-detail-table router-model-test-table'
-        >
-          <colgroup>
-            {displayedColumnWidths.map((width, index) => (
-              <col
-                key={`channel-model-test-col-${index}`}
-                style={{ width }}
-              />
-            ))}
-          </colgroup>
-          <Table.Header>
-            <Table.Row>
-              {batchSelectionMode && (
-                <Table.HeaderCell collapsing textAlign='center'>
-                  <Checkbox
-                    checked={filteredAllSelected}
-                    indeterminate={filteredPartiallySelected}
-                    disabled={disabledBase || filteredRows.length === 0}
-                    onChange={(e, { checked }) =>
-                      toggleFilteredTargets(!!checked)
-                    }
-                  />
-                </Table.HeaderCell>
-              )}
-              <Table.HeaderCell>
-                {t('channel.edit.model_tester.table.model')}
-              </Table.HeaderCell>
-              <Table.HeaderCell>
-                {t('channel.edit.model_tester.table.endpoint')}
-              </Table.HeaderCell>
-              <Table.HeaderCell collapsing>
-                {t('channel.edit.model_tester.table.status')}
-              </Table.HeaderCell>
-              <Table.HeaderCell collapsing>
-                {t('channel.edit.model_tester.table.latency')}
-              </Table.HeaderCell>
-              <Table.HeaderCell collapsing>
-                {t('channel.edit.model_tester.table.tested_at')}
-              </Table.HeaderCell>
-              <Table.HeaderCell collapsing>
-                {t('channel.edit.model_tester.table.actions')}
-              </Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {filteredRows.length === 0 ? (
-              <Table.Row>
-                <Table.Cell
-                  className='router-empty-cell'
-                  colSpan={batchSelectionMode ? '8' : '7'}
-                >
-                  {t(
-                    modelTestRows.length === 0
-                      ? 'channel.edit.model_tester.empty'
-                      : 'channel.edit.model_selector.empty_filtered',
-                  )}
-                </Table.Cell>
-              </Table.Row>
-            ) : (
-              filteredRows.map((row) => {
+          pagination={false}
+          scroll={{ x: 1080 }}
+          rowSelection={tableRowSelection}
+          locale={{
+            emptyText: t(
+              modelTestRows.length === 0
+                ? 'channel.edit.model_tester.empty'
+                : 'channel.edit.model_selector.empty_filtered',
+            ),
+          }}
+          rowKey={(row) => row.model}
+          dataSource={filteredRows}
+          columns={[
+            {
+              title: t('channel.edit.model_tester.table.model'),
+              dataIndex: 'model',
+              key: 'model',
+              width: displayedColumnWidths[batchSelectionMode ? 1 : 0],
+              render: (value) => (
+                <span className='router-cell-truncate' title={value || '-'}>
+                  {value || '-'}
+                </span>
+              ),
+            },
+            {
+              title: t('channel.edit.model_tester.table.endpoint'),
+              key: 'endpoint',
+              width: displayedColumnWidths[batchSelectionMode ? 2 : 1],
+              render: (_, row) => {
+                const normalizedEndpoint = getEffectiveModelEndpoint(row);
+                if (
+                  row.type === 'text' ||
+                  row.type === 'image' ||
+                  row.type === 'audio'
+                ) {
+                  return (
+                    <AppSelect
+                      className='router-mini-dropdown router-table-dropdown-fluid'
+                      options={getEndpointOptionsForModel(row)}
+                      disabled={disabledBase}
+                      value={normalizedEndpoint}
+                      onChange={(e, { value }) =>
+                        updateModelTestEndpoint(row.model, value)
+                      }
+                    />
+                  );
+                }
+                return normalizedEndpoint || row.endpoint || '-';
+              },
+            },
+            {
+              title: t('channel.edit.model_tester.table.status'),
+              key: 'status',
+              width: displayedColumnWidths[batchSelectionMode ? 3 : 2],
+              render: (_, row) => {
                 const normalizedEndpoint = getEffectiveModelEndpoint(row);
                 const item = modelTestResultsByKey.get(
                   buildModelTestResultKey(row.model, normalizedEndpoint),
@@ -537,127 +540,125 @@ const ChannelDetailTestsTab = ({
                   ) || null;
                 const effectiveStatus =
                   activeTask?.status || item?.status || 'untested';
-                const labelColor =
+                const tagColor =
                   effectiveStatus === 'running'
                     ? 'blue'
                     : effectiveStatus === 'pending'
                       ? 'orange'
-                      : effectiveStatus === 'untested'
-                        ? undefined
-                        : effectiveStatus === 'supported'
-                          ? 'green'
-                          : effectiveStatus === 'skipped'
-                            ? 'grey'
+                      : effectiveStatus === 'supported'
+                        ? 'green'
+                        : effectiveStatus === 'skipped'
+                          ? 'grey'
+                          : effectiveStatus === 'untested'
+                            ? undefined
                             : 'red';
+                if (activeTask) {
+                  return (
+                    <AppTag color={tagColor} className='router-tag'>
+                      {t(`channel.edit.model_tester.status.${effectiveStatus}`)}
+                    </AppTag>
+                  );
+                }
                 return (
-                  <Table.Row key={row.model}>
-                    {batchSelectionMode && (
-                      <Table.Cell textAlign='center'>
-                        <Checkbox
-                          checked={modelTestTargetModels.includes(row.model)}
-                          disabled={disabledBase}
-                          onChange={(e, { checked }) =>
-                            toggleModelTestTarget(row.model, !!checked)
-                          }
-                        />
-                      </Table.Cell>
-                    )}
-                    <Table.Cell title={row.model || '-'}>
-                      <span className='router-cell-truncate'>{row.model || '-'}</span>
-                    </Table.Cell>
-                    <Table.Cell className='router-table-dropdown-cell'>
-                      {row.type === 'text' || row.type === 'image' || row.type === 'audio' ? (
-                        <Dropdown
-                          selection
-                          className='router-mini-dropdown router-table-dropdown-fluid'
-                          options={getEndpointOptionsForModel(row)}
-                          disabled={disabledBase}
-                          value={normalizedEndpoint}
-                          onChange={(e, { value }) =>
-                            updateModelTestEndpoint(row.model, value)
-                          }
-                        />
-                      ) : (
-                        normalizedEndpoint || row.endpoint || '-'
-                      )}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {activeTask ? (
-                        <Label basic color={labelColor} className='router-tag'>
-                          {t(`channel.edit.model_tester.status.${effectiveStatus}`)}
-                        </Label>
-                      ) : (
-                        <span className='router-nowrap'>
-                          {(endpointSummary?.successCount || 0)}/
-                          {(endpointSummary?.failureCount || 0)}
-                        </span>
-                      )}
-                    </Table.Cell>
-                    <Table.Cell className='router-nowrap'>
-                      {endpointSummary?.latencyCount > 0
-                        ? `${endpointSummary.minLatencyMs}/` +
-                          `${Math.round(
-                            endpointSummary.totalLatencyMs /
-                              endpointSummary.latencyCount,
-                          )}/` +
-                          `${endpointSummary.maxLatencyMs}`
-                        : '-'}
-                    </Table.Cell>
-                    <Table.Cell className='router-nowrap'>
-                      {item?.tested_at > 0
-                        ? timestamp2string(item.tested_at)
-                        : '-'}
-                    </Table.Cell>
-                    <Table.Cell collapsing>
-                      <div className='router-inline-actions'>
-                        <Button
-                          type='button'
-                          className='router-inline-button'
-                          basic
-                          loading={
-                            (modelTesting &&
-                              modelTestingScope === 'single' &&
-                              modelTestingTargetSet.has(row.model)) ||
-                            !!activeTask
-                          }
-                          disabled={
-                            disabledBase ||
-                            modelTesting ||
-                            batchSelectionMode ||
-                            activeChannelTasksByModel.has(row.model)
-                          }
-                          onClick={() =>
-                            handleRunModelTests({
-                              targetModels: [row.model],
-                              scope: 'single',
-                            })
-                          }
-                        >
-                          {t('channel.edit.model_tester.single')}
-                        </Button>
-                        <Button
-                          type='button'
-                          className='router-inline-button'
-                          basic
-                          onClick={() =>
-                            openChannelTaskView({
-                              type: 'channel_model_test',
-                              model: row.model,
-                            })
-                          }
-                        >
-                          {t('channel.edit.model_tester.history')}
-                        </Button>
-                      </div>
-                    </Table.Cell>
-                  </Table.Row>
+                  <span className='router-nowrap'>
+                    {(endpointSummary?.successCount || 0)}/
+                    {(endpointSummary?.failureCount || 0)}
+                  </span>
                 );
-              })
-            )}
-          </Table.Body>
-        </Table>
-      </Form.Field>
-    </section>
+              },
+            },
+            {
+              title: t('channel.edit.model_tester.table.latency'),
+              key: 'latency',
+              width: displayedColumnWidths[batchSelectionMode ? 4 : 3],
+              render: (_, row) => {
+                const normalizedEndpoint = getEffectiveModelEndpoint(row);
+                const endpointSummary =
+                  resultSummaryByKey.get(
+                    buildModelTestResultKey(row.model, normalizedEndpoint),
+                  ) || null;
+                return (
+                  <span className='router-nowrap'>
+                    {endpointSummary?.latencyCount > 0
+                      ? `${endpointSummary.minLatencyMs}/` +
+                        `${Math.round(
+                          endpointSummary.totalLatencyMs /
+                            endpointSummary.latencyCount,
+                        )}/` +
+                        `${endpointSummary.maxLatencyMs}`
+                      : '-'}
+                  </span>
+                );
+              },
+            },
+            {
+              title: t('channel.edit.model_tester.table.tested_at'),
+              key: 'tested_at',
+              width: displayedColumnWidths[batchSelectionMode ? 5 : 4],
+              render: (_, row) => {
+                const normalizedEndpoint = getEffectiveModelEndpoint(row);
+                const item = modelTestResultsByKey.get(
+                  buildModelTestResultKey(row.model, normalizedEndpoint),
+                );
+                return (
+                  <span className='router-nowrap'>
+                    {item?.tested_at > 0 ? timestamp2string(item.tested_at) : '-'}
+                  </span>
+                );
+              },
+            },
+            {
+              title: t('channel.edit.model_tester.table.actions'),
+              key: 'actions',
+              width: displayedColumnWidths[batchSelectionMode ? 6 : 5],
+              render: (_, row) => {
+                const activeTask = activeChannelTasksByModel.get(row.model) || null;
+                return (
+                  <div className='router-inline-actions'>
+                    <AppButton
+                      type='button'
+                      className='router-inline-button'
+                      loading={
+                        (modelTesting &&
+                          modelTestingScope === 'single' &&
+                          modelTestingTargetSet.has(row.model)) ||
+                        !!activeTask
+                      }
+                      disabled={
+                        disabledBase ||
+                        modelTesting ||
+                        batchSelectionMode ||
+                        activeChannelTasksByModel.has(row.model)
+                      }
+                      onClick={() =>
+                        handleRunModelTests({
+                          targetModels: [row.model],
+                          scope: 'single',
+                        })
+                      }
+                    >
+                      {t('channel.edit.model_tester.single')}
+                    </AppButton>
+                    <AppButton
+                      type='button'
+                      className='router-inline-button'
+                      onClick={() =>
+                        openChannelTaskView({
+                          type: 'channel_model_test',
+                          model: row.model,
+                        })
+                      }
+                    >
+                      {t('channel.edit.model_tester.history')}
+                    </AppButton>
+                  </div>
+                );
+              },
+            },
+          ]}
+        />
+      </div>
+    </AppDetailSection>
   );
 };
 

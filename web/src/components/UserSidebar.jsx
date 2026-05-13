@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Icon, Menu, Popup } from 'semantic-ui-react';
 import { useTranslation } from 'react-i18next';
 import {
   buildUserWorkspaceMenuItems,
   isUserRouteActive,
 } from '../constants/userMenu';
+import { AppIcon, AppNavMenu } from '../router-ui';
+
+const USER_SIDEBAR_GROUP_OPEN_STORAGE_KEY = 'router_user_sidebar_group_open_v2';
 
 const UserSidebar = ({ compact = false }) => {
   const { t } = useTranslation();
@@ -16,223 +18,126 @@ const UserSidebar = ({ compact = false }) => {
     () => buildUserWorkspaceMenuItems({ includeChat }),
     [includeChat],
   );
-  const groupActiveMap = useMemo(() => {
-    return menuItems.reduce((accumulator, item) => {
-      if (item.type === 'group' && Array.isArray(item.items)) {
-        accumulator[item.key] = item.items.some((child) =>
-          isUserRouteActive(location, child.to),
-        );
-      }
-      return accumulator;
-    }, {});
-  }, [location, menuItems]);
-  const [openGroups, setOpenGroups] = useState(() => {
-    return Object.entries(groupActiveMap).reduce((accumulator, [key, active]) => {
-      accumulator[key] = Boolean(active);
-      return accumulator;
-    }, {});
-  });
-  const [compactPopupGroup, setCompactPopupGroup] = useState('');
-  const previousGroupActiveRef = useRef(groupActiveMap);
 
-  useEffect(() => {
-    const previousActiveMap = previousGroupActiveRef.current;
-    setOpenGroups((previous) => {
-      const next = { ...previous };
-      let changed = false;
-      Object.entries(groupActiveMap).forEach(([key, active]) => {
-        const wasActive = Boolean(previousActiveMap?.[key]);
-        if (active && !wasActive && !next[key]) {
-          next[key] = true;
-          changed = true;
-        }
-        if (!(key in next)) {
-          next[key] = Boolean(active);
-          changed = true;
-        }
-      });
-      return changed ? next : previous;
-    });
-    previousGroupActiveRef.current = groupActiveMap;
-  }, [groupActiveMap]);
+  const groupedKeys = useMemo(
+    () => menuItems.filter((item) => item.type === 'group').map((item) => item.key),
+    [menuItems],
+  );
 
-  useEffect(() => {
-    if (!compact) {
-      setCompactPopupGroup('');
+  const [openKeys, setOpenKeys] = useState(() => {
+    if (typeof window === 'undefined') {
+      return groupedKeys;
     }
-  }, [compact]);
+    const raw = (
+      localStorage.getItem(USER_SIDEBAR_GROUP_OPEN_STORAGE_KEY) || ''
+    ).trim();
+    if (raw === '') {
+      return groupedKeys;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return groupedKeys;
+      }
+      const allowed = new Set(groupedKeys);
+      const filtered = parsed.filter((key) => allowed.has(key));
+      return filtered.length > 0 ? filtered : groupedKeys;
+    } catch {
+      return groupedKeys;
+    }
+  });
+
+  const selectedKeys = useMemo(() => {
+    const active = [];
+    menuItems.forEach((item) => {
+      if (item.type === 'group' && Array.isArray(item.items)) {
+        item.items.forEach((child) => {
+          if (isUserRouteActive(location, child.to)) {
+            active.push(child.to);
+          }
+        });
+        return;
+      }
+      if (item.to && isUserRouteActive(location, item.to)) {
+        active.push(item.to);
+      }
+    });
+    return active;
+  }, [location, menuItems]);
 
   useEffect(() => {
-    setCompactPopupGroup('');
-  }, [location.pathname, location.search, location.hash]);
+    if (typeof window === 'undefined') {
+      return;
+    }
+    localStorage.setItem(
+      USER_SIDEBAR_GROUP_OPEN_STORAGE_KEY,
+      JSON.stringify(openKeys),
+    );
+  }, [openKeys]);
+
+  useEffect(() => {
+    if (compact || selectedKeys.length === 0) {
+      return;
+    }
+    const activeGroupKeys = menuItems
+      .filter(
+        (item) =>
+          item.type === 'group' &&
+          Array.isArray(item.items) &&
+          item.items.some((child) => selectedKeys.includes(child.to)),
+      )
+      .map((item) => item.key);
+    if (activeGroupKeys.length === 0) {
+      return;
+    }
+    setOpenKeys((previous) => {
+      const next = Array.from(new Set([...previous, ...activeGroupKeys]));
+      return next.length === previous.length &&
+        next.every((item, index) => item === previous[index])
+        ? previous
+        : next;
+    });
+  }, [compact, menuItems, selectedKeys]);
+
+  const items = useMemo(
+    () =>
+      menuItems.map((item) => {
+        if (item.type === 'group' && Array.isArray(item.items)) {
+          return {
+            key: item.key,
+            icon: <AppIcon name={item.icon} />,
+            label: t(item.name),
+            children: item.items.map((child) => ({
+              key: child.to,
+              icon: <AppIcon name={child.icon} />,
+              label: t(child.name),
+            })),
+          };
+        }
+        return {
+          key: item.to,
+          icon: <AppIcon name={item.icon} />,
+          label: t(item.name),
+        };
+      }),
+    [menuItems, t],
+  );
 
   return (
-    <Menu vertical fluid className='router-admin-sidebar-menu'>
-      {menuItems.map((item) => {
-        if (item.type === 'group' && Array.isArray(item.items)) {
-          const groupActive = Boolean(groupActiveMap[item.key]);
-          if (compact) {
-            const popupOpen = compactPopupGroup === item.key;
-            return (
-              <Popup
-                key={item.key}
-                className='router-admin-compact-popup'
-                on='click'
-                position='right center'
-                open={popupOpen}
-                onClose={() =>
-                  setCompactPopupGroup((previous) =>
-                    previous === item.key ? '' : previous,
-                  )
-                }
-                trigger={
-                  <Menu.Item
-                    className={`router-admin-sidebar-group ${groupActive ? 'active' : ''}`}
-                    onClick={() =>
-                      setCompactPopupGroup((previous) =>
-                        previous === item.key ? '' : item.key,
-                      )
-                    }
-                    title={t(item.name)}
-                  >
-                    <span className='router-admin-sidebar-group-title'>
-                      <Icon
-                        name={item.icon}
-                        className='router-admin-sidebar-item-icon'
-                      />
-                      <span className='router-admin-sidebar-group-label'>
-                        {t(item.name)}
-                      </span>
-                    </span>
-                  </Menu.Item>
-                }
-              >
-                <Menu vertical secondary className='router-admin-compact-popup-menu'>
-                  {item.items.map((child) => {
-                    const active = isUserRouteActive(location, child.to);
-                    return (
-                      <Menu.Item
-                        key={child.to}
-                        active={active}
-                        className='router-admin-compact-popup-item'
-                        onClick={() => {
-                          setCompactPopupGroup('');
-                          navigate(child.to);
-                        }}
-                      >
-                        <span className='router-admin-compact-popup-item-content'>
-                          <Icon
-                            name={child.icon}
-                            className='router-admin-compact-popup-item-icon'
-                          />
-                          <span className='router-admin-compact-popup-item-label'>
-                            {t(child.name)}
-                          </span>
-                        </span>
-                      </Menu.Item>
-                    );
-                  })}
-                </Menu>
-              </Popup>
-            );
-          }
-          const groupOpen = Boolean(openGroups[item.key]);
-          return (
-            <Menu.Item
-              key={item.key}
-              active={groupActive}
-              className={`router-admin-sidebar-group ${groupActive ? 'active' : ''}`}
-            >
-              <div
-                className='router-admin-sidebar-group-header'
-                role='button'
-                tabIndex={0}
-                onClick={() => {
-                  setOpenGroups((previous) => ({
-                    ...previous,
-                    [item.key]: !previous[item.key],
-                  }));
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    setOpenGroups((previous) => ({
-                      ...previous,
-                      [item.key]: !previous[item.key],
-                    }));
-                  }
-                }}
-                title={t(item.name)}
-              >
-                <span className='router-admin-sidebar-group-title'>
-                  <Icon
-                    name={item.icon}
-                    className='router-admin-sidebar-item-icon'
-                  />
-                  {!compact ? (
-                    <span className='router-admin-sidebar-group-label'>
-                      {t(item.name)}
-                    </span>
-                  ) : null}
-                </span>
-                <Icon name={groupOpen ? 'angle down' : 'angle right'} />
-              </div>
-              {groupOpen ? (
-                <Menu.Menu>
-                  {item.items.map((child) => {
-                    const active = isUserRouteActive(location, child.to);
-                    return (
-                      <Menu.Item
-                        key={child.to}
-                        active={active}
-                        onClick={() => navigate(child.to)}
-                        className={`router-admin-sidebar-item ${active ? 'active' : ''}`}
-                        title={t(child.name)}
-                      >
-                        <span className='router-admin-sidebar-item-content'>
-                          <Icon
-                            name={child.icon}
-                            className='router-admin-sidebar-item-icon'
-                          />
-                          {!compact ? (
-                            <span className='router-admin-sidebar-item-label'>
-                              {t(child.name)}
-                            </span>
-                          ) : null}
-                        </span>
-                      </Menu.Item>
-                    );
-                  })}
-                </Menu.Menu>
-              ) : null}
-            </Menu.Item>
-          );
+    <AppNavMenu
+      className='router-admin-nav-menu router-user-nav-menu'
+      mode='inline'
+      inlineCollapsed={compact}
+      items={items}
+      selectedKeys={selectedKeys}
+      openKeys={compact ? [] : openKeys}
+      onOpenChange={(nextKeys) => setOpenKeys(nextKeys)}
+      onClick={({ key }) => {
+        if (typeof key === 'string' && key.startsWith('/')) {
+          navigate(key);
         }
-
-        const active = isUserRouteActive(location, item.to);
-        return (
-          <Menu.Item
-            key={item.to}
-            active={active}
-            onClick={() => navigate(item.to)}
-            className={`router-admin-sidebar-group router-user-sidebar-item ${active ? 'active' : ''}`}
-            title={t(item.name)}
-          >
-            <span className='router-admin-sidebar-item-content'>
-              <Icon
-                name={item.icon}
-                className='router-admin-sidebar-item-icon'
-              />
-              {!compact ? (
-                <span className='router-admin-sidebar-item-label'>
-                  {t(item.name)}
-                </span>
-              ) : null}
-            </span>
-          </Menu.Item>
-        );
-      })}
-    </Menu>
+      }}
+    />
   );
 };
 

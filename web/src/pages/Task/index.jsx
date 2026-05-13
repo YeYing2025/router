@@ -1,19 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Breadcrumb,
-  Button,
-  Card,
-  Dropdown,
-  Form,
-  Header,
-  Label,
-  Pagination,
-  Popup,
-  Table,
-} from 'semantic-ui-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API, showError, showSuccess, timestamp2string } from '../../helpers';
+import {
+  AppBreadcrumb,
+  AppButton,
+  AppFilterHeader,
+  AppFormActions,
+  AppMenuDropdown,
+  AppPagination,
+  AppPopover,
+  AppSection,
+  AppSelect,
+  AppTable,
+  AppTag,
+  AppToolbar,
+} from '../../router-ui';
 
 const PAGE_SIZE = 20;
 const TASK_PAGE_KIND_WORKSPACE_USER = 'workspace_user';
@@ -833,92 +835,83 @@ const Task = () => {
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
+      <AppSection>
           {returnPath !== '' ? (
             <div className='router-entity-detail-breadcrumb router-block-gap-sm'>
-              <Breadcrumb size='small'>
-                {isChannelTestHistoryContext ? (
-                  <>
-                    <Breadcrumb.Section
-                      link
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        goToChannelList();
-                      }}
-                    >
-                      {t('header.channel')}
-                    </Breadcrumb.Section>
-                    <Breadcrumb.Divider icon='right chevron' />
-                    <Breadcrumb.Section
-                      link
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        goBackToOrigin();
-                      }}
-                    >
-                      {contextLabel || returnLabel || '-'}
-                    </Breadcrumb.Section>
-                    <Breadcrumb.Divider icon='right chevron' />
-                    <Breadcrumb.Section active>{pageTitle}</Breadcrumb.Section>
-                  </>
-                ) : (
-                  <>
-                    <Breadcrumb.Section
-                      link
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        goBackToOrigin();
-                      }}
-                    >
-                      {returnLabel || t('header.channel')}
-                    </Breadcrumb.Section>
-                    <Breadcrumb.Divider icon='right chevron' />
-                    <Breadcrumb.Section active>{pageTitle}</Breadcrumb.Section>
-                  </>
-                )}
-              </Breadcrumb>
+              <AppBreadcrumb
+                items={
+                  isChannelTestHistoryContext
+                    ? [
+                        {
+                          key: 'channel-list',
+                          label: t('header.channel'),
+                          onClick: (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            goToChannelList();
+                          },
+                        },
+                        {
+                          key: 'task-origin',
+                          label: contextLabel || returnLabel || '-',
+                          onClick: (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            goBackToOrigin();
+                          },
+                        },
+                        {
+                          key: 'task-current',
+                          label: pageTitle,
+                          active: true,
+                        },
+                      ]
+                    : [
+                        {
+                          key: 'task-origin',
+                          label: returnLabel || t('header.channel'),
+                          onClick: (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            goBackToOrigin();
+                          },
+                        },
+                        {
+                          key: 'task-current',
+                          label: pageTitle,
+                          active: true,
+                        },
+                      ]
+                }
+              />
             </div>
           ) : null}
-          {!isChannelTestHistoryContext ? (
-            <Header as='h3' className='router-section-title'>
-              {pageTitle}
-            </Header>
-          ) : null}
-          <Form className='router-toolbar router-log-toolbar router-block-gap-sm'>
-            <div className='router-toolbar-start router-log-toolbar-start'>
-              <Popup
+          <AppFilterHeader
+            title={!isChannelTestHistoryContext ? pageTitle : null}
+            titleClassName='router-ui-section-title'
+            picker={
+              <AppPopover
                 open={addFilterPopupOpen}
-                on='click'
-                position='bottom left'
-                onClose={closeFilterDraft}
-                trigger={
-                  <Button
-                    type='button'
-                    className='router-page-button'
-                    disabled={availableConditionalFilterOptions.length === 0}
-                    onClick={() => setAddFilterPopupOpen(true)}
-                  >
-                    {t('task.filters.add')}
-                  </Button>
-                }
+                trigger='click'
+                placement='bottomLeft'
+                onOpenChange={(open) => {
+                  if (!open) {
+                    closeFilterDraft();
+                  }
+                }}
                 content={
                   <div className='router-log-filter-picker'>
                     <div className='router-log-filter-picker-options'>
                       {availableConditionalFilterOptions.map((item) => (
-                        <Button
+                        <AppButton
                           key={item.value}
                           type='button'
-                          size='mini'
                           className='router-inline-button'
-                          primary={draftFilterKey === item.value}
+                          color={draftFilterKey === item.value ? 'blue' : undefined}
                           onClick={() => openFilterDraft(item.value)}
                         >
                           {item.text}
-                        </Button>
+                        </AppButton>
                       ))}
                     </div>
                     {draftFilterKey !== '' && (
@@ -933,11 +926,10 @@ const Task = () => {
                         {conditionalFilterConfig.find(
                           (item) => item.key === draftFilterKey,
                         )?.type === 'select' ? (
-                          <Dropdown
+                          <AppSelect
                             className='router-section-dropdown router-log-filter-select'
                             fluid
                             search
-                            selection
                             clearable
                             options={
                               conditionalFilterConfig.find(
@@ -964,32 +956,40 @@ const Task = () => {
                             }
                           />
                         )}
-                        <div className='router-log-filter-editor-actions'>
-                          <Button
+                        <AppFormActions className='router-log-filter-editor-actions'>
+                          <AppButton
                             type='button'
-                            size='mini'
                             className='router-inline-button'
                             onClick={closeFilterDraft}
                           >
                             {t('common.cancel')}
-                          </Button>
-                          <Button
+                          </AppButton>
+                          <AppButton
                             type='button'
-                            size='mini'
                             className='router-inline-button'
-                            primary
+                            color='blue'
                             onClick={applyFilterDraft}
                           >
                             {t('common.confirm')}
-                          </Button>
-                        </div>
+                          </AppButton>
+                        </AppFormActions>
                       </div>
                     )}
                   </div>
                 }
-              />
-            </div>
-            <div className='router-toolbar-end router-log-query-wrap'>
+              >
+                <AppButton
+                  type='button'
+                  className='router-page-button'
+                  disabled={availableConditionalFilterOptions.length === 0}
+                  onClick={() => setAddFilterPopupOpen(true)}
+                >
+                  {t('task.filters.add')}
+                </AppButton>
+              </AppPopover>
+            }
+            query={
+              <>
               <div className='router-log-query-box router-log-query-box-inline'>
                 <div className='router-log-query-fields'>
                   {visibleFilterConfig.length === 0 ? (
@@ -1031,50 +1031,107 @@ const Task = () => {
                   )}
                 </div>
               </div>
-              <Button
+              <AppButton
                 type='button'
                 className='router-page-button router-log-query-button'
                 onClick={() => loadTasks(page)}
                 loading={loading}
               >
                 {t('task.buttons.query')}
-              </Button>
-            </div>
-          </Form>
+              </AppButton>
+              </>
+            }
+            endClassName='router-log-query-wrap'
+          />
 
-          <Table basic='very' compact className='router-list-table'>
-            <Table.Header>
-              <Table.Row>
-                <Table.HeaderCell>{t('task.table.type')}</Table.HeaderCell>
-                {isAdminUserTaskPage ? (
-                  <Table.HeaderCell>{t('task.table.user')}</Table.HeaderCell>
-                ) : null}
-                <Table.HeaderCell>{t('task.table.channel')}</Table.HeaderCell>
-                <Table.HeaderCell>{t('task.table.model')}</Table.HeaderCell>
-                <Table.HeaderCell>{t('task.table.status')}</Table.HeaderCell>
-                <Table.HeaderCell>
-                  {t('task.table.created_at')}
-                </Table.HeaderCell>
-                <Table.HeaderCell>
-                  {isUserTaskPage
-                    ? t('task.table.updated_at')
-                    : t('task.table.finished_at')}
-                </Table.HeaderCell>
-                <Table.HeaderCell>{t('task.table.actions')}</Table.HeaderCell>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {items.length === 0 ? (
-                <Table.Row>
-                  <Table.Cell
-                    colSpan={isAdminUserTaskPage ? '8' : '7'}
-                    className='router-empty-cell'
-                  >
-                    {loading ? t('common.loading') : t('task.empty')}
-                  </Table.Cell>
-                </Table.Row>
-              ) : (
-                items.map((item) => {
+          <AppTable
+            className='router-list-table'
+            pagination={false}
+            rowKey={(item) => getTaskId(item)}
+            dataSource={items}
+            locale={{ emptyText: loading ? t('common.loading') : t('task.empty') }}
+            onRow={(item) => {
+              const taskId = getTaskId(item);
+              return {
+                className: 'router-row-clickable',
+                onClick: () =>
+                  navigate(`${detailBasePath}/${taskId}`, {
+                    state: {
+                      from: currentPagePath,
+                      fromLabel: pageTitle,
+                      contextType,
+                      contextLabel,
+                      originPath: returnPath,
+                      originLabel: contextLabel || returnLabel,
+                    },
+                  }),
+              };
+            }}
+            columns={[
+              {
+                title: t('task.table.type'),
+                dataIndex: 'type',
+                key: 'type',
+                render: (value) => t(`task.types.${value || 'video'}`),
+              },
+              ...(isAdminUserTaskPage
+                ? [{
+                    title: t('task.table.user'),
+                    dataIndex: 'user_name',
+                    key: 'user_name',
+                    render: (_, item) => item.user_name || item.user_id || '-',
+                  }]
+                : []),
+              {
+                title: t('task.table.channel'),
+                dataIndex: 'channel_name',
+                key: 'channel_name',
+                render: (_, item) => item.channel_name || item.channel_id || '-',
+              },
+              {
+                title: t('task.table.model'),
+                dataIndex: 'model',
+                key: 'model',
+                render: (value) => value || '-',
+              },
+              {
+                title: t('task.table.status'),
+                dataIndex: 'status',
+                key: 'status',
+                render: (value) => {
+                  const rawStatus = (value || '').toString().trim().toLowerCase();
+                  const status = normalizeTaskStatus(rawStatus);
+                  return (
+                    <AppTag color={taskStatusColor(rawStatus)} className='router-tag'>
+                      {t(`task.status.${status}`)}
+                    </AppTag>
+                  );
+                },
+              },
+              {
+                title: t('task.table.created_at'),
+                dataIndex: 'created_at',
+                key: 'created_at',
+                render: (value) => (value ? timestamp2string(value) : '-'),
+              },
+              {
+                title: isUserTaskPage
+                  ? t('task.table.updated_at')
+                  : t('task.table.finished_at'),
+                key: 'updated_or_finished_at',
+                render: (_, item) =>
+                  isUserTaskPage
+                    ? item.updated_at
+                      ? timestamp2string(item.updated_at)
+                      : '-'
+                    : item.finished_at
+                      ? timestamp2string(item.finished_at)
+                      : '-',
+              },
+              {
+                title: t('task.table.actions'),
+                key: 'actions',
+                render: (_, item) => {
                   const taskId = getTaskId(item);
                   const rawStatus = (item?.status || '')
                     .toString()
@@ -1092,11 +1149,12 @@ const Task = () => {
                     isSystemTaskPage &&
                     item?.type === 'channel_model_test' &&
                     !!(taskResult?.artifact_name || taskResult?.artifact_path);
-                  return (
-                    <Table.Row
-                      key={taskId}
-                      className='router-row-clickable'
-                      onClick={() =>
+                  return isUserTaskPage ? (
+                    <AppButton
+                      type='button'
+                      className='router-inline-button'
+                      onClick={(e) => {
+                        e.stopPropagation();
                         navigate(`${detailBasePath}/${taskId}`, {
                           state: {
                             from: currentPagePath,
@@ -1106,144 +1164,86 @@ const Task = () => {
                             originPath: returnPath,
                             originLabel: contextLabel || returnLabel,
                           },
-                        })
-                      }
+                        });
+                      }}
                     >
-                      <Table.Cell>
-                        {t(`task.types.${item.type || 'video'}`)}
-                      </Table.Cell>
-                      {isAdminUserTaskPage ? (
-                        <Table.Cell>
-                          {item.user_name || item.user_id || '-'}
-                        </Table.Cell>
-                      ) : null}
-                      <Table.Cell>
-                        {item.channel_name || item.channel_id || '-'}
-                      </Table.Cell>
-                      <Table.Cell>{item.model || '-'}</Table.Cell>
-                      <Table.Cell>
-                        <Label
-                          basic
-                          color={taskStatusColor(rawStatus)}
-                          className='router-tag'
-                        >
-                          {t(`task.status.${status}`)}
-                        </Label>
-                      </Table.Cell>
-                      <Table.Cell>
-                        {item.created_at
-                          ? timestamp2string(item.created_at)
-                          : '-'}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {isUserTaskPage
-                          ? item.updated_at
-                            ? timestamp2string(item.updated_at)
-                            : '-'
-                          : item.finished_at
-                            ? timestamp2string(item.finished_at)
-                            : '-'}
-                      </Table.Cell>
-                      <Table.Cell collapsing>
-                        {isUserTaskPage ? (
-                          <Button
-                            type='button'
-                            className='router-inline-button'
-                            basic
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`${detailBasePath}/${taskId}`, {
-                                state: {
-                                  from: currentPagePath,
-                                  fromLabel: pageTitle,
-                                  contextType,
-                                  contextLabel,
-                                  originPath: returnPath,
-                                  originLabel: contextLabel || returnLabel,
-                                },
-                              });
-                            }}
-                          >
-                            {t('task.buttons.view')}
-                          </Button>
-                        ) : (
-                          <div className='router-inline-actions'>
-                            <Button
-                              type='button'
-                              className='router-inline-button'
-                              basic
-                              disabled={!canDownloadArtifact}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDownloadTaskArtifact(item);
-                              }}
-                            >
-                              {t('common.download')}
-                            </Button>
-                            <Button
-                              type='button'
-                              className='router-inline-button'
-                              basic
-                              disabled={!canRetry}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRetryTask(taskId);
-                              }}
-                            >
-                              {t('task.buttons.retry')}
-                            </Button>
-                            <Button
-                              type='button'
-                              className='router-inline-button'
-                              basic
-                              disabled={!canCancel}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCancelTask(taskId);
-                              }}
-                            >
-                              {t('task.buttons.cancel')}
-                            </Button>
-                          </div>
-                        )}
-                      </Table.Cell>
-                    </Table.Row>
-                  );
-                })
-              )}
-            </Table.Body>
-            <Table.Footer>
-              <Table.Row>
-                <Table.HeaderCell
-                  colSpan={isAdminUserTaskPage ? '8' : '7'}
-                >
-                  <div className='router-toolbar router-task-footer-toolbar'>
-                    <div className='router-toolbar-start'>
-                      <span className='router-toolbar-meta'>
-                        {t('task.summary', { total })}
-                      </span>
-                    </div>
-                    <div className='router-toolbar-end'>
-                      <Pagination
-                        className='router-page-pagination'
-                        activePage={page}
-                        totalPages={totalPages}
-                        siblingRange={1}
-                        boundaryRange={0}
-                        onPageChange={(e, { activePage }) => {
-                          const nextPage = Number(activePage || 1);
-                          setPage(nextPage);
-                          loadTasks(nextPage).then();
+                      {t('task.buttons.view')}
+                    </AppButton>
+                  ) : (
+                    <div
+                      className='router-inline-actions'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      <AppButton
+                        type='button'
+                        className='router-inline-button'
+                        disabled={!canDownloadArtifact}
+                        onClick={() => {
+                          handleDownloadTaskArtifact(item);
                         }}
-                      />
+                      >
+                        {t('common.download')}
+                      </AppButton>
+                      <AppMenuDropdown
+                        items={[
+                          {
+                            key: 'retry',
+                            label: t('task.buttons.retry'),
+                            disabled: !canRetry,
+                            onClick: () => {
+                              handleRetryTask(taskId);
+                            },
+                          },
+                          {
+                            key: 'cancel',
+                            label: t('task.buttons.cancel'),
+                            disabled: !canCancel,
+                            onClick: () => {
+                              handleCancelTask(taskId);
+                            },
+                          },
+                        ]}
+                      >
+                        <AppButton
+                          type='button'
+                          className='router-inline-button'
+                        >
+                          {t('common.operation')}
+                        </AppButton>
+                      </AppMenuDropdown>
                     </div>
-                  </div>
-                </Table.HeaderCell>
-              </Table.Row>
-            </Table.Footer>
-          </Table>
-        </Card.Content>
-      </Card>
+                  );
+                },
+              },
+            ]}
+            footer={() => (
+              <AppToolbar
+                className='router-task-footer-toolbar'
+                start={
+                  <span className='router-toolbar-meta'>
+                    {t('task.summary', { total })}
+                  </span>
+                }
+                end={
+                  <AppPagination
+                    className='router-page-pagination'
+                    activePage={page}
+                    totalPages={totalPages}
+                    siblingRange={1}
+                    boundaryRange={0}
+                    onPageChange={(e, { activePage }) => {
+                      const nextPage = Number(activePage || 1);
+                      setPage(nextPage);
+                      loadTasks(nextPage).then();
+                    }}
+                  />
+                }
+              />
+            )}
+          />
+      </AppSection>
     </div>
   );
 };

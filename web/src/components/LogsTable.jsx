@@ -1,14 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Button,
-  Dropdown,
-  Form,
-  Label,
-  Pagination,
-  Popup,
-  Table,
-} from 'semantic-ui-react';
-import {
   API,
   copy,
   showError,
@@ -34,6 +25,17 @@ import {
   resolvePreferredDisplayCurrency,
   YYC_DISPLAY_CODE,
 } from '../helpers/billing';
+import {
+  AppButton,
+  AppFilterHeader,
+  AppFormActions,
+  AppPagination,
+  AppPopover,
+  AppSelect,
+  AppTable,
+  AppTag,
+  AppToolbar,
+} from '../router-ui';
 
 function renderTimestamp(timestamp, trace_id) {
   return (
@@ -57,39 +59,39 @@ function renderType(type) {
   switch (type) {
     case 1:
       return (
-        <Label basic color='green' className='router-tag'>
+        <AppTag color='green' className='router-tag'>
           充值
-        </Label>
+        </AppTag>
       );
     case 2:
       return (
-        <Label basic color='olive' className='router-tag'>
+        <AppTag color='olive' className='router-tag'>
           消费
-        </Label>
+        </AppTag>
       );
     case 3:
       return (
-        <Label basic color='orange' className='router-tag'>
+        <AppTag color='orange' className='router-tag'>
           管理
-        </Label>
+        </AppTag>
       );
     case 4:
       return (
-        <Label basic color='purple' className='router-tag'>
+        <AppTag color='purple' className='router-tag'>
           系统
-        </Label>
+        </AppTag>
       );
     case 5:
       return (
-        <Label basic color='violet' className='router-tag'>
+        <AppTag color='violet' className='router-tag'>
           测试
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label basic color='black' className='router-tag'>
+        <AppTag color='black' className='router-tag'>
           未知
-        </Label>
+        </AppTag>
       );
   }
 }
@@ -109,20 +111,14 @@ function renderDetail(log) {
       {log.content}
       <br />
       {log.elapsed_time && (
-        <Label
-          basic
-          className='router-tag'
-          color={getColorByElapsedTime(log.elapsed_time)}
-        >
+        <AppTag className='router-tag' color={getColorByElapsedTime(log.elapsed_time)}>
           {log.elapsed_time} ms
-        </Label>
+        </AppTag>
       )}
       {log.is_stream && (
-        <>
-          <Label className='router-tag' color='pink'>
-            Stream
-          </Label>
-        </>
+        <AppTag className='router-tag' color='pink'>
+          Stream
+        </AppTag>
       )}
     </>
   );
@@ -734,38 +730,41 @@ const LogsTable = () => {
 
   return (
     <>
-      <Form>
-        <div className='router-toolbar router-log-toolbar router-block-gap-sm'>
-            <div className='router-toolbar-start router-log-toolbar-start'>
-            <Popup
+      <AppFilterHeader
+        title={t('header.log')}
+        picker={
+            <AppPopover
               open={addFilterPopupOpen}
-              on='click'
-              position='bottom left'
-              onClose={closeFilterDraft}
+              placement='bottomLeft'
+              onOpenChange={(open) => {
+                if (!open) {
+                  closeFilterDraft();
+                }
+              }}
               trigger={
-                <Button
+                <AppButton
                   type='button'
                   className='router-section-button'
                   disabled={availableConditionalFilterOptions.length === 0}
                   onClick={() => setAddFilterPopupOpen(true)}
                 >
                   {t('log.filters.add')}
-                </Button>
+                </AppButton>
               }
               content={
                 <div className='router-log-filter-picker'>
                   <div className='router-log-filter-picker-options'>
                     {availableConditionalFilterOptions.map((item) => (
-                      <Button
+                      <AppButton
                         key={item.value}
                         type='button'
-                        size='mini'
                         className='router-inline-button'
-                        primary={draftFilterKey === item.value}
+                        color={draftFilterKey === item.value ? 'blue' : undefined}
+                        basic={draftFilterKey !== item.value}
                         onClick={() => openFilterDraft(item.value)}
                       >
                         {item.text}
-                      </Button>
+                      </AppButton>
                     ))}
                   </div>
                   {draftFilterKey !== '' && (
@@ -801,11 +800,10 @@ const LogsTable = () => {
                         </div>
                       ) : conditionalFilterConfig.find((item) => item.key === draftFilterKey)
                           ?.type === 'select' ? (
-                        <Dropdown
+                        <AppSelect
                           className='router-section-dropdown router-log-filter-select'
                           fluid
                           search
-                          selection
                           clearable
                           options={
                             conditionalFilterConfig.find((item) => item.key === draftFilterKey)
@@ -839,32 +837,31 @@ const LogsTable = () => {
                           }
                         />
                       )}
-                      <div className='router-log-filter-editor-actions'>
-                        <Button
+                      <AppFormActions className='router-log-filter-editor-actions'>
+                        <AppButton
                           type='button'
-                          size='mini'
                           className='router-inline-button'
                           onClick={closeFilterDraft}
                         >
                           {t('common.cancel')}
-                        </Button>
-                        <Button
+                        </AppButton>
+                        <AppButton
                           type='button'
-                          size='mini'
                           className='router-inline-button'
-                          primary
+                          color='blue'
                           onClick={applyFilterDraft}
                         >
                           {t('common.confirm')}
-                        </Button>
-                      </div>
+                        </AppButton>
+                      </AppFormActions>
                     </div>
                   )}
                 </div>
               }
             />
-          </div>
-          <div className='router-toolbar-end router-log-query-wrap'>
+        }
+        query={
+          <>
             <div className='router-log-query-box router-log-query-box-inline'>
               <div className='router-log-query-fields'>
                 {visibleFilterConfig.map((item) => (
@@ -896,116 +893,220 @@ const LogsTable = () => {
                 </div>
               </div>
             </div>
-            <Button
+            <AppButton
               type='button'
               className='router-section-button router-log-query-button'
               onClick={refresh}
               loading={loading}
             >
               {t('log.buttons.submit')}
-            </Button>
-          </div>
-        </div>
-      </Form>
-      <Table basic={'very'} compact className='router-list-table'>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortLog('created_time');
-              }}
-              width={3}
-            >
-              {t('log.table.time')}
-            </Table.HeaderCell>
-            {isAdminScope && (
-              <Table.HeaderCell
+            </AppButton>
+          </>
+        }
+        endClassName='router-log-query-wrap'
+      />
+      <AppTable
+        className='router-list-table'
+        pagination={false}
+        rowKey={(log) =>
+          log.id ||
+          log.trace_id ||
+          `${log.timestamp || ''}-${log.type || ''}-${log.token_name || ''}-${log.model_name || ''}`
+        }
+        dataSource={filteredLogs
+          .slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE)
+          .filter((log) => !log.deleted)}
+        locale={{ emptyText: loading ? t('common.loading') : t('task.empty') }}
+        onRow={(log) => ({
+          className: 'router-row-clickable',
+          onClick: () =>
+            log.id
+              ? navigate(`${detailBasePath}/${log.id}${location.search || ''}`)
+              : undefined,
+        })}
+        columns={[
+          {
+            title: (
+              <span
                 className='router-sortable-header'
                 onClick={() => {
-                  sortLog('channel');
+                  sortLog('created_time');
                 }}
-                width={2}
               >
-                {t('log.table.channel')}
-              </Table.HeaderCell>
-            )}
-            {isAdminScope && (
-              <Table.HeaderCell
+                {t('log.table.time')}
+              </span>
+            ),
+            dataIndex: 'created_at',
+            key: 'created_at',
+            render: (value, log) => renderTimestamp(value, log.trace_id),
+          },
+          ...(isAdminScope
+            ? [
+                {
+                  title: (
+                    <span
+                      className='router-sortable-header'
+                      onClick={() => {
+                        sortLog('channel');
+                      }}
+                    >
+                      {t('log.table.channel')}
+                    </span>
+                  ),
+                  key: 'channel',
+                  render: (_, log) =>
+                    log.channel ? (
+                      <Link
+                        to={`/channel/detail/${log.channel}`}
+                        state={{ from: currentPagePath }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <AppTag className='router-tag'>
+                          {getLogChannelLabel(log)}
+                        </AppTag>
+                      </Link>
+                    ) : (
+                      ''
+                    ),
+                },
+                {
+                  title: (
+                    <span
+                      className='router-sortable-header'
+                      onClick={() => {
+                        sortLog('group_id');
+                      }}
+                    >
+                      {t('log.table.group')}
+                    </span>
+                  ),
+                  key: 'group_id',
+                  render: (_, log) =>
+                    log.group_id ? (
+                      <Link
+                        to={`/admin/group/detail/${log.group_id}`}
+                        state={{ from: currentPagePath }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <AppTag className='router-tag'>
+                          {log.group_name || log.group_id}
+                        </AppTag>
+                      </Link>
+                    ) : (
+                      '-'
+                    ),
+                },
+              ]
+            : []),
+          {
+            title: (
+              <span
                 className='router-sortable-header'
                 onClick={() => {
-                  sortLog('group_id');
+                  sortLog('type');
                 }}
-                width={1}
               >
-                {t('log.table.group')}
-              </Table.HeaderCell>
-            )}
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortLog('type');
-              }}
-              width={1}
-            >
-              {t('log.table.type')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortLog('model_name');
-              }}
-              width={2}
-            >
-              {t('log.table.model')}
-            </Table.HeaderCell>
-            {showAmountColumns() && (
-              <>
-                {isAdminScope && (
-                  <Table.HeaderCell
-                    className='router-sortable-header'
-                    onClick={() => {
-                      sortLog('username');
-                    }}
-                    width={2}
-                  >
-                    {t('log.table.username')}
-                  </Table.HeaderCell>
-                )}
-                <Table.HeaderCell
-                  className='router-sortable-header'
-                  onClick={() => {
-                    sortLog('token_name');
-                  }}
-                  width={1}
-                >
-                  {t('log.table.token_name')}
-                </Table.HeaderCell>
-                <Table.HeaderCell
-                  className='router-sortable-header'
-                  onClick={() => {
-                    sortLog('prompt_tokens');
-                  }}
-                  width={1}
-                >
-                  {t('log.table.prompt_tokens')}
-                </Table.HeaderCell>
-                <Table.HeaderCell
-                  className='router-sortable-header'
-                  onClick={() => {
-                    sortLog('completion_tokens');
-                  }}
-                  width={1}
-                >
-                  {t('log.table.completion_tokens')}
-                </Table.HeaderCell>
-                <Table.HeaderCell
-                  className={isAdminScope ? 'router-redemption-face-value-header' : 'router-sortable-header'}
-                  width={1}
-                >
-                  {isAdminScope ? (
-                    <div className='router-table-header-with-control'>
+                {t('log.table.type')}
+              </span>
+            ),
+            dataIndex: 'type',
+            key: 'type',
+            render: (value) => renderType(value),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortLog('model_name');
+                }}
+              >
+                {t('log.table.model')}
+              </span>
+            ),
+            dataIndex: 'model_name',
+            key: 'model_name',
+            render: (value) => (value ? renderColorLabel(value) : ''),
+          },
+          ...(showAmountColumns()
+            ? [
+                ...(isAdminScope
+                  ? [
+                      {
+                        title: (
                           <span
+                            className='router-sortable-header'
+                            onClick={() => {
+                              sortLog('username');
+                            }}
+                          >
+                            {t('log.table.username')}
+                          </span>
+                        ),
+                        key: 'username',
+                        render: (_, log) =>
+                          log.username ? (
+                            <Link
+                              to={`/user/detail/${log.user_id}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <AppTag className='router-tag'>{log.username}</AppTag>
+                            </Link>
+                          ) : (
+                            ''
+                          ),
+                      },
+                    ]
+                  : []),
+                {
+                  title: (
+                    <span
+                      className='router-sortable-header'
+                      onClick={() => {
+                        sortLog('token_name');
+                      }}
+                    >
+                      {t('log.table.token_name')}
+                    </span>
+                  ),
+                  dataIndex: 'token_name',
+                  key: 'token_name',
+                  render: (value) => (value ? renderColorLabel(value) : ''),
+                },
+                {
+                  title: (
+                    <span
+                      className='router-sortable-header'
+                      onClick={() => {
+                        sortLog('prompt_tokens');
+                      }}
+                    >
+                      {t('log.table.prompt_tokens')}
+                    </span>
+                  ),
+                  dataIndex: 'prompt_tokens',
+                  key: 'prompt_tokens',
+                  render: (value) => value || '',
+                },
+                {
+                  title: (
+                    <span
+                      className='router-sortable-header'
+                      onClick={() => {
+                        sortLog('completion_tokens');
+                      }}
+                    >
+                      {t('log.table.completion_tokens')}
+                    </span>
+                  ),
+                  dataIndex: 'completion_tokens',
+                  key: 'completion_tokens',
+                  render: (value) => value || '',
+                },
+                {
+                  title: isAdminScope ? (
+                    <div className='router-table-header-with-control'>
+                      <span
                         className='router-sortable-header'
                         onClick={() => {
                           sortLog('yycAmount');
@@ -1028,145 +1129,43 @@ const LogsTable = () => {
                     </div>
                   ) : (
                     <span
+                      className='router-sortable-header'
                       onClick={() => {
                         sortLog('yycAmount');
                       }}
                     >
                       {t('log.table.quota')}
                     </span>
-                  )}
-                </Table.HeaderCell>
-              </>
-            )}
-          </Table.Row>
-        </Table.Header>
-
-        <Table.Body>
-          {filteredLogs
-            .slice(
-              (activePage - 1) * ITEMS_PER_PAGE,
-              activePage * ITEMS_PER_PAGE
-            )
-            .map((log, idx) => {
-              if (log.deleted) return null;
-              return (
-                <Table.Row
-                  key={log.id || idx}
-                  className='router-row-clickable'
-                  onClick={() =>
-                    log.id
-                      ? navigate(
-                          `${detailBasePath}/${log.id}${location.search || ''}`
-                        )
-                      : undefined
-                  }
-                >
-                  <Table.Cell>
-                    {renderTimestamp(log.created_at, log.trace_id)}
-                  </Table.Cell>
-                  {isAdminScope && (
-                    <Table.Cell>
-                      {log.channel ? (
-                        <Label
-                          basic
-                          className='router-tag'
-                          as={Link}
-                          to={`/channel/detail/${log.channel}`}
-                          state={{ from: currentPagePath }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {getLogChannelLabel(log)}
-                        </Label>
-                      ) : (
-                        ''
-                      )}
-                    </Table.Cell>
-                  )}
-                  {isAdminScope && (
-                    <Table.Cell>
-                      {log.group_id ? (
-                        <Label
-                          basic
-                          className='router-tag'
-                          as={Link}
-                          to={`/admin/group/detail/${log.group_id}`}
-                          state={{ from: currentPagePath }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {log.group_name || log.group_id}
-                        </Label>
-                      ) : (
-                        '-'
-                      )}
-                    </Table.Cell>
-                  )}
-                  <Table.Cell>{renderType(log.type)}</Table.Cell>
-                  <Table.Cell>
-                    {log.model_name ? renderColorLabel(log.model_name) : ''}
-                  </Table.Cell>
-                  {showAmountColumns() && (
-                    <>
-                      {isAdminScope && (
-                        <Table.Cell>
-                          {log.username ? (
-                            <Label
-                              basic
-                              className='router-tag'
-                              as={Link}
-                              to={`/user/detail/${log.user_id}`}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {log.username}
-                            </Label>
-                          ) : (
-                            ''
-                          )}
-                        </Table.Cell>
-                      )}
-                      <Table.Cell>
-                        {log.token_name ? renderColorLabel(log.token_name) : ''}
-                      </Table.Cell>
-
-                      <Table.Cell>
-                        {log.prompt_tokens ? log.prompt_tokens : ''}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {log.completion_tokens ? log.completion_tokens : ''}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {isAdminScope
-                          ? formatDisplayAmountFromYYC(log.yycAmount, displayUnit, currencyIndex)
-                          : log.yycAmount
-                            ? formatDisplayAmountFromYYC(log.yycAmount, displayUnit, currencyIndex, {
-                                includeSymbol: true,
-                                yycMode: 'compact',
-                              })
-                            : ''}
-                      </Table.Cell>
-                    </>
-                  )}
-
-                </Table.Row>
-              );
-            })}
-        </Table.Body>
-
-        <Table.Footer>
-          <Table.Row>
-            <Table.HeaderCell colSpan={tableColSpan}>
-              <div className='router-toolbar'>
-                <Pagination
-                  className='router-page-pagination'
-                  activePage={activePage}
-                  onPageChange={onPaginationChange}
-                  siblingRange={1}
-                  totalPages={totalPages}
-                />
-              </div>
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Footer>
-      </Table>
+                  ),
+                  dataIndex: 'yycAmount',
+                  key: 'yycAmount',
+                  render: (value) =>
+                    isAdminScope
+                      ? formatDisplayAmountFromYYC(value, displayUnit, currencyIndex)
+                      : value
+                        ? formatDisplayAmountFromYYC(value, displayUnit, currencyIndex, {
+                            includeSymbol: true,
+                            yycMode: 'compact',
+                          })
+                        : '',
+                },
+              ]
+            : []),
+        ]}
+        footer={() => (
+          <AppToolbar
+            start={
+            <AppPagination
+              className='router-page-pagination'
+              activePage={activePage}
+              onPageChange={onPaginationChange}
+              siblingRange={1}
+              totalPages={totalPages}
+            />
+            }
+          />
+        )}
+      />
     </>
   );
 };

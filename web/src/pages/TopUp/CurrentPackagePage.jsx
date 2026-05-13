@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  Button,
-  Card,
-  Dropdown,
-  Header,
-  Label,
-  Modal,
-  Statistic,
-} from 'semantic-ui-react';
 import { API, showError, showInfo, timestamp2string } from '../../helpers';
+import {
+  AppButton,
+  AppModal,
+  AppSection,
+  AppSelect,
+  AppStatistic,
+  AppTag,
+} from '../../router-ui';
 import {
   buildTopUpReturnURL,
   renderTopupIntegerAmountWithExactPopup,
@@ -117,83 +116,64 @@ const renderPackageStatus = (status, t) => {
   switch (Number(status || 0)) {
     case 1:
       return (
-        <Label basic color='green' className='router-tag'>
+        <AppTag color='green' className='router-tag'>
           {t('user.detail.package_status_types.active')}
-        </Label>
+        </AppTag>
       );
     case 2:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('user.detail.package_status_types.expired')}
-        </Label>
+        </AppTag>
       );
     case 3:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('user.detail.package_status_types.replaced')}
-        </Label>
+        </AppTag>
       );
     case 4:
       return (
-        <Label basic color='red' className='router-tag'>
+        <AppTag color='red' className='router-tag'>
           {t('user.detail.package_status_types.canceled')}
-        </Label>
+        </AppTag>
       );
     case 5:
       return (
-        <Label basic color='teal' className='router-tag'>
+        <AppTag color='teal' className='router-tag'>
           {t('user.detail.package_status_types.pending')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label basic className='router-tag'>
+        <AppTag className='router-tag'>
           {t('user.detail.package_status_types.unknown')}
-        </Label>
+        </AppTag>
       );
   }
 };
 
 const PackageUsageCard = ({ title, period, timezone, items, footer }) => (
-  <Card fluid className='router-soft-card'>
-    <Card.Content>
-      <Card.Header className='router-card-header'>
-        <Header as='h3' className='router-section-title'>
-          {title}
-        </Header>
-      </Card.Header>
-      <div
-        style={{
-          display: 'grid',
-          gap: '1rem',
-        }}
-      >
-        <Statistic.Group widths='three' size='small'>
-          {items.map((item) => (
-            <Statistic key={item.key}>
-              <Statistic.Value className='router-topup-statistic-value'>
-                {item.value}
-              </Statistic.Value>
-              <Statistic.Label>{item.label}</Statistic.Label>
-            </Statistic>
-          ))}
-        </Statistic.Group>
-        <div
-          style={{
-            display: 'flex',
-            gap: '1rem',
-            flexWrap: 'wrap',
-            color: '#6b7280',
-            fontSize: '0.92rem',
-          }}
-        >
-          <span>{period}</span>
-          <span>{timezone}</span>
-          {footer ? <span>{footer}</span> : null}
-        </div>
+  <AppSection title={title}>
+    <div className='router-topup-usage-card-body'>
+      <div className='router-topup-stat-grid'>
+        {items.map((item) => (
+          <AppStatistic
+            key={item.key}
+            className='router-topup-statistic'
+            title={item.label}
+            value={0}
+            formatter={() => item.value}
+          />
+        ))}
       </div>
-    </Card.Content>
-  </Card>
+      <div className='router-topup-usage-meta'>
+        <span>{period}</span>
+        <span>{timezone}</span>
+        {footer ? <span>{footer}</span> : null}
+      </div>
+    </div>
+  </AppSection>
 );
 
 const CurrentPackagePage = () => {
@@ -539,90 +519,63 @@ const CurrentPackagePage = () => {
   );
 
   return (
-    <div style={{ display: 'grid', gap: '1rem' }}>
-      <Card fluid className='router-soft-card'>
-        <Card.Content>
-          <Card.Header className='router-card-header'>
-            <div className='router-toolbar'>
-              <Header as='h3' className='router-section-title router-title-accent-positive'>
-                {t('user.detail.package_title')}
-              </Header>
-              <div className='router-toolbar-end'>
-                <Button
-                  className='router-section-button'
-                  onClick={() => goPricing('')}
-                >
-                  {t('topup.package_status.view_pricing')}
-                </Button>
-                <Button
-                  className='router-section-button'
-                  basic
-                  disabled={!activeSubscription || loadingUpgradeTargets}
-                  loading={renewing}
-                  onClick={handleRenew}
-                >
-                  {t('topup.external_topup.package_operation.renew')}
-                </Button>
-                <Button
-                  className='router-section-button'
-                  basic
-                  disabled={!activeSubscription}
-                  loading={loadingUpgradeTargets || submittingUpgrade}
-                  onClick={handleUpgrade}
-                >
-                  {t('topup.external_topup.package_operation.upgrade')}
-                </Button>
-              </div>
+    <div className='router-topup-balance-layout'>
+      <AppSection
+        title={
+          <div className='router-title-accent-positive'>
+            {t('user.detail.package_title')}
+          </div>
+        }
+        extra={
+          <>
+          <AppButton
+            className='router-section-button'
+            onClick={() => goPricing('')}
+          >
+            {t('topup.package_status.view_pricing')}
+          </AppButton>
+          <AppButton
+            className='router-section-button'
+            basic
+            disabled={!activeSubscription || loadingUpgradeTargets}
+            loading={renewing}
+            onClick={handleRenew}
+          >
+            {t('topup.external_topup.package_operation.renew')}
+          </AppButton>
+          <AppButton
+            className='router-section-button'
+            basic
+            disabled={!activeSubscription}
+            loading={loadingUpgradeTargets || submittingUpgrade}
+            onClick={handleUpgrade}
+          >
+            {t('topup.external_topup.package_operation.upgrade')}
+          </AppButton>
+          </>
+        }
+      >
+        {loading ? (
+          <div className='router-text-muted'>{t('common.loading')}</div>
+        ) : !activeSubscription ? (
+          <div className='router-current-package-empty'>
+            <div className='router-text-muted'>
+              {t('topup.package_status.empty_description')}
             </div>
-          </Card.Header>
-
-          {loading ? (
-            <div className='router-text-muted'>{t('common.loading')}</div>
-          ) : !activeSubscription ? (
-            <div
-              style={{
-                display: 'grid',
-                gap: '0.75rem',
-              }}
-            >
-              <div className='router-text-muted'>
-                {t('topup.package_status.empty_description')}
-              </div>
-            </div>
-          ) : (
-            <div
-              style={{
-                display: 'grid',
-                gap: '0.85rem',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              }}
-            >
-              {infoItems.map((item) => (
-                <div
-                  key={item.key}
-                  style={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '0.85rem 1rem',
-                    background: '#ffffff',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '0.85rem',
-                      color: '#6b7280',
-                      marginBottom: '0.35rem',
-                    }}
-                  >
-                    {item.label}
-                  </div>
-                  <div style={{ fontSize: '1rem', color: '#111827' }}>{item.value}</div>
+          </div>
+        ) : (
+          <div className='router-current-package-info-grid'>
+            {infoItems.map((item) => (
+              <div key={item.key} className='router-current-package-info-card'>
+                <div className='router-current-package-info-label'>
+                  {item.label}
                 </div>
-              ))}
-            </div>
-          )}
-        </Card.Content>
-      </Card>
+                <div className='router-current-package-info-value'>{item.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </AppSection>
 
       {activeSubscription ? (
         <>
@@ -654,7 +607,7 @@ const CurrentPackagePage = () => {
         </>
       ) : null}
 
-      <Modal
+      <AppModal
         size='small'
         open={upgradeModalOpen}
         onClose={() => {
@@ -663,44 +616,42 @@ const CurrentPackagePage = () => {
           }
           setUpgradeModalOpen(false);
         }}
-      >
-        <Modal.Header>{t('topup.package_status.select_upgrade_target')}</Modal.Header>
-        <Modal.Content>
-          <div style={{ display: 'grid', gap: '0.8rem' }}>
-            <div className='router-text-muted'>
-              {t('topup.package_status.select_upgrade_target_hint')}
-            </div>
-            <Dropdown
-              className='router-page-dropdown'
-              fluid
-              selection
-              options={upgradeOptions}
-              value={selectedUpgradePackageId}
-              onChange={(_, data) =>
-                setSelectedUpgradePackageId(String(data?.value || ''))
-              }
-            />
-          </div>
-        </Modal.Content>
-        <Modal.Actions>
-          <Button
+        title={t('topup.package_status.select_upgrade_target')}
+        footer={[
+          <AppButton
+            key='cancel'
             className='router-section-button'
             onClick={() => setUpgradeModalOpen(false)}
             disabled={submittingUpgrade}
           >
             {t('common.cancel')}
-          </Button>
-          <Button
-            primary
+          </AppButton>,
+          <AppButton
+            key='confirm'
+            color='blue'
             className='router-section-button'
             loading={submittingUpgrade}
             disabled={submittingUpgrade || selectedUpgradePackageId === ''}
             onClick={handleConfirmUpgrade}
           >
             {t('topup.package_status.upgrade_now')}
-          </Button>
-        </Modal.Actions>
-      </Modal>
+          </AppButton>,
+        ]}
+      >
+        <div className='router-current-package-upgrade-body'>
+          <div className='router-text-muted'>
+            {t('topup.package_status.select_upgrade_target_hint')}
+          </div>
+          <AppSelect
+            className='router-page-dropdown'
+            options={upgradeOptions}
+            value={selectedUpgradePackageId}
+            onChange={(_, data) =>
+              setSelectedUpgradePackageId(String(data?.value || ''))
+            }
+          />
+        </div>
+      </AppModal>
     </div>
   );
 };

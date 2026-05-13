@@ -1,15 +1,19 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Button,
-  Checkbox,
-  Dropdown,
-  Form,
-  Header,
-  Modal,
-  Table,
-} from 'semantic-ui-react';
 import { useTranslation } from 'react-i18next';
 import { API, showError, showSuccess } from '../helpers';
+import {
+  AppButton,
+  AppField,
+  AppFilterHeader,
+  AppFormActions,
+  AppFormRow,
+  AppInput,
+  AppInputNumber,
+  AppModal,
+  AppSelect,
+  AppSwitch,
+  AppTable,
+} from '../router-ui';
 
 const createEmptyPlan = () => ({
   id: '',
@@ -258,115 +262,157 @@ const TopupPlansManager = () => {
 
   return (
     <>
-      <div className='router-toolbar router-block-gap-sm' style={{ marginBottom: '1rem' }}>
-        <div className='router-toolbar-start'>
-          <Header as='h3' className='router-section-title' style={{ margin: 0 }}>
-            {t('topup.manage.title')}
-          </Header>
-        </div>
-        <div className='router-toolbar-end'>
-          <Button className='router-section-button' primary onClick={openCreate}>
+      <AppFilterHeader
+        className='router-block-gap-md'
+        title={t('topup.manage.title')}
+        titleClassName='router-ui-section-title'
+        actions={
+          <>
+          <AppButton className='router-section-button' color='blue' onClick={openCreate}>
             {t('common.add')}
-          </Button>
-          <Button className='router-section-button' onClick={() => loadPlans()} loading={loading}>
+          </AppButton>
+          <AppButton className='router-section-button' onClick={() => loadPlans()} loading={loading}>
             {t('common.refresh')}
-          </Button>
-        </div>
-      </div>
+          </AppButton>
+          </>
+        }
+      />
 
       <div className='router-table-scroll-x'>
-        <Table celled selectable className='router-table router-list-table router-topup-plan-table'>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell className='router-topup-plan-name-cell'>
-                {t('topup.manage.columns.name')}
-              </Table.HeaderCell>
-              <Table.HeaderCell>{t('topup.manage.columns.group')}</Table.HeaderCell>
-              <Table.HeaderCell className='router-topup-plan-amount-cell'>
-                {t('topup.manage.columns.pay_amount')}
-              </Table.HeaderCell>
-              <Table.HeaderCell className='router-topup-plan-quota-cell'>
-                {t('topup.manage.columns.credited_amount')}
-              </Table.HeaderCell>
-              <Table.HeaderCell className='router-topup-plan-status-cell'>
-                {t('topup.manage.columns.enabled')}
-              </Table.HeaderCell>
-              <Table.HeaderCell className='router-topup-plan-status-cell'>
-                {t('topup.manage.columns.public_visible')}
-              </Table.HeaderCell>
-              <Table.HeaderCell className='router-topup-plan-status-cell'>
-                {t('topup.manage.columns.validity_days')}
-              </Table.HeaderCell>
-              <Table.HeaderCell className='router-table-action-cell router-topup-plan-action-cell'>
-                {t('common.operation')}
-              </Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {plans.map((row, index) => (
-              <Table.Row key={row.id || index}>
-                <Table.Cell className='router-topup-plan-name-cell'>{row.name || '-'}</Table.Cell>
-                <Table.Cell>{row.group_name || row.group_id || '-'}</Table.Cell>
-                <Table.Cell className='router-topup-plan-amount-cell'>{`${row.amount} ${row.amount_currency}`}</Table.Cell>
-                <Table.Cell className='router-topup-plan-quota-cell'>{`${row.quota_amount} ${row.quota_currency}`}</Table.Cell>
-                <Table.Cell className='router-topup-plan-status-cell'>
-                  {row.enabled ? t('common.enabled') : t('common.disabled')}
-                </Table.Cell>
-                <Table.Cell className='router-topup-plan-status-cell'>
-                  <Checkbox
-                    toggle
-                    checked={row.public_visible !== false}
-                    disabled={saving}
-                    onChange={(_, data) => togglePublicVisible(row, Boolean(data.checked))}
-                  />
-                </Table.Cell>
-                <Table.Cell className='router-topup-plan-status-cell'>
-                  {Number(row.validity_days || 0) > 0
-                    ? `${Number(row.validity_days || 0)} ${t('common.day')}`
-                    : t('common.never')}
-                </Table.Cell>
-                <Table.Cell className='router-topup-plan-action-cell'>
-                  <div className='router-action-group-tight'>
-                    <Button
-                      className='router-inline-button'
-                      onClick={() => openEdit(row, index)}
-                    >
-                      {t('common.edit')}
-                    </Button>
-                    <Button
-                      className='router-inline-button'
-                      onClick={() => {
-                        setActiveRow(row);
-                        setDeleteOpen(true);
-                      }}
-                    >
-                      {t('common.delete')}
-                    </Button>
-                  </div>
-                </Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
+        <AppTable
+          className='router-table router-list-table router-topup-plan-table'
+          dataSource={plans}
+          rowKey={(row) =>
+            row?.id ||
+            [
+              row?.group_id || 'group',
+              row?.name || 'plan',
+              row?.sort_order || 0,
+              row?.amount || 0,
+            ].join('-')
+          }
+          pagination={false}
+          scroll={{ x: 920 }}
+          locale={{ emptyText: t('common.no_data', '暂无数据') }}
+          columns={[
+            {
+              title: t('topup.manage.columns.name'),
+              dataIndex: 'name',
+              key: 'name',
+              className: 'router-topup-plan-name-cell',
+              render: (value) => value || '-',
+            },
+            {
+              title: t('topup.manage.columns.group'),
+              dataIndex: 'group_name',
+              key: 'group',
+              render: (_, row) => row.group_name || row.group_id || '-',
+            },
+            {
+              title: t('topup.manage.columns.pay_amount'),
+              dataIndex: 'amount',
+              key: 'amount',
+              className: 'router-topup-plan-amount-cell',
+              render: (_, row) => `${row.amount} ${row.amount_currency}`,
+            },
+            {
+              title: t('topup.manage.columns.credited_amount'),
+              dataIndex: 'quota_amount',
+              key: 'quota_amount',
+              className: 'router-topup-plan-quota-cell',
+              render: (_, row) => `${row.quota_amount} ${row.quota_currency}`,
+            },
+            {
+              title: t('package_manage.form.sort_order'),
+              dataIndex: 'sort_order',
+              key: 'sort_order',
+              className: 'router-topup-plan-status-cell',
+              render: (value) => Number(value || 0),
+            },
+            {
+              title: t('topup.manage.columns.enabled'),
+              dataIndex: 'enabled',
+              key: 'enabled',
+              className: 'router-topup-plan-status-cell',
+              render: (value) => (
+                <AppSwitch checked={Boolean(value)} disabled size='small' />
+              ),
+            },
+            {
+              title: t('topup.manage.columns.public_visible'),
+              dataIndex: 'public_visible',
+              key: 'public_visible',
+              className: 'router-topup-plan-status-cell',
+              render: (_, row) => (
+                <AppSwitch
+                  checked={row.public_visible !== false}
+                  disabled={saving}
+                  onChange={(_, { checked }) => togglePublicVisible(row, Boolean(checked))}
+                />
+              ),
+            },
+            {
+              title: t('topup.manage.columns.validity_days'),
+              dataIndex: 'validity_days',
+              key: 'validity_days',
+              className: 'router-topup-plan-status-cell',
+              render: (value) =>
+                Number(value || 0) > 0
+                  ? `${Number(value || 0)} ${t('common.day')}`
+                  : t('common.never'),
+            },
+            {
+              title: t('common.operation'),
+              key: 'action',
+              className: 'router-table-action-cell router-topup-plan-action-cell',
+              render: (_, row, index) => (
+                <div className='router-action-group-tight'>
+                  <AppButton
+                    className='router-inline-button'
+                    type='button'
+                    onClick={() => openEdit(row, index)}
+                  >
+                    {t('common.edit')}
+                  </AppButton>
+                  <AppButton
+                    className='router-inline-button'
+                    type='button'
+                    onClick={() => {
+                      setActiveRow(row);
+                      setDeleteOpen(true);
+                    }}
+                  >
+                    {t('common.delete')}
+                  </AppButton>
+                </div>
+              ),
+            },
+          ]}
+        />
       </div>
 
-      <Modal open={editOpen} size='tiny' onClose={() => setEditOpen(false)}>
-        <Modal.Header>
-          {isCreating ? t('topup.manage.create_title') : t('topup.manage.edit_title')}
-        </Modal.Header>
-        <Modal.Content>
-          <Form>
-            <Form.Input
-              label={t('topup.manage.columns.name')}
-              value={form.name}
-              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-            />
-            <Form.Field>
-              <label>{t('topup.manage.columns.group')}</label>
-              <Dropdown
-                fluid
+      <AppModal
+        open={editOpen}
+        size='tiny'
+        onClose={() => setEditOpen(false)}
+        title={isCreating ? t('topup.manage.create_title') : t('topup.manage.edit_title')}
+        footer={null}
+      >
+        <div className='router-page-stack'>
+          <AppFormRow>
+            <AppField label={t('topup.manage.columns.name')} required>
+              <AppInput
+                value={form.name}
+                onChange={(event, { value }) =>
+                  setForm((current) => ({ ...current, name: value || '' }))
+                }
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField label={t('topup.manage.columns.group')}>
+              <AppSelect
                 search
-                selection
                 loading={groupLoading}
                 options={groupOptions}
                 placeholder={t('topup.manage.group_placeholder')}
@@ -381,89 +427,146 @@ const TopupPlansManager = () => {
                   }));
                 }}
               />
-            </Form.Field>
-            <Form.Input
-              label={t('topup.manage.columns.pay_amount')}
-              type='number'
-              min='0'
-              step='0.01'
-              value={form.amount}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, amount: Number(event.target.value || 0) }))
-              }
-            />
-            <Form.Input
-              label={t('topup.manage.columns.credited_amount')}
-              type='number'
-              min='0'
-              step='0.01'
-              value={form.quota_amount}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  quota_amount: Number(event.target.value || 0),
-                }))
-              }
-            />
-            <Form.Field>
-              <Checkbox
-                toggle
-                checked={form.enabled}
-                label={t('topup.manage.columns.enabled')}
-                onChange={(_, data) => setForm((current) => ({ ...current, enabled: Boolean(data.checked) }))}
-              />
-            </Form.Field>
-            <Form.Field>
-              <Checkbox
-                toggle
-                checked={form.public_visible}
-                label={t('topup.manage.columns.public_visible')}
-                onChange={(_, data) =>
-                  setForm((current) => ({ ...current, public_visible: Boolean(data.checked) }))
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField label={t('topup.manage.columns.pay_amount')}>
+              <AppInputNumber
+                min={0}
+                step={0.01}
+                precision={2}
+                fluid
+                value={form.amount}
+                onChange={(_, { value }) =>
+                  setForm((current) => ({
+                    ...current,
+                    amount: Number(value || 0),
+                  }))
                 }
               />
-            </Form.Field>
-            <Form.Input
-              label={t('topup.manage.columns.validity_days')}
-              type='number'
-              min='0'
-              step='1'
-              value={form.validity_days}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  validity_days: Number(event.target.value || 0),
-                }))
-              }
-            />
-          </Form>
-        </Modal.Content>
-        <Modal.Actions>
-          <Button className='router-section-button' onClick={() => setEditOpen(false)}>
-            {t('common.cancel')}
-          </Button>
-          <Button className='router-section-button' primary onClick={savePlan} loading={saving}>
-            {t('common.confirm')}
-          </Button>
-        </Modal.Actions>
-      </Modal>
+            </AppField>
+            <AppField label={t('topup.manage.columns.credited_amount')}>
+              <AppInputNumber
+                min={0}
+                step={0.01}
+                precision={2}
+                fluid
+                value={form.quota_amount}
+                onChange={(_, { value }) =>
+                  setForm((current) => ({
+                    ...current,
+                    quota_amount: Number(value || 0),
+                  }))
+                }
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField label={t('package_manage.form.sort_order')}>
+              <AppInputNumber
+                min={0}
+                step={1}
+                precision={0}
+                fluid
+                value={form.sort_order}
+                onChange={(_, { value }) =>
+                  setForm((current) => ({
+                    ...current,
+                    sort_order: Number(value || 0),
+                  }))
+                }
+              />
+            </AppField>
+            <AppField label={t('topup.manage.columns.validity_days')}>
+              <AppInputNumber
+                min={0}
+                step={1}
+                precision={0}
+                fluid
+                value={form.validity_days}
+                onChange={(_, { value }) =>
+                  setForm((current) => ({
+                    ...current,
+                    validity_days: Number(value || 0),
+                  }))
+                }
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField label={t('topup.manage.columns.enabled')}>
+              <AppSwitch
+                checked={form.enabled}
+                onChange={(_, { checked }) =>
+                  setForm((current) => ({
+                    ...current,
+                    enabled: Boolean(checked),
+                  }))
+                }
+              />
+            </AppField>
+            <AppField label={t('topup.manage.columns.public_visible')}>
+              <AppSwitch
+                checked={form.public_visible}
+                onChange={(_, { checked }) =>
+                  setForm((current) => ({
+                    ...current,
+                    public_visible: Boolean(checked),
+                  }))
+                }
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormActions>
+            <AppButton
+              className='router-section-button'
+              onClick={() => setEditOpen(false)}
+            >
+              {t('common.cancel')}
+            </AppButton>
+            <AppButton
+              className='router-section-button'
+              color='blue'
+              onClick={savePlan}
+              loading={saving}
+            >
+              {t('common.confirm')}
+            </AppButton>
+          </AppFormActions>
+        </div>
+      </AppModal>
 
-      <Modal open={deleteOpen} size='tiny' onClose={() => setDeleteOpen(false)}>
-        <Modal.Header>{t('topup.manage.delete_title')}</Modal.Header>
-        <Modal.Content>
-          {t('topup.manage.delete_confirm', {
-            name: activeRow?.name || '-',
-          })}
-        </Modal.Content>
-        <Modal.Actions>
-          <Button className='router-section-button' onClick={() => setDeleteOpen(false)}>
-            {t('common.cancel')}
-          </Button>
-          <Button className='router-section-button' primary onClick={removePlan} loading={saving}>
-            {t('common.confirm')}
-          </Button>
-        </Modal.Actions>
-      </Modal>
+      <AppModal
+        open={deleteOpen}
+        size='tiny'
+        onClose={() => setDeleteOpen(false)}
+        title={t('topup.manage.delete_title')}
+        footer={null}
+      >
+        <div className='router-page-stack'>
+          <div>
+            {t('topup.manage.delete_confirm', {
+              name: activeRow?.name || '-',
+            })}
+          </div>
+          <AppFormActions>
+            <AppButton
+              className='router-section-button'
+              onClick={() => setDeleteOpen(false)}
+            >
+              {t('common.cancel')}
+            </AppButton>
+            <AppButton
+              className='router-section-button'
+              color='blue'
+              onClick={removePlan}
+              loading={saving}
+            >
+              {t('common.confirm')}
+            </AppButton>
+          </AppFormActions>
+        </div>
+      </AppModal>
     </>
   );
 };

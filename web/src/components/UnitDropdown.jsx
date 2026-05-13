@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Dropdown } from 'semantic-ui-react';
+import { AppSelect } from '../router-ui';
 
 const VARIANT_CLASS_MAP = {
   section: 'router-section-dropdown',
@@ -38,8 +38,6 @@ export default function UnitDropdown({
   variant = 'section',
   className = '',
   options = [],
-  selection = true,
-  selectOnBlur = false,
   ...rest
 }) {
   const normalizedOptions = useMemo(
@@ -50,9 +48,7 @@ export default function UnitDropdown({
   const combinedClassName = [variantClassName, className].filter(Boolean).join(' ');
 
   return (
-    <Dropdown
-      selection={selection}
-      selectOnBlur={selectOnBlur}
+    <AppSelect
       className={combinedClassName}
       options={normalizedOptions}
       {...rest}

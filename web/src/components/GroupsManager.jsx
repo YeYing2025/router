@@ -1,8 +1,28 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Breadcrumb, Button, Checkbox, Form, Header, Label, Menu, Modal, Table } from 'semantic-ui-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API, showError, showInfo, showSuccess, timestamp2string } from '../helpers';
+import {
+  AppBreadcrumb,
+  AppButton,
+  AppDetailSection,
+  AppField,
+  AppFilterHeader,
+  AppFormActions,
+  AppFormRow,
+  AppIcon,
+  AppInput,
+  AppInputNumber,
+  AppMenuDropdown,
+  AppModal,
+  AppSelect,
+  AppSwitch,
+  AppTable,
+  AppTag,
+  AppTabs,
+  AppToolbar,
+  AppTextarea,
+} from '../router-ui';
 const MODE_LIST = 'list';
 const MODE_CREATE = 'create';
 const MODE_VIEW = 'view';
@@ -1064,154 +1084,183 @@ const GroupsManager = ({ detailGroupId = '' }) => {
 
   const renderGroupStatus = (enabled) =>
     enabled ? (
-      <Label basic color='green' className='router-tag'>
+      <AppTag color='green' className='router-tag'>
         {t('group_manage.status.enabled')}
-      </Label>
+      </AppTag>
     ) : (
-      <Label basic color='grey' className='router-tag'>
+      <AppTag color='grey' className='router-tag'>
         {t('group_manage.status.disabled')}
-      </Label>
+      </AppTag>
     );
 
   const renderList = () => (
     <>
-      <div
-        className='router-toolbar router-block-gap-sm'
-      >
-        <div className='router-toolbar-start'>
-          <Button
-            type='button'
-            className='router-page-button'
-            disabled={submitting}
-            onClick={openCreatePanel}
-          >
-            {t('group_manage.buttons.add')}
-          </Button>
-          <Button
-            type='button'
-            className='router-page-button'
-            disabled={submitting}
-            loading={loading}
-            onClick={loadCatalog}
-          >
-            {t('group_manage.buttons.refresh')}
-          </Button>
-        </div>
-        <Form className='router-search-form-md'>
-          <Form.Input
-            className='router-section-input'
-            icon='search'
-            iconPosition='left'
+      <AppFilterHeader
+        title={t('header.group')}
+        meta={`${visibleRows.length} / ${rows.length}`}
+        actions={
+          <div className='router-list-toolbar-actions'>
+            <AppButton
+              type='button'
+              className='router-page-button'
+              color='blue'
+              disabled={submitting}
+              onClick={openCreatePanel}
+            >
+              {t('group_manage.buttons.add')}
+            </AppButton>
+            <AppButton
+              type='button'
+              className='router-page-button'
+              disabled={submitting}
+              loading={loading}
+              onClick={loadCatalog}
+            >
+              {t('group_manage.buttons.refresh')}
+            </AppButton>
+          </div>
+        }
+        query={
+          <AppInput
+            className='router-section-input router-search-form-sm'
             placeholder={t('group_manage.search')}
             value={searchKeyword}
             onChange={(e, { value }) => setSearchKeyword(value || '')}
           />
-        </Form>
-      </div>
+        }
+      />
 
-      <Table basic='very' compact className='router-hover-table router-list-table'>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell>{t('group_manage.table.id')}</Table.HeaderCell>
-            <Table.HeaderCell>{t('group_manage.table.description')}</Table.HeaderCell>
-            <Table.HeaderCell>{t('group_manage.table.channels')}</Table.HeaderCell>
-            <Table.HeaderCell>{t('group_manage.table.billing_ratio')}</Table.HeaderCell>
-            <Table.HeaderCell>{t('group_manage.table.status')}</Table.HeaderCell>
-            <Table.HeaderCell>{t('group_manage.table.created_at')}</Table.HeaderCell>
-            <Table.HeaderCell>{t('group_manage.table.updated_at')}</Table.HeaderCell>
-            <Table.HeaderCell className='router-table-action-cell router-group-action-cell'>
-              {t('group_manage.table.actions')}
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {visibleRows.length === 0 ? (
-            <Table.Row>
-              <Table.Cell className='router-empty-cell' colSpan={8} textAlign='center'>
-                {loading
-                  ? t('group_manage.messages.loading')
-                  : t('group_manage.messages.empty')}
-              </Table.Cell>
-            </Table.Row>
-          ) : (
-            visibleRows.map((row) => (
-              <Table.Row
-                key={row.id}
-                onClick={() => openViewPanel(row)}
-                className={submitting || loading ? undefined : 'router-row-clickable'}
-              >
-                <Table.Cell>{row.name || '-'}</Table.Cell>
-                <Table.Cell>{row.description || '-'}</Table.Cell>
-                <Table.Cell>
-                  {(() => {
-                    const { visible, hiddenCount } = summarizeGroupChannels(row.channels, 2);
-                    if (visible.length === 0) {
-                      return '-';
-                    }
-                    return (
-                      <div className='router-tag-group'>
-                        {visible.map((item) => (
-                          <Label key={item.id} className='router-tag'>
-                            {formatChannelDisplayName(item)}
-                          </Label>
-                        ))}
-                        {hiddenCount > 0 ? (
-                          <Label className='router-tag'>... +{hiddenCount}</Label>
-                        ) : null}
-                      </div>
-                    );
-                  })()}
-                </Table.Cell>
-                <Table.Cell>{Number(row.billing_ratio ?? 1).toFixed(2)}</Table.Cell>
-                <Table.Cell>{renderGroupStatus(row.enabled)}</Table.Cell>
-                <Table.Cell>{row.created_at ? timestamp2string(row.created_at) : '-'}</Table.Cell>
-                <Table.Cell>{row.updated_at ? timestamp2string(row.updated_at) : '-'}</Table.Cell>
-                <Table.Cell className='router-table-action-cell router-group-action-cell'>
-                  <div className='router-action-group-tight'>
-                    <Button
-                      className='router-inline-button'
-                      color={row.enabled ? 'orange' : 'green'}
-                      size='mini'
-                      compact
-                      disabled={submitting || loading}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleEnabled(row);
-                      }}
-                    >
-                      {row.enabled
-                        ? t('group_manage.buttons.disable')
-                        : t('group_manage.buttons.enable')}
-                    </Button>
-                    <Button
-                      className='router-inline-button'
-                      negative
-                      size='mini'
-                      compact
-                      disabled={submitting || loading}
-                      onClick={(e) => {
-                        e.stopPropagation();
+      <AppTable
+        className='router-hover-table router-list-table'
+        rowKey='id'
+        pagination={false}
+        loading={loading}
+        locale={{ emptyText: t('group_manage.messages.empty') }}
+        dataSource={visibleRows}
+        onRow={(row) => ({
+          onClick: () => openViewPanel(row),
+          className: submitting || loading ? undefined : 'router-row-clickable',
+        })}
+        columns={[
+          {
+            title: t('group_manage.table.id'),
+            dataIndex: 'name',
+            key: 'name',
+            render: (value) => value || '-',
+          },
+          {
+            title: t('group_manage.table.description'),
+            dataIndex: 'description',
+            key: 'description',
+            render: (value) => value || '-',
+          },
+          {
+            title: t('group_manage.table.channels'),
+            dataIndex: 'channels',
+            key: 'channels',
+            render: (channels) => {
+              const { visible, hiddenCount } = summarizeGroupChannels(channels, 2);
+              if (visible.length === 0) {
+                return '-';
+              }
+              return (
+                <div className='router-tag-group'>
+                  {visible.map((item) => (
+                    <AppTag key={item.id} className='router-tag'>
+                      {formatChannelDisplayName(item)}
+                    </AppTag>
+                  ))}
+                  {hiddenCount > 0 ? (
+                    <AppTag className='router-tag'>... +{hiddenCount}</AppTag>
+                  ) : null}
+                </div>
+              );
+            },
+          },
+          {
+            title: t('group_manage.table.billing_ratio'),
+            dataIndex: 'billing_ratio',
+            key: 'billing_ratio',
+            render: (value) => Number(value ?? 1).toFixed(2),
+          },
+          {
+            title: t('group_manage.table.status'),
+            dataIndex: 'enabled',
+            key: 'enabled',
+            render: (value) => renderGroupStatus(value),
+          },
+          {
+            title: t('group_manage.table.created_at'),
+            dataIndex: 'created_at',
+            key: 'created_at',
+            render: (value) => (value ? timestamp2string(value) : '-'),
+          },
+          {
+            title: t('group_manage.table.updated_at'),
+            dataIndex: 'updated_at',
+            key: 'updated_at',
+            render: (value) => (value ? timestamp2string(value) : '-'),
+          },
+          {
+            title: t('group_manage.table.actions'),
+            key: 'actions',
+            className: 'router-table-action-cell router-group-action-cell',
+            render: (_, row) => (
+              <div className='router-action-group-tight'>
+                <AppButton
+                  className='router-inline-button'
+                  color={row.enabled ? undefined : 'blue'}
+                  disabled={submitting || loading}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleEnabled(row);
+                  }}
+                >
+                  {row.enabled
+                    ? t('group_manage.buttons.disable')
+                    : t('group_manage.buttons.enable')}
+                </AppButton>
+                <AppMenuDropdown
+                  disabled={submitting || loading}
+                  items={[
+                    {
+                      key: 'edit',
+                      label: t('common.edit'),
+                      icon: <AppIcon name='edit' />,
+                      onClick: () => {
+                        openViewPanel(row);
+                        startEditPanel(row);
+                      },
+                    },
+                    {
+                      key: 'delete',
+                      label: t('group_manage.buttons.delete'),
+                      icon: <AppIcon name='trash' />,
+                      danger: true,
+                      onClick: () => {
                         openDeleteModal(row);
-                      }}
-                    >
-                      {t('group_manage.buttons.delete')}
-                    </Button>
-                  </div>
-                </Table.Cell>
-              </Table.Row>
-            ))
-          )}
-        </Table.Body>
-      </Table>
+                      },
+                    },
+                  ]}
+                >
+                  <AppButton className='router-inline-button'>
+                    {t('common.operation')}
+                  </AppButton>
+                </AppMenuDropdown>
+              </div>
+            ),
+          },
+        ]}
+      />
     </>
   );
 
   const renderBoundChannelsField = (items, loadingState, options = {}) => (
-    <Form.Field className={options.hideLabel ? '' : 'router-block-top-sm'}>
+    <div className={options.hideLabel ? '' : 'router-block-top-sm'}>
       {options.hideLabel ? null : (
         <label>{t('group_manage.detail.bound_channels')}</label>
       )}
-      <div className='ui fluid multiple selection dropdown router-section-dropdown router-readonly-dropdown'>
+      <div className='router-readonly-dropdown'>
         {loadingState ? (
           <div className='router-readonly-dropdown-empty'>
             {t('group_manage.messages.loading')}
@@ -1222,8 +1271,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
           </div>
         ) : (
           items.map((item) => (
-            <Label
-              as='a'
+            <AppTag
               key={item.id}
               className='router-tag'
               onClick={(event) => {
@@ -1232,11 +1280,11 @@ const GroupsManager = ({ detailGroupId = '' }) => {
               }}
             >
               {formatChannelDisplayName(item)}
-            </Label>
+            </AppTag>
           ))
         )}
       </div>
-    </Form.Field>
+    </div>
   );
 
   const updateDetailChannelDraft = useCallback((channelID, updater) => {
@@ -1265,231 +1313,210 @@ const GroupsManager = ({ detailGroupId = '' }) => {
   const renderDetailChannelsTable = (items, loadingState) => {
     const rows = (Array.isArray(items) ? items : []).filter((item) => !!item?.bound);
     return (
-      <Table celled stackable className='router-detail-table'>
-        <colgroup>
-          <col style={{ width: '44%' }} />
-          <col style={{ width: '16%' }} />
-          <col style={{ width: '16%' }} />
-          <col style={{ width: '24%' }} />
-        </colgroup>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell>{t('group_manage.detail.model_channels')}</Table.HeaderCell>
-            <Table.HeaderCell collapsing>{t('group_manage.table.status')}</Table.HeaderCell>
-            <Table.HeaderCell collapsing>{t('group_manage.detail.priority')}</Table.HeaderCell>
-            <Table.HeaderCell collapsing>{t('group_manage.table.actions')}</Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {loadingState ? (
-            <Table.Row>
-              <Table.Cell className='router-empty-cell' colSpan='4'>
-                {t('group_manage.messages.loading')}
-              </Table.Cell>
-            </Table.Row>
-          ) : rows.length === 0 ? (
-            <Table.Row>
-              <Table.Cell className='router-empty-cell' colSpan='4'>
-                {t('group_manage.detail.empty_channels')}
-              </Table.Cell>
-            </Table.Row>
-          ) : (
-            rows.map((item) => {
+      <AppTable
+        className='router-detail-table'
+        rowKey='id'
+        pagination={false}
+        loading={loadingState}
+        locale={{ emptyText: t('group_manage.detail.empty_channels') }}
+        dataSource={rows}
+        columns={[
+          {
+            title: t('group_manage.detail.model_channels'),
+            dataIndex: 'name',
+            key: 'name',
+            width: '44%',
+            render: (_, item) => (
+              <span className='router-cell-truncate' title={formatChannelDisplayName(item)}>
+                {formatChannelDisplayName(item)}
+              </span>
+            ),
+          },
+          {
+            title: t('group_manage.table.status'),
+            dataIndex: 'status',
+            key: 'status',
+            width: '16%',
+            render: (value) => (
+              <AppTag color={channelStatusColor(value)} className='router-tag'>
+                {value === 1
+                  ? t('group_manage.status.enabled')
+                  : t('group_manage.status.disabled')}
+              </AppTag>
+            ),
+          },
+          {
+            title: t('group_manage.detail.priority'),
+            dataIndex: 'priority',
+            key: 'priority',
+            width: '16%',
+            render: (_, item) => {
               const channelID = (item?.id || '').toString().trim();
               return (
-                <Table.Row key={channelID}>
-                  <Table.Cell title={formatChannelDisplayName(item)}>
-                    <span className='router-cell-truncate'>
-                      {formatChannelDisplayName(item)}
-                    </span>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Label
-                      basic
-                      color={channelStatusColor(item?.status)}
-                      className='router-tag'
-                    >
-                      {item?.status === 1
-                        ? t('group_manage.status.enabled')
-                        : t('group_manage.status.disabled')}
-                    </Label>
-                  </Table.Cell>
-                  <Table.Cell collapsing>
-                      <Form.Input
-                        className='router-inline-input'
-                        type='number'
-                        step='1'
-                        disabled={submitting || detailChannelsEditLocked || detailChannelModalOpen}
-                        value={toSafePriorityNumber(item?.priority, 0)}
-                        onChange={(e, { value }) =>
-                          updateDetailChannelDraft(channelID, (current) => ({
-                            ...current,
-                            priority: Number.isFinite(Number(value))
-                              ? Math.trunc(Number(value))
-                              : 0,
-                          }))
-                        }
-                        onBlur={async () => {
-                          const nextRows = (Array.isArray(detailChannelRows) ? detailChannelRows : []).map((row) =>
-                            (row?.id || '').toString().trim() === channelID
-                              ? {
-                                  ...row,
-                                  priority: toSafePriorityNumber(row?.priority, 0),
-                                }
-                              : row
-                          );
-                          setDetailChannelRows(nextRows);
-                          await submitDetailChannels(nextRows);
-                        }}
-                      />
-                    </Table.Cell>
-                    <Table.Cell collapsing>
-                      <div className='router-inline-actions'>
-                      <Button
-                        type='button'
-                        className='router-inline-button'
-                        basic
-                        onClick={() => openChannelDetailFromCurrentPage(channelID)}
-                      >
-                        {t('group_manage.buttons.view_channel')}
-                      </Button>
-                      <Button
-                        type='button'
-                        className='router-inline-button'
-                        basic
-                        disabled={submitting || detailChannelsEditLocked || detailChannelModalOpen}
-                        onClick={() => removeDetailChannel(item)}
-                      >
-                        {t('group_manage.buttons.remove_channel')}
-                      </Button>
-                    </div>
-                  </Table.Cell>
-                </Table.Row>
+                <AppInputNumber
+                  className='router-inline-input'
+                  step={1}
+                  precision={0}
+                  disabled={submitting || detailChannelsEditLocked || detailChannelModalOpen}
+                  value={toSafePriorityNumber(item?.priority, 0)}
+                  onChange={(e, { value }) =>
+                    updateDetailChannelDraft(channelID, (current) => ({
+                      ...current,
+                      priority: Number.isFinite(Number(value))
+                        ? Math.trunc(Number(value))
+                        : 0,
+                    }))
+                  }
+                  onBlur={async () => {
+                    const nextRows = (Array.isArray(detailChannelRows) ? detailChannelRows : []).map((row) =>
+                      (row?.id || '').toString().trim() === channelID
+                        ? {
+                            ...row,
+                            priority: toSafePriorityNumber(row?.priority, 0),
+                          }
+                        : row
+                    );
+                    setDetailChannelRows(nextRows);
+                    await submitDetailChannels(nextRows);
+                  }}
+                />
               );
-            })
-          )}
-        </Table.Body>
-      </Table>
+            },
+          },
+          {
+            title: t('group_manage.table.actions'),
+            key: 'actions',
+            width: '24%',
+            render: (_, item) => {
+              const channelID = (item?.id || '').toString().trim();
+              return (
+                <div className='router-inline-actions'>
+                  <AppButton
+                    type='button'
+                    className='router-inline-button'
+                    basic
+                    onClick={() => openChannelDetailFromCurrentPage(channelID)}
+                  >
+                    {t('group_manage.buttons.view_channel')}
+                  </AppButton>
+                  <AppButton
+                    type='button'
+                    className='router-inline-button'
+                    basic
+                    disabled={submitting || detailChannelsEditLocked || detailChannelModalOpen}
+                    onClick={() => removeDetailChannel(item)}
+                  >
+                    {t('group_manage.buttons.remove_channel')}
+                  </AppButton>
+                </div>
+              );
+            },
+          },
+        ]}
+      />
     );
   };
 
   const renderDetailModelConfigTable = (options = {}) => {
     return (
       <div className={options.hideTitle ? '' : 'router-block-top-sm'}>
-        <div
-          className={
+        <AppFilterHeader
+          className={options.hideTitle ? '' : 'router-block-gap-xs'}
+          title={
             options.hideTitle
-              ? 'router-entity-detail-section-header'
-              : 'router-toolbar router-block-gap-xs'
+              ? t('group_manage.detail.supported_models')
+              : t('group_manage.edit.model_configs')
           }
-        >
-          {options.hideTitle ? (
-            <Header as='h3' className='router-entity-detail-section-title'>
-              {t('group_manage.detail.supported_models')}
-            </Header>
-          ) : (
-            <div className='router-toolbar-title'>
-              {t('group_manage.edit.model_configs')}
-            </div>
-          )}
-          <div className='router-toolbar-end router-block-gap-sm router-group-model-toolbar-end'>
-            <Form.Input
+          titleTag={options.hideTitle ? 'h3' : 'div'}
+          titleClassName={
+            options.hideTitle
+              ? 'router-entity-detail-section-title'
+              : 'router-toolbar-title'
+          }
+          endClassName='router-block-gap-sm router-group-model-toolbar-end'
+          actions={
+            <AppInput
               className='router-inline-input router-search-form-sm router-group-model-search'
-              icon='search'
-              iconPosition='left'
               placeholder={t('group_manage.edit.model_search_placeholder')}
               value={detailModelSearchKeyword}
               onChange={(e, { value }) => setDetailModelSearchKeyword(value || '')}
             />
-          </div>
-        </div>
-        <Table compact celled className='router-detail-table router-group-supported-models-table'>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell className='router-group-supported-models-col-model'>
-                {t('group_manage.edit.model')}
-              </Table.HeaderCell>
-              <Table.HeaderCell className='router-group-supported-models-col-channels'>
-                {t('group_manage.detail.model_channels')}
-              </Table.HeaderCell>
-              <Table.HeaderCell className='router-group-supported-models-col-enabled'>
-                {t('group_manage.detail.enabled')}
-              </Table.HeaderCell>
-              <Table.HeaderCell className='router-group-supported-models-col-actions'>
-                {t('group_manage.table.actions')}
-              </Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {detailModelLoading ? (
-              <Table.Row>
-                <Table.Cell className='router-empty-cell' colSpan={4} textAlign='center'>
-                  {t('group_manage.messages.loading')}
-                </Table.Cell>
-              </Table.Row>
-            ) : detailModelEntries.length === 0 ? (
-              <Table.Row>
-                <Table.Cell className='router-empty-cell' colSpan={4} textAlign='center'>
-                  {t('group_manage.edit.empty_model_configs')}
-                </Table.Cell>
-              </Table.Row>
-            ) : (
-              detailModelEntries.map((entry) => (
-                <Table.Row key={`group-detail-model-${entry.model || '-'}`}>
-                  <Table.Cell className='router-group-supported-models-col-model'>
-                    {entry.model || '-'}
-                  </Table.Cell>
-                  <Table.Cell className='router-group-supported-models-col-channels'>
-                    {entry.rows.length > 0 ? (
-                      <div className='router-tag-group'>
-                        {entry.rows.map((item) => (
-                          <Label
-                            as='a'
-                            key={`${entry.model}-${item?.channel_id || '-'}-${item?.upstream_model || '-'}`}
-                            className='router-tag'
-                            basic
-                            color={channelStatusColor(item?.channel_status)}
-                            onClick={(event) => {
-                              event.preventDefault();
-                              openChannelDetailFromCurrentPage(item.channel_id);
-                            }}
-                          >
-                            {item?.channel_name || item?.channel_id}
-                            {` · ${formatPriorityLabel(item?.priority)}`}
-                          </Label>
-                        ))}
-                      </div>
-                    ) : (
-                      '-'
-                    )}
-                  </Table.Cell>
-                  <Table.Cell className='router-group-supported-models-col-enabled'>
-                    <Checkbox
-                      toggle
-                      checked={entry.allEnabled}
-                      indeterminate={entry.partiallyEnabled}
-                      disabled={submitting || detailModelsEditLocked}
-                      onChange={(event, { checked }) => {
-                        event.stopPropagation();
-                        toggleDetailModelEnabled(entry.model, !!checked);
-                      }}
-                    />
-                  </Table.Cell>
-                  <Table.Cell className='router-group-supported-models-col-actions'>
-                    <Button
-                      type='button'
-                      className='router-inline-button'
-                      disabled={submitting || detailModelsEditLocked}
-                      onClick={() => openDetailModelEdit(entry)}
-                    >
-                      {t('group_manage.buttons.edit')}
-                    </Button>
-                  </Table.Cell>
-                </Table.Row>
-              ))
-            )}
-          </Table.Body>
-        </Table>
+          }
+        />
+        <AppTable
+          className='router-detail-table router-group-supported-models-table'
+          rowKey={(entry) => `group-detail-model-${entry.model || '-'}`}
+          pagination={false}
+          loading={detailModelLoading}
+          locale={{ emptyText: t('group_manage.edit.empty_model_configs') }}
+          dataSource={detailModelEntries}
+          columns={[
+            {
+              title: t('group_manage.edit.model'),
+              dataIndex: 'model',
+              key: 'model',
+              className: 'router-group-supported-models-col-model',
+              render: (value) => value || '-',
+            },
+            {
+              title: t('group_manage.detail.model_channels'),
+              dataIndex: 'rows',
+              key: 'rows',
+              className: 'router-group-supported-models-col-channels',
+              render: (rows) =>
+                rows.length > 0 ? (
+                  <div className='router-tag-group'>
+                    {rows.map((item) => (
+                      <AppTag
+                        key={`${item?.model || '-'}-${item?.channel_id || '-'}-${item?.upstream_model || '-'}`}
+                        className='router-tag'
+                        color={channelStatusColor(item?.channel_status)}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          openChannelDetailFromCurrentPage(item.channel_id);
+                        }}
+                      >
+                        {item?.channel_name || item?.channel_id}
+                        {` · ${formatPriorityLabel(item?.priority)}`}
+                      </AppTag>
+                    ))}
+                  </div>
+                ) : (
+                  '-'
+                ),
+            },
+            {
+              title: t('group_manage.detail.enabled'),
+              key: 'enabled',
+              className: 'router-group-supported-models-col-enabled',
+              render: (_, entry) => (
+                <AppSwitch
+                  checked={entry.allEnabled}
+                  disabled={submitting || detailModelsEditLocked}
+                  onChange={(event, { checked }) => {
+                    event?.stopPropagation?.();
+                    toggleDetailModelEnabled(entry.model, !!checked);
+                  }}
+                />
+              ),
+            },
+            {
+              title: t('group_manage.table.actions'),
+              key: 'actions',
+              className: 'router-group-supported-models-col-actions',
+              render: (_, entry) => (
+                <AppButton
+                  type='button'
+                  className='router-inline-button'
+                  disabled={submitting || detailModelsEditLocked}
+                  onClick={() => openDetailModelEdit(entry)}
+                >
+                  {t('group_manage.buttons.edit')}
+                </AppButton>
+              ),
+            },
+          ]}
+        />
       </div>
     );
   };
@@ -1795,142 +1822,138 @@ const GroupsManager = ({ detailGroupId = '' }) => {
 
   const renderEditModelConfigTable = () => (
     <div className='router-block-top-md'>
-      <div className='router-toolbar router-block-gap-xs'>
-        <div className='router-toolbar-start'>
-          <div className='router-toolbar-title'>{t('group_manage.edit.model_configs')}</div>
-          <Button
-            type='button'
-            className='router-inline-button'
-            disabled={submitting || formModelLoading}
-            onClick={addEmptyModelConfigRow}
-          >
-            {t('group_manage.buttons.add_model')}
-          </Button>
-        </div>
-        <Form.Input
-          className='router-inline-input router-search-form-sm'
-          icon='search'
-          iconPosition='left'
-          placeholder={t('group_manage.edit.model_search_placeholder')}
-          value={editModelSearchKeyword}
-          onChange={(e, { value }) => setEditModelSearchKeyword(value || '')}
-        />
-      </div>
-      <Table compact celled className='router-detail-table'>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell className='router-cell-min-260'>
-              {t('group_manage.edit.model')}
-            </Table.HeaderCell>
-            <Table.HeaderCell className='router-cell-min-240'>
-              {t('group_manage.edit.channel')}
-            </Table.HeaderCell>
-            <Table.HeaderCell className='router-cell-min-280'>
-              {t('group_manage.edit.upstream_model')}
-            </Table.HeaderCell>
-            <Table.HeaderCell collapsing>
-              {t('group_manage.table.actions')}
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {formModelLoading ? (
-            <Table.Row>
-              <Table.Cell className='router-empty-cell' colSpan={4} textAlign='center'>
-                {t('group_manage.messages.loading')}
-              </Table.Cell>
-            </Table.Row>
-          ) : visibleEditModelConfigs.length === 0 ? (
-            <Table.Row>
-              <Table.Cell className='router-empty-cell' colSpan={4} textAlign='center'>
-                {t('group_manage.edit.empty_model_configs')}
-              </Table.Cell>
-            </Table.Row>
-          ) : (
-            visibleEditModelConfigs.map(({ item, index }) => {
+      <AppFilterHeader
+        className='router-block-gap-xs'
+        title={t('group_manage.edit.model_configs')}
+        actions={
+          <>
+            <AppButton
+              type='button'
+              className='router-inline-button'
+              disabled={submitting || formModelLoading}
+              onClick={addEmptyModelConfigRow}
+            >
+              {t('group_manage.buttons.add_model')}
+            </AppButton>
+            <AppInput
+              className='router-inline-input router-search-form-sm'
+              placeholder={t('group_manage.edit.model_search_placeholder')}
+              value={editModelSearchKeyword}
+              onChange={(e, { value }) => setEditModelSearchKeyword(value || '')}
+            />
+          </>
+        }
+      />
+      <AppTable
+        className='router-detail-table'
+        rowKey={(record) => {
+          const item = record?.item || {};
+          const channelID = (item?.channel_id || '').toString().trim() || 'channel';
+          const model = (item?.model || '').toString().trim() || 'model';
+          const upstreamModel =
+            (item?.upstream_model || '').toString().trim() || 'upstream';
+          return `group-model-config-${record?.index ?? 0}-${channelID}-${model}-${upstreamModel}`;
+        }}
+        pagination={false}
+        loading={formModelLoading}
+        locale={{ emptyText: t('group_manage.edit.empty_model_configs') }}
+        dataSource={visibleEditModelConfigs}
+        columns={[
+          {
+            title: t('group_manage.edit.model'),
+            key: 'model',
+            className: 'router-cell-min-260',
+            render: (_, record) => (
+              <AppInput
+                className='router-inline-input'
+                placeholder={t('group_manage.edit.model_placeholder')}
+                value={record?.item?.model || ''}
+                onChange={(e, { value }) =>
+                  updateModelConfigRow(record.index, (current) => ({
+                    ...current,
+                    model: value || '',
+                  }))
+                }
+              />
+            ),
+          },
+          {
+            title: t('group_manage.edit.channel'),
+            key: 'channel',
+            className: 'router-cell-min-240',
+            render: (_, record) => (
+              <AppSelect
+                className='router-inline-dropdown'
+                search
+                options={selectedFormChannelOptions}
+                placeholder={t('group_manage.edit.channel_placeholder')}
+                value={record?.item?.channel_id || ''}
+                onChange={(e, { value }) => {
+                  const nextChannelID = value || '';
+                  const nextChannel = formModelChannelLookup[nextChannelID];
+                  const nextModels = Array.isArray(nextChannel?.models) ? nextChannel.models : [];
+                  const firstModel = nextModels[0] || null;
+                  updateModelConfigRow(record.index, (current) => ({
+                    ...current,
+                    channel_id: nextChannelID,
+                    upstream_model: firstModel?.upstream_model || '',
+                    model:
+                      (current?.model || '').trim() !== ''
+                        ? current.model
+                        : firstModel?.model || '',
+                  }));
+                }}
+              />
+            ),
+          },
+          {
+            title: t('group_manage.edit.upstream_model'),
+            key: 'upstream_model',
+            className: 'router-cell-min-280',
+            render: (_, record) => {
+              const item = record?.item || {};
               const modelOptions = getChannelModelOptions(item?.channel_id || '');
               return (
-                <Table.Row key={`group-model-config-${index}`}>
-                  <Table.Cell>
-                    <Form.Input
-                      className='router-inline-input'
-                      fluid
-                      placeholder={t('group_manage.edit.model_placeholder')}
-                      value={item?.model || ''}
-                      onChange={(e, { value }) =>
-                        updateModelConfigRow(index, (current) => ({
-                          ...current,
-                          model: value || '',
-                        }))
-                      }
-                    />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Form.Dropdown
-                      className='router-inline-dropdown'
-                      fluid
-                      selection
-                      search
-                      options={selectedFormChannelOptions}
-                      placeholder={t('group_manage.edit.channel_placeholder')}
-                      value={item?.channel_id || ''}
-                      onChange={(e, { value }) => {
-                        const nextChannelID = value || '';
-                        const nextChannel = formModelChannelLookup[nextChannelID];
-                        const nextModels = Array.isArray(nextChannel?.models) ? nextChannel.models : [];
-                        const firstModel = nextModels[0] || null;
-                        updateModelConfigRow(index, (current) => ({
-                          ...current,
-                          channel_id: nextChannelID,
-                          upstream_model: firstModel?.upstream_model || '',
-                          model:
-                            (current?.model || '').trim() !== ''
-                              ? current.model
-                              : firstModel?.model || '',
-                        }));
-                      }}
-                    />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Form.Dropdown
-                      className='router-inline-dropdown'
-                      fluid
-                      selection
-                      search
-                      disabled={(item?.channel_id || '') === '' || modelOptions.length === 0}
-                      options={modelOptions}
-                      placeholder={t('group_manage.edit.upstream_model_placeholder')}
-                      value={resolveChannelModelOptionValue(item)}
-                      onChange={(e, { value }) => {
-                        const decoded = decodeChannelModelOptionValue(value);
-                        updateModelConfigRow(index, (current) => ({
-                          ...current,
-                          upstream_model: decoded.upstream_model || '',
-                          model:
-                            (current?.model || '').trim() !== ''
-                              ? current.model
-                              : decoded.model || '',
-                        }));
-                      }}
-                    />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Button
-                      type='button'
-                      className='router-inline-button'
-                      negative
-                      disabled={submitting}
-                      onClick={() => removeModelConfigRow(index)}
-                    >
-                      {t('group_manage.buttons.delete')}
-                    </Button>
-                  </Table.Cell>
-                </Table.Row>
+                <AppSelect
+                  className='router-inline-dropdown'
+                  search
+                  disabled={(item?.channel_id || '') === '' || modelOptions.length === 0}
+                  options={modelOptions}
+                  placeholder={t('group_manage.edit.upstream_model_placeholder')}
+                  value={resolveChannelModelOptionValue(item)}
+                  onChange={(e, { value }) => {
+                    const decoded = decodeChannelModelOptionValue(value);
+                    updateModelConfigRow(record.index, (current) => ({
+                      ...current,
+                      upstream_model: decoded.upstream_model || '',
+                      model:
+                        (current?.model || '').trim() !== ''
+                          ? current.model
+                          : decoded.model || '',
+                    }));
+                  }}
+                />
               );
-            })
-          )}
-        </Table.Body>
-      </Table>
+            },
+          },
+          {
+            title: t('group_manage.table.actions'),
+            key: 'actions',
+            width: 120,
+            render: (_, record) => (
+              <AppButton
+                type='button'
+                className='router-inline-button'
+                color='red'
+                disabled={submitting}
+                onClick={() => removeModelConfigRow(record.index)}
+              >
+                {t('group_manage.buttons.delete')}
+              </AppButton>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 
@@ -1939,122 +1962,146 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     return (
       <div className='router-entity-detail-page'>
         <div className='router-entity-detail-breadcrumb'>
-          <Breadcrumb size='small'>
-            <Breadcrumb.Section link onClick={backToList}>
-              {t('header.group')}
-            </Breadcrumb.Section>
-            <Breadcrumb.Divider icon='right chevron' />
-            <Breadcrumb.Section active>
-              {activeGroup.name || activeGroup.id || '-'}
-            </Breadcrumb.Section>
-          </Breadcrumb>
+          <AppBreadcrumb
+            items={[
+              {
+                key: 'group-list',
+                label: t('header.group'),
+                onClick: backToList,
+              },
+              {
+                key: 'group-current',
+                label: activeGroup.name || activeGroup.id || '-',
+                active: true,
+              },
+            ]}
+          />
         </div>
         <div className='router-entity-detail-tabs router-block-gap-sm'>
-          <Menu secondary pointing className='router-detail-tab-menu'>
-            <Menu.Item
-              active={activeDetailTab === 'overview'}
-              disabled={isAnyDetailSectionEditing && activeDetailTab !== 'overview'}
-              onClick={() => setActiveDetailTab('overview')}
-            >
-              {t('group_manage.detail_tabs.overview')}
-            </Menu.Item>
-            <Menu.Item
-              active={activeDetailTab === 'channels'}
-              disabled={isAnyDetailSectionEditing && activeDetailTab !== 'channels'}
-              onClick={() => setActiveDetailTab('channels')}
-            >
-              {t('group_manage.detail_tabs.channels')}
-            </Menu.Item>
-            <Menu.Item
-              active={activeDetailTab === 'models'}
-              disabled={isAnyDetailSectionEditing && activeDetailTab !== 'models'}
-              onClick={() => setActiveDetailTab('models')}
-            >
-              {t('group_manage.detail_tabs.models')}
-            </Menu.Item>
-          </Menu>
+          <AppTabs
+            className='router-detail-tab-nav'
+            activeKey={activeDetailTab}
+            onChange={setActiveDetailTab}
+            items={[
+              {
+                key: 'overview',
+                label: t('group_manage.detail_tabs.overview'),
+                disabled:
+                  isAnyDetailSectionEditing && activeDetailTab !== 'overview',
+              },
+              {
+                key: 'channels',
+                label: t('group_manage.detail_tabs.channels'),
+                disabled:
+                  isAnyDetailSectionEditing && activeDetailTab !== 'channels',
+              },
+              {
+                key: 'models',
+                label: t('group_manage.detail_tabs.models'),
+                disabled:
+                  isAnyDetailSectionEditing && activeDetailTab !== 'models',
+              },
+            ]}
+          />
         </div>
         {activeDetailTab === 'overview' && (
-          <section className='router-entity-detail-section'>
-            <div className='router-entity-detail-section-header'>
-              <Header as='h3' className='router-entity-detail-section-title'>
-                {t('common.basic_info')}
-              </Header>
-              <div className='router-toolbar-start'>
-                {renderGroupStatus(activeGroup.enabled)}
-                {detailBasicEditing ? (
-                  <>
-                    <Button
-                      type='button'
-                      className='router-page-button'
-                      disabled={submitting}
-                      onClick={cancelDetailSectionEdit}
-                    >
-                      {t('group_manage.buttons.cancel')}
-                    </Button>
-                    <Button
-                      type='button'
-                      className='router-page-button'
-                      color='blue'
-                      loading={submitting}
-                      disabled={submitting}
-                      onClick={submitDetailBasic}
-                    >
-                      {t('group_manage.buttons.confirm')}
-                    </Button>
-                  </>
-                ) : (
-                  <Button
+          <AppDetailSection
+            title={t('common.basic_info')}
+            headerStart={renderGroupStatus(activeGroup.enabled)}
+            headerEnd={
+              detailBasicEditing ? (
+                <>
+                  <AppButton
+                    type='button'
+                    className='router-page-button'
+                    disabled={submitting}
+                    onClick={cancelDetailSectionEdit}
+                  >
+                    {t('group_manage.buttons.cancel')}
+                  </AppButton>
+                  <AppButton
                     type='button'
                     className='router-page-button'
                     color='blue'
-                    disabled={submitting || detailBasicEditLocked}
-                    onClick={startDetailBasicEdit}
+                    loading={submitting}
+                    disabled={submitting}
+                    onClick={submitDetailBasic}
                   >
-                    {t('group_manage.buttons.edit')}
-                  </Button>
-                )}
-              </div>
-            </div>
-            <Form>
-              <Form.Group widths='equal'>
-                <Form.Input
-                  className='router-section-input'
-                  label='分组ID'
-                  value={activeGroup.id || '-'}
-                  readOnly
-                />
-                <Form.Input
-                  className='router-section-input'
+                    {t('group_manage.buttons.confirm')}
+                  </AppButton>
+                </>
+              ) : (
+                <AppButton
+                  type='button'
+                  className='router-page-button'
+                  color='blue'
+                  disabled={submitting || detailBasicEditLocked}
+                  onClick={startDetailBasicEdit}
+                >
+                  {t('group_manage.buttons.edit')}
+                </AppButton>
+              )
+            }
+          >
+              <AppFormRow>
+                <AppField label='分组ID' readOnly>
+                  <AppInput
+                    className='router-section-input'
+                    value={activeGroup.id || '-'}
+                    readOnly
+                  />
+                </AppField>
+                <AppField
                   label={t('group_manage.form.name')}
-                  value={detailBasicEditing ? form.name : activeGroup.name || ''}
+                  required={detailBasicEditing}
                   readOnly={!detailBasicEditing}
-                  placeholder={t('group_manage.form.id_placeholder')}
-                  onChange={(e, { value }) =>
-                    setForm((prev) => ({ ...prev, name: value || '' }))
-                  }
-                />
-              </Form.Group>
-              <Form.TextArea
-                className='router-section-textarea'
-                label={t('group_manage.form.description')}
-                value={detailBasicEditing ? form.description : activeGroup.description || ''}
-                readOnly={!detailBasicEditing}
-                placeholder={t('group_manage.form.description_placeholder')}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-              />
-              <Form.Group widths='equal'>
-                <Form.Field className='router-section-input'>
-                  <label>{t('group_manage.form.billing_ratio')}</label>
-                  <Form.Input
-                    type='number'
-                    min='0'
-                    step='0.01'
+                >
+                  <AppInput
+                    className='router-section-input'
+                    value={detailBasicEditing ? form.name : activeGroup.name || ''}
+                    readOnly={!detailBasicEditing}
+                    placeholder={t('group_manage.form.id_placeholder')}
+                    onChange={(e, { value }) =>
+                      setForm((prev) => ({ ...prev, name: value || '' }))
+                    }
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormRow>
+                <AppField
+                  label={t('group_manage.form.description')}
+                  readOnly={!detailBasicEditing}
+                >
+                  <AppTextarea
+                    className='router-section-textarea'
+                    value={
+                      detailBasicEditing
+                        ? form.description
+                        : activeGroup.description || ''
+                    }
+                    readOnly={!detailBasicEditing}
+                    placeholder={t('group_manage.form.description_placeholder')}
+                    onChange={(e, { value }) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        description: value || '',
+                      }))
+                    }
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormRow>
+                <AppField
+                  label={t('group_manage.form.billing_ratio')}
+                  hint={t('group_manage.form.billing_ratio_help')}
+                  readOnly={!detailBasicEditing}
+                >
+                  <AppInputNumber
+                    className='router-section-input'
+                    min={0}
+                    step={0.01}
+                    precision={2}
+                    fluid
                     value={
                       detailBasicEditing
                         ? form.billing_ratio
@@ -2062,75 +2109,91 @@ const GroupsManager = ({ detailGroupId = '' }) => {
                     }
                     readOnly={!detailBasicEditing}
                     placeholder={t('group_manage.form.billing_ratio_placeholder')}
-                    onChange={(e) =>
+                    onChange={(e, { value }) =>
                       setForm((prev) => ({
                         ...prev,
-                        billing_ratio: e.target.value,
+                        billing_ratio: value ?? '',
                       }))
                     }
                   />
-                  <div className='router-text-muted'>
-                    {t('group_manage.form.billing_ratio_help')}
-                  </div>
-                </Form.Field>
-              </Form.Group>
-              <Form.Group widths='equal'>
-                <Form.Input
-                  className='router-section-input'
-                  type='number'
+                </AppField>
+              </AppFormRow>
+              <AppFormRow>
+                <AppField
                   label={t('group_manage.form.sort_order')}
-                  value={detailBasicEditing ? form.sort_order : activeGroup.sort_order || 0}
                   readOnly={!detailBasicEditing}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      sort_order: Number(e.target.value || 0),
-                    }))
-                  }
-                />
-                <Form.Input
-                  className='router-section-input'
+                >
+                  <AppInputNumber
+                    className='router-section-input'
+                    precision={0}
+                    fluid
+                    value={
+                      detailBasicEditing ? form.sort_order : activeGroup.sort_order || 0
+                    }
+                    readOnly={!detailBasicEditing}
+                    onChange={(e, { value }) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        sort_order: Number(value || 0),
+                      }))
+                    }
+                  />
+                </AppField>
+                <AppField
                   label={t('group_manage.table.created_at')}
-                  value={activeGroup.created_at ? timestamp2string(activeGroup.created_at) : '-'}
                   readOnly
-                />
-                <Form.Input
-                  className='router-section-input'
+                >
+                  <AppInput
+                    className='router-section-input'
+                    value={
+                      activeGroup.created_at
+                        ? timestamp2string(activeGroup.created_at)
+                        : '-'
+                    }
+                    readOnly
+                  />
+                </AppField>
+                <AppField
                   label={t('group_manage.table.updated_at')}
-                  value={activeGroup.updated_at ? timestamp2string(activeGroup.updated_at) : '-'}
                   readOnly
-                />
-              </Form.Group>
-            </Form>
-          </section>
+                >
+                  <AppInput
+                    className='router-section-input'
+                    value={
+                      activeGroup.updated_at
+                        ? timestamp2string(activeGroup.updated_at)
+                        : '-'
+                    }
+                    readOnly
+                  />
+                </AppField>
+              </AppFormRow>
+          </AppDetailSection>
         )}
         {activeDetailTab === 'channels' && (
-          <section className='router-entity-detail-section'>
-            <div className='router-entity-detail-section-header'>
-              <Header as='h3' className='router-entity-detail-section-title'>
-                {t('group_manage.detail.bound_channels')}
-              </Header>
-              <div className='router-toolbar-start'>
-                <Button
-                  type='button'
-                  className='router-page-button'
-                  color='blue'
-                  disabled={submitting || detailChannelsEditLocked || detailAvailableChannelOptions.length === 0}
-                  onClick={startDetailChannelsEdit}
-                >
-                  {t('group_manage.buttons.add_channel')}
-                </Button>
-              </div>
-            </div>
+          <AppDetailSection
+            title={t('group_manage.detail.bound_channels')}
+            headerEnd={
+              <AppButton
+                type='button'
+                className='router-page-button'
+                color='blue'
+                disabled={submitting || detailChannelsEditLocked || detailAvailableChannelOptions.length === 0}
+                onClick={startDetailChannelsEdit}
+              >
+                {t('group_manage.buttons.add_channel')}
+              </AppButton>
+            }
+          >
             {renderDetailChannelsTable(detailChannelRows, detailChannelLoading)}
-          </section>
+          </AppDetailSection>
         )}
         {activeDetailTab === 'models' && (
-          <section className='router-entity-detail-section'>
+          <AppDetailSection>
             {renderDetailModelConfigTable({
               hideTitle: true,
             })}
-          </section>
+          </AppDetailSection>
         )}
       </div>
     );
@@ -2138,86 +2201,95 @@ const GroupsManager = ({ detailGroupId = '' }) => {
 
   const renderEdit = () => (
     <div>
-      <div className='router-toolbar-start router-block-gap-sm'>
-        <Button type='button' className='router-page-button' onClick={() => setMode(MODE_VIEW)} disabled={submitting}>
+      <AppFormActions align='start' className='router-block-gap-sm'>
+        <AppButton type='button' className='router-page-button' onClick={() => setMode(MODE_VIEW)} disabled={submitting}>
           {t('group_manage.buttons.cancel')}
-        </Button>
-        <Button type='button' className='router-page-button' color='blue' loading={submitting} disabled={submitting} onClick={submitEdit}>
+        </AppButton>
+        <AppButton type='button' className='router-page-button' color='blue' loading={submitting} disabled={submitting} onClick={submitEdit}>
           {t('group_manage.buttons.confirm')}
-        </Button>
-      </div>
-      <Form>
-        <Form.Input
-          className='router-section-input'
-          label={t('group_manage.form.id')}
-          placeholder={t('group_manage.form.id_placeholder')}
-          value={form.name}
-          onChange={(e, { value }) =>
-            setForm((prev) => ({ ...prev, name: value || '' }))
-          }
-        />
-        <Form.TextArea
-          className='router-section-textarea'
-          label={t('group_manage.form.description')}
-          placeholder={t('group_manage.form.description_placeholder')}
-          value={form.description}
-          onChange={(e) =>
-            setForm((prev) => ({
-              ...prev,
-              description: e.target.value,
-            }))
-          }
-        />
-        <Form.Group widths='equal'>
-          <Form.Field className='router-section-input'>
-            <label>{t('group_manage.form.billing_ratio')}</label>
-            <Form.Input
-              type='number'
-              min='0'
-              step='0.01'
-              placeholder={t('group_manage.form.billing_ratio_placeholder')}
-              value={form.billing_ratio}
-              onChange={(e) =>
+        </AppButton>
+      </AppFormActions>
+      <div>
+        <AppFormRow>
+          <AppField label={t('group_manage.form.id')} required>
+            <AppInput
+              className='router-section-input'
+              placeholder={t('group_manage.form.id_placeholder')}
+              value={form.name}
+              onChange={(e, { value }) =>
+                setForm((prev) => ({ ...prev, name: value || '' }))
+              }
+            />
+          </AppField>
+        </AppFormRow>
+        <AppFormRow>
+          <AppField label={t('group_manage.form.description')}>
+            <AppTextarea
+              className='router-section-textarea'
+              placeholder={t('group_manage.form.description_placeholder')}
+              value={form.description}
+              onChange={(e, { value }) =>
                 setForm((prev) => ({
                   ...prev,
-                  billing_ratio: e.target.value,
+                  description: value || '',
                 }))
               }
             />
-            <div className='router-text-muted'>
-              {t('group_manage.form.billing_ratio_help')}
-            </div>
-          </Form.Field>
-          <Form.Input
-            className='router-section-input'
-            type='number'
-            label={t('group_manage.form.sort_order')}
-            value={form.sort_order}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                sort_order: Number(e.target.value || 0),
-              }))
-            }
-          />
-        </Form.Group>
-        <Form.Dropdown
-          className='router-section-dropdown'
-          fluid
-          multiple
-          search
-          selection
-          loading={formChannelLoading || formModelLoading}
-          disabled={formChannelLoading || formModelLoading || submitting}
-          label={t('group_manage.form.channels')}
-          placeholder={t('group_manage.form.channels_placeholder')}
-          options={formChannelOptions}
-          value={formChannelIDs}
-          onChange={(e, { value }) =>
-            setFormChannelIDs(Array.isArray(value) ? value : [])
-          }
-        />
-      </Form>
+          </AppField>
+        </AppFormRow>
+        <AppFormRow>
+          <AppField
+            label={t('group_manage.form.billing_ratio')}
+            hint={t('group_manage.form.billing_ratio_help')}
+          >
+            <AppInputNumber
+              className='router-section-input'
+              min={0}
+              step={0.01}
+              precision={2}
+              fluid
+              placeholder={t('group_manage.form.billing_ratio_placeholder')}
+              value={form.billing_ratio}
+              onChange={(e, { value }) =>
+                setForm((prev) => ({
+                  ...prev,
+                  billing_ratio: value ?? '',
+                }))
+              }
+            />
+          </AppField>
+          <AppField label={t('group_manage.form.sort_order')}>
+            <AppInputNumber
+              className='router-section-input'
+              precision={0}
+              fluid
+              value={form.sort_order}
+              onChange={(e, { value }) =>
+                setForm((prev) => ({
+                  ...prev,
+                  sort_order: Number(value || 0),
+                }))
+              }
+            />
+          </AppField>
+        </AppFormRow>
+        <AppFormRow>
+          <AppField label={t('group_manage.form.channels')}>
+            <AppSelect
+              className='router-section-dropdown'
+              multiple
+              search
+              disabled={formChannelLoading || formModelLoading || submitting}
+              options={formChannelOptions}
+              value={formChannelIDs}
+              placeholder={t('group_manage.form.channels_placeholder')}
+              onChange={(e, { value }) =>
+                setFormChannelIDs(Array.isArray(value) ? value : [])
+              }
+            />
+          </AppField>
+        </AppFormRow>
+      </div>
       {renderEditModelConfigTable()}
     </div>
   );
@@ -2247,75 +2319,79 @@ const GroupsManager = ({ detailGroupId = '' }) => {
 
   const renderCreate = () => (
     <div>
-      <div className='router-toolbar-start router-block-gap-sm'>
-        <Button type='button' className='router-page-button' onClick={backToList} disabled={submitting}>
+      <AppFormActions align='start' className='router-block-gap-sm'>
+        <AppButton type='button' className='router-page-button' onClick={backToList} disabled={submitting}>
           {t('group_manage.buttons.cancel')}
-        </Button>
-        <Button type='button' className='router-page-button' color='blue' loading={submitting} disabled={submitting} onClick={submitCreate}>
+        </AppButton>
+        <AppButton type='button' className='router-page-button' color='blue' loading={submitting} disabled={submitting} onClick={submitCreate}>
           {t('group_manage.buttons.confirm')}
-        </Button>
-      </div>
-      <Form>
-        <Form.Input
-          className='router-section-input'
-          required
-          label={t('group_manage.form.id')}
-          placeholder={t('group_manage.form.id_placeholder')}
-          value={form.name}
-          onChange={(e) =>
-            setForm((prev) => ({ ...prev, name: e.target.value }))
-          }
-        />
-        <Form.TextArea
-          className='router-section-textarea'
-          label={t('group_manage.form.description')}
-          placeholder={t('group_manage.form.description_placeholder')}
-          value={form.description}
-          onChange={(e) =>
-            setForm((prev) => ({
-              ...prev,
-              description: e.target.value,
-            }))
-          }
-        />
-        <Form.Group widths='equal'>
-          <Form.Field className='router-section-input'>
-            <label>{t('group_manage.form.billing_ratio')}</label>
-            <Form.Input
-              type='number'
-              min='0'
-              step='0.01'
-              placeholder={t('group_manage.form.billing_ratio_placeholder')}
-              value={form.billing_ratio}
+        </AppButton>
+      </AppFormActions>
+      <div>
+        <AppFormRow>
+          <AppField label={t('group_manage.form.id')} required>
+            <AppInput
+              className='router-section-input'
+              placeholder={t('group_manage.form.id_placeholder')}
+              value={form.name}
               onChange={(e) =>
+                setForm((prev) => ({ ...prev, name: e.target.value }))
+              }
+            />
+          </AppField>
+        </AppFormRow>
+        <AppFormRow>
+          <AppField label={t('group_manage.form.description')}>
+            <AppTextarea
+              className='router-section-textarea'
+              placeholder={t('group_manage.form.description_placeholder')}
+              value={form.description}
+              onChange={(e, { value }) =>
                 setForm((prev) => ({
                   ...prev,
-                  billing_ratio: e.target.value,
+                  description: value || '',
                 }))
               }
             />
-            <div className='router-text-muted'>
-              {t('group_manage.form.billing_ratio_help')}
-            </div>
-          </Form.Field>
-          <Form.Dropdown
-            className='router-section-dropdown'
-            fluid
-            multiple
-            search
-            selection
-            loading={formChannelLoading}
-            disabled={formChannelLoading || submitting}
-            label={t('group_manage.form.channels')}
-            placeholder={t('group_manage.form.channels_placeholder')}
-            options={formChannelOptions}
-            value={formChannelIDs}
-            onChange={(e, { value }) =>
-              setFormChannelIDs(Array.isArray(value) ? value : [])
-            }
-          />
-        </Form.Group>
-      </Form>
+          </AppField>
+        </AppFormRow>
+        <AppFormRow>
+          <AppField
+            label={t('group_manage.form.billing_ratio')}
+            hint={t('group_manage.form.billing_ratio_help')}
+          >
+            <AppInputNumber
+              className='router-section-input'
+              min={0}
+              step={0.01}
+              precision={2}
+              fluid
+              placeholder={t('group_manage.form.billing_ratio_placeholder')}
+              value={form.billing_ratio}
+              onChange={(e, { value }) =>
+                setForm((prev) => ({
+                  ...prev,
+                  billing_ratio: value ?? '',
+                }))
+              }
+            />
+          </AppField>
+          <AppField label={t('group_manage.form.channels')}>
+            <AppSelect
+              className='router-section-dropdown'
+              multiple
+              search
+              disabled={formChannelLoading || submitting}
+              options={formChannelOptions}
+              value={formChannelIDs}
+              placeholder={t('group_manage.form.channels_placeholder')}
+              onChange={(e, { value }) =>
+                setFormChannelIDs(Array.isArray(value) ? value : [])
+              }
+            />
+          </AppField>
+        </AppFormRow>
+      </div>
     </div>
   );
 
@@ -2329,151 +2405,201 @@ const GroupsManager = ({ detailGroupId = '' }) => {
             ? renderView()
             : renderList()}
 
-      <Modal open={detailModelModalOpen} onClose={closeDetailModelModal} size='large'>
-        <Modal.Header>
-          {t('group_manage.detail.edit_model_title', {
-            model: detailModelEditTarget || '-',
-          })}
-        </Modal.Header>
-        <Modal.Content>
-          <Table compact celled className='router-detail-table'>
-            <Table.Header>
-              <Table.Row>
-                <Table.HeaderCell collapsing>{t('group_manage.detail.selected')}</Table.HeaderCell>
-                <Table.HeaderCell>{t('group_manage.edit.channel')}</Table.HeaderCell>
-                <Table.HeaderCell>{t('group_manage.edit.upstream_model')}</Table.HeaderCell>
-                <Table.HeaderCell collapsing>{t('group_manage.detail.priority')}</Table.HeaderCell>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {detailModelChannelDrafts.length === 0 ? (
-                <Table.Row>
-                  <Table.Cell className='router-empty-cell' colSpan={4} textAlign='center'>
-                    {t('group_manage.detail.empty_model_channels')}
-                  </Table.Cell>
-                </Table.Row>
-              ) : (
-                detailModelChannelDrafts.map((item) => (
-                  <Table.Row key={`${detailModelEditTarget}-${item.channel_id}`}>
-                    <Table.Cell collapsing>
-                      <Checkbox
-                        checked={!!item.selected}
-                        onChange={(event, { checked }) =>
-                          updateDetailModelChannelDraft(item.channel_id, (current) => ({
-                            ...current,
-                            selected: !!checked,
-                          }))
-                        }
-                      />
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Label
-                        basic
-                        color={channelStatusColor(item?.channel_status)}
-                        className='router-tag'
-                      >
-                        {item.channel_name || item.channel_id}
-                        {item.channel_protocol ? ` · ${item.channel_protocol}` : ''}
-                      </Label>
-                    </Table.Cell>
-                    <Table.Cell>{item.upstream_model || '-'}</Table.Cell>
-                    <Table.Cell collapsing>
-                      <Form.Input
-                        className='router-inline-input'
-                        type='number'
-                        step='1'
-                        disabled={!item.selected}
-                        value={item.priority}
-                        onChange={(e, { value }) =>
-                          updateDetailModelChannelDraft(item.channel_id, (current) => ({
-                            ...current,
-                            priority: value ?? '',
-                          }))
-                        }
-                      />
-                    </Table.Cell>
-                  </Table.Row>
-                ))
-              )}
-            </Table.Body>
-          </Table>
-        </Modal.Content>
-        <Modal.Actions>
-          <Button className='router-modal-button' onClick={closeDetailModelModal} disabled={submitting}>
-            {t('group_manage.buttons.cancel')}
-          </Button>
-          <Button className='router-modal-button' color='blue' onClick={submitDetailModelDraft} disabled={submitting}>
-            {t('group_manage.buttons.confirm')}
-          </Button>
-        </Modal.Actions>
-      </Modal>
-
-      <Modal open={detailChannelModalOpen} onClose={closeDetailChannelModal} size='small'>
-        <Modal.Header>
-          {t('group_manage.modal.add_channel_title')}
-        </Modal.Header>
-        <Modal.Content>
-          <Form>
-            <Form.Dropdown
-              className='router-section-dropdown'
-              fluid
-              selection
-              search
+      <AppModal
+        open={detailModelModalOpen}
+        onClose={closeDetailModelModal}
+        size='large'
+        title={t('group_manage.detail.edit_model_title', {
+          model: detailModelEditTarget || '-',
+        })}
+        footer={null}
+      >
+        <div className='router-page-stack'>
+          <AppTable
+            className='router-detail-table'
+            rowKey={(item) => `${detailModelEditTarget}-${item.channel_id}`}
+            pagination={false}
+            rowSelection={{
+              selectedRowKeys: detailModelChannelDrafts
+                .filter((item) => !!item.selected)
+                .map((item) => `${detailModelEditTarget}-${item.channel_id}`),
+              columnWidth: 84,
+              columnTitle: t('group_manage.detail.selected'),
+              onSelect: (record, selected) =>
+                updateDetailModelChannelDraft(record.channel_id, (current) => ({
+                  ...current,
+                  selected: !!selected,
+                })),
+              onSelectAll: (selected, selectedRows, changeRows) => {
+                (Array.isArray(changeRows) ? changeRows : []).forEach((item) => {
+                  updateDetailModelChannelDraft(item.channel_id, (current) => ({
+                    ...current,
+                    selected: !!selected,
+                  }));
+                });
+              },
+            }}
+            locale={{ emptyText: t('group_manage.detail.empty_model_channels') }}
+            dataSource={detailModelChannelDrafts}
+            columns={[
+              {
+                title: t('group_manage.edit.channel'),
+                dataIndex: 'channel_name',
+                key: 'channel_name',
+                render: (_, item) => (
+                  <AppTag
+                    color={channelStatusColor(item?.channel_status)}
+                    className='router-tag'
+                  >
+                    {item.channel_name || item.channel_id}
+                    {item.channel_protocol ? ` · ${item.channel_protocol}` : ''}
+                  </AppTag>
+                ),
+              },
+              {
+                title: t('group_manage.edit.upstream_model'),
+                dataIndex: 'upstream_model',
+                key: 'upstream_model',
+                render: (value) => value || '-',
+              },
+              {
+                title: t('group_manage.detail.priority'),
+                key: 'priority',
+                width: 140,
+                render: (_, item) => (
+                  <AppInputNumber
+                    className='router-inline-input'
+                    step={1}
+                    precision={0}
+                    disabled={!item.selected}
+                    value={item.priority}
+                    onChange={(e, { value }) =>
+                      updateDetailModelChannelDraft(item.channel_id, (current) => ({
+                        ...current,
+                        priority: value ?? '',
+                      }))
+                    }
+                  />
+                ),
+              },
+            ]}
+          />
+          <AppFormActions>
+            <AppButton
+              className='router-modal-button'
+              onClick={closeDetailModelModal}
               disabled={submitting}
-              label={t('group_manage.form.channels')}
-              placeholder={t('group_manage.form.channels_placeholder')}
-              options={detailAvailableChannelOptions}
-              value={detailChannelDraft.id || ''}
-              onChange={(e, { value }) =>
-                setDetailChannelDraft((prev) => ({
-                  ...prev,
-                  id: (value || '').toString(),
-                }))
-              }
-            />
-            <Form.Input
-              className='router-section-input'
-              type='number'
-              step='1'
-              label={t('group_manage.detail.priority')}
-              value={detailChannelDraft.priority}
-              onChange={(e, { value }) =>
-                setDetailChannelDraft((prev) => ({
-                  ...prev,
-                  priority: Number.isFinite(Number(value))
-                    ? Math.trunc(Number(value))
-                    : 0,
-                }))
-              }
-            />
-          </Form>
-        </Modal.Content>
-        <Modal.Actions>
-          <Button className='router-modal-button' onClick={closeDetailChannelModal} disabled={submitting}>
-            {t('group_manage.buttons.cancel')}
-          </Button>
-          <Button className='router-modal-button' color='blue' onClick={submitDetailChannelDraft} loading={submitting}>
-            {t('group_manage.buttons.confirm')}
-          </Button>
-        </Modal.Actions>
-      </Modal>
+            >
+              {t('group_manage.buttons.cancel')}
+            </AppButton>
+            <AppButton
+              className='router-modal-button'
+              color='blue'
+              onClick={submitDetailModelDraft}
+              disabled={submitting}
+            >
+              {t('group_manage.buttons.confirm')}
+            </AppButton>
+          </AppFormActions>
+        </div>
+      </AppModal>
 
-      <Modal open={deleteOpen} onClose={closeDeleteModal} size='tiny'>
-        <Modal.Header>{t('group_manage.modal.delete_title')}</Modal.Header>
-        <Modal.Content>
+      <AppModal
+        open={detailChannelModalOpen}
+        onClose={closeDetailChannelModal}
+        size='small'
+        title={t('group_manage.modal.add_channel_title')}
+        footer={null}
+      >
+          <div className='router-page-stack'>
+            <AppFormRow>
+              <AppField label={t('group_manage.form.channels')} required>
+                <AppSelect
+                  className='router-section-dropdown'
+                  search
+                  disabled={submitting}
+                  placeholder={t('group_manage.form.channels_placeholder')}
+                  options={detailAvailableChannelOptions}
+                  value={detailChannelDraft.id || ''}
+                  onChange={(e, { value }) =>
+                    setDetailChannelDraft((prev) => ({
+                      ...prev,
+                      id: (value || '').toString(),
+                    }))
+                  }
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField label={t('group_manage.detail.priority')}>
+                <AppInputNumber
+                  className='router-section-input'
+                  step={1}
+                  precision={0}
+                  fluid
+                  value={detailChannelDraft.priority}
+                  onChange={(e, { value }) =>
+                    setDetailChannelDraft((prev) => ({
+                      ...prev,
+                      priority: Number.isFinite(Number(value))
+                        ? Math.trunc(Number(value))
+                        : 0,
+                    }))
+                  }
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormActions>
+              <AppButton
+                className='router-modal-button'
+                onClick={closeDetailChannelModal}
+                disabled={submitting}
+              >
+                {t('group_manage.buttons.cancel')}
+              </AppButton>
+              <AppButton
+                className='router-modal-button'
+                color='blue'
+                onClick={submitDetailChannelDraft}
+                loading={submitting}
+              >
+                {t('group_manage.buttons.confirm')}
+              </AppButton>
+            </AppFormActions>
+          </div>
+      </AppModal>
+
+      <AppModal
+        open={deleteOpen}
+        onClose={closeDeleteModal}
+        size='tiny'
+        title={t('group_manage.modal.delete_title')}
+        footer={[
+          <AppButton
+            key='cancel'
+            className='router-modal-button'
+            onClick={closeDeleteModal}
+            disabled={submitting}
+          >
+            {t('group_manage.buttons.cancel')}
+          </AppButton>,
+          <AppButton
+            key='confirm'
+            className='router-modal-button'
+            color='red'
+            onClick={submitDelete}
+            loading={submitting}
+          >
+            {t('group_manage.buttons.confirm')}
+          </AppButton>,
+        ]}
+      >
+        <div>
           {t('group_manage.modal.delete_confirm', {
             id: deleteTarget?.id || '',
           })}
-        </Modal.Content>
-        <Modal.Actions>
-          <Button className='router-modal-button' onClick={closeDeleteModal} disabled={submitting}>
-            {t('group_manage.buttons.cancel')}
-          </Button>
-          <Button className='router-modal-button' negative onClick={submitDelete} loading={submitting}>
-            {t('group_manage.buttons.confirm')}
-          </Button>
-        </Modal.Actions>
-      </Modal>
+        </div>
+      </AppModal>
     </>
   );
 };

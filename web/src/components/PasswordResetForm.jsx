@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Button, Form, Grid, Header, Image, Message, Card } from 'semantic-ui-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { API, getLogo, showError, showInfo, showSuccess } from '../helpers';
+import { AppButton, AppInput, AppSection } from '../router-ui';
 
 const PasswordResetForm = () => {
   const { t } = useTranslation();
@@ -29,48 +29,46 @@ const PasswordResetForm = () => {
   };
 
   return (
-    <Grid textAlign='center' className='router-auth-shell'>
-      <Grid.Column>
-        <Card fluid className='chart-card router-auth-card'>
-          <Card.Content>
-            <Card.Header>
-              <Header as='h2' textAlign='center' className='router-auth-title router-auth-header'>
-                <Image src={logo} className='router-auth-logo' />
-                <Header.Content>{t('auth.reset.title')}</Header.Content>
-              </Header>
-            </Card.Header>
-            <Form className='router-auth-form'>
-              <Form.Input
+    <div className='router-auth-shell'>
+      <div className='router-auth-panel'>
+        <AppSection className='router-auth-card'>
+          <div className='router-auth-card-body'>
+            <div className='router-auth-title router-auth-header'>
+              <img src={logo} alt='logo' className='router-auth-logo' />
+              <h2>{t('auth.reset.title')}</h2>
+            </div>
+            <div className='router-auth-form'>
+              <AppInput
                 className='router-auth-input'
                 fluid
                 icon='mail'
                 iconPosition='left'
                 placeholder={t('auth.reset.email')}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e, { value }) => setEmail(value)}
               />
-              <Button
+              <AppButton
                 className='router-auth-button router-auth-primary'
                 fluid
                 onClick={sendResetEmail}
                 loading={loading}
               >
                 {t('auth.reset.button')}
-              </Button>
-            </Form>
+              </AppButton>
+            </div>
 
-            <Message className='router-auth-message'>
+            <div className='router-auth-message'>
               <div className='router-auth-secondary-text'>
                 {t('auth.reset.remember_password')}
                 <Link to='/login' className='router-auth-link'>
                   {t('auth.login.login')}
                 </Link>
               </div>
-            </Message>
-          </Card.Content>
-        </Card>
-      </Grid.Column>
-    </Grid>
+            </div>
+          </div>
+        </AppSection>
+      </div>
+    </div>
   );
 };
 

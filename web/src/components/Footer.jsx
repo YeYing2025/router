@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Container, Segment } from 'semantic-ui-react';
 import { getFooterHTML } from '../helpers';
 
 const Footer = () => {
@@ -31,14 +30,14 @@ const Footer = () => {
   }
 
   return (
-    <Segment vertical>
-      <Container textAlign='center' className='router-footer-container'>
+    <footer className='router-footer'>
+      <div className='router-footer-container'>
         <div
           className='custom-footer router-footer-content'
           dangerouslySetInnerHTML={{ __html: footer }}
         ></div>
-      </Container>
-    </Segment>
+      </div>
+    </footer>
   );
 };
 

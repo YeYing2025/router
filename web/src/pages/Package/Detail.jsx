@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Breadcrumb, Card, Form } from 'semantic-ui-react';
 import { API, showError, timestamp2string } from '../../helpers';
 import {
   buildBillingCurrencyIndex,
@@ -9,6 +8,15 @@ import {
 } from '../../helpers/billing';
 import { formatDecimalNumber } from '../../helpers/render';
 import UnitDropdown from '../../components/UnitDropdown';
+import {
+  AppBreadcrumb,
+  AppField,
+  AppFormRow,
+  AppIcon,
+  AppInput,
+  AppSection,
+  AppTextarea,
+} from '../../router-ui';
 
 const formatByCurrencyMinorUnit = (amount, currency) => {
   const normalizedAmount = Number(amount || 0);
@@ -123,84 +131,100 @@ const PackageDetail = () => {
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <div className='router-entity-detail-page'>
+      <AppSection
+        title={t('package_manage.dialog.detail_title')}
+        extra={
+          <UnitDropdown
+            variant='section'
+            options={displayUnitOptions}
+            value={displayUnit}
+            onChange={(_, { value }) =>
+              setDisplayUnit((value || '').toString().trim().toUpperCase())
+            }
+            aria-label={t('package_manage.table.daily_quota_limit')}
+          />
+        }
+      >
+        <div className='router-entity-detail-page'>
             <div className='router-entity-detail-breadcrumb'>
-              <Breadcrumb size='small'>
-                <Breadcrumb.Section
-                  link
-                  onClick={() => navigate('/admin/package')}
-                >
-                  {t('header.package')}
-                </Breadcrumb.Section>
-                <Breadcrumb.Divider icon='right chevron' />
-                <Breadcrumb.Section active>
-                  {normalizedId || '-'}
-                </Breadcrumb.Section>
-              </Breadcrumb>
-            </div>
-
-            <div className='router-toolbar'>
-              <div className='router-toolbar-start'>
-                <div className='router-detail-section-title'>
-                  {t('package_manage.dialog.detail_title')}
-                </div>
+              <div className='router-provider-detail-breadcrumb'>
+                <AppBreadcrumb
+                  items={[
+                    {
+                      key: 'package-list',
+                      label: t('header.package'),
+                      onClick: () => navigate('/admin/package'),
+                    },
+                    {
+                      key: 'package-current',
+                      label: normalizedId || '-',
+                      active: true,
+                    },
+                  ]}
+                />
               </div>
             </div>
 
             {loading ? (
               <div className='router-empty-cell'>{t('common.loading')}</div>
             ) : (
-              <Form>
-                <Form.Group widths='equal'>
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('package_manage.form.id')}
-                    value={detail?.id || '-'}
-                    readOnly
-                  />
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('package_manage.table.name')}
-                    value={detail?.name || '-'}
-                    readOnly
-                  />
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('package_manage.table.group')}
-                    value={detail?.group_name || detail?.group_id || '-'}
-                    readOnly
-                  />
-                </Form.Group>
+              <>
+                <AppFormRow>
+                  <AppField label={t('package_manage.form.id')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={detail?.id || '-'}
+                      readOnly
+                    />
+                  </AppField>
+                  <AppField label={t('package_manage.table.name')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={detail?.name || '-'}
+                      readOnly
+                    />
+                  </AppField>
+                  <AppField label={t('package_manage.table.group')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={detail?.group_name || detail?.group_id || '-'}
+                      readOnly
+                    />
+                  </AppField>
+                </AppFormRow>
 
-                <Form.TextArea
-                  className='router-section-input'
-                  label={t('package_manage.form.description')}
-                  value={detail?.description || '-'}
-                  readOnly
-                />
+                <AppFormRow>
+                  <AppField label={t('package_manage.form.description')} readOnly>
+                    <AppTextarea
+                      className='router-section-input'
+                      value={detail?.description || '-'}
+                      readOnly
+                      rows={3}
+                    />
+                  </AppField>
+                </AppFormRow>
 
-                <Form.Group widths='equal'>
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('package_manage.form.sale_price')}
-                    value={`${detail?.sale_currency || 'CNY'} ${detail?.sale_price ?? 0}`}
-                    readOnly
-                  />
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('package_manage.form.sale_currency')}
-                    value={detail?.sale_currency || 'CNY'}
-                    readOnly
-                  />
-                </Form.Group>
+                <AppFormRow>
+                  <AppField label={t('package_manage.form.sale_price')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={`${detail?.sale_currency || 'CNY'} ${detail?.sale_price ?? 0}`}
+                      readOnly
+                    />
+                  </AppField>
+                  <AppField label={t('package_manage.form.sale_currency')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={detail?.sale_currency || 'CNY'}
+                      readOnly
+                    />
+                  </AppField>
+                </AppFormRow>
 
-                <Form.Group widths='equal'>
-                  <Form.Field>
-                    <label>{t('package_manage.table.daily_quota_limit')}</label>
+                <AppFormRow>
+                  <AppField label={t('package_manage.table.daily_quota_limit')} readOnly>
                     <div className='router-section-input-with-unit'>
-                      <Form.Input
+                      <AppInput
                         className='router-section-input router-section-input-with-unit-field'
                         value={renderPackageAmountValue(
                           resolvePackageYYCAmount(detail, 'daily'),
@@ -209,21 +233,14 @@ const PackageDetail = () => {
                         )}
                         readOnly
                       />
-                      <UnitDropdown
-                        variant='inputUnit'
-                        options={displayUnitOptions}
-                        value={displayUnit}
-                        onChange={(_, { value }) =>
-                          setDisplayUnit((value || '').toString().trim().toUpperCase())
-                        }
-                        aria-label={t('package_manage.table.daily_quota_limit')}
-                      />
                     </div>
-                  </Form.Field>
-                  <Form.Field>
-                    <label>{t('package_manage.table.package_emergency_quota_limit')}</label>
+                  </AppField>
+                  <AppField
+                    label={t('package_manage.table.package_emergency_quota_limit')}
+                    readOnly
+                  >
                     <div className='router-section-input-with-unit'>
-                      <Form.Input
+                      <AppInput
                         className='router-section-input router-section-input-with-unit-field'
                         value={renderPackageAmountValue(
                           resolvePackageYYCAmount(detail, 'emergency'),
@@ -232,66 +249,61 @@ const PackageDetail = () => {
                         )}
                         readOnly
                       />
-                      <UnitDropdown
-                        variant='inputUnit'
-                        options={displayUnitOptions}
-                        value={displayUnit}
-                        onChange={(_, { value }) =>
-                          setDisplayUnit((value || '').toString().trim().toUpperCase())
-                        }
-                        aria-label={t('package_manage.table.package_emergency_quota_limit')}
-                      />
                     </div>
-                  </Form.Field>
-                </Form.Group>
+                  </AppField>
+                </AppFormRow>
 
-                <Form.Group widths='equal'>
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('package_manage.table.duration_days')}
-                    value={Number(detail?.duration_days || 0) || '-'}
-                    readOnly
-                  />
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('package_manage.table.status')}
-                    value={
-                      detail?.enabled
-                        ? t('package_manage.status.enabled')
-                        : t('package_manage.status.disabled')
-                    }
-                    readOnly
-                  />
-                </Form.Group>
+                <AppFormRow>
+                  <AppField label={t('package_manage.table.duration_days')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={Number(detail?.duration_days || 0) || '-'}
+                      readOnly
+                    />
+                  </AppField>
+                  <AppField label={t('package_manage.table.status')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={
+                        detail?.enabled
+                          ? t('package_manage.status.enabled')
+                          : t('package_manage.status.disabled')
+                      }
+                      readOnly
+                    />
+                  </AppField>
+                </AppFormRow>
 
-                <Form.Group widths='equal'>
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('package_manage.form.quota_reset_timezone')}
-                    value={detail?.quota_reset_timezone || '-'}
-                    readOnly
-                  />
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('package_manage.table.created_at')}
-                    value={detail?.created_at ? timestamp2string(detail.created_at) : '-'}
-                    readOnly
-                  />
-                </Form.Group>
+                <AppFormRow>
+                  <AppField label={t('package_manage.form.quota_reset_timezone')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={detail?.quota_reset_timezone || '-'}
+                      readOnly
+                    />
+                  </AppField>
+                  <AppField label={t('package_manage.table.created_at')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={detail?.created_at ? timestamp2string(detail.created_at) : '-'}
+                      readOnly
+                    />
+                  </AppField>
+                </AppFormRow>
 
-                <Form.Group widths='equal'>
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('package_manage.table.updated_at')}
-                    value={detail?.updated_at ? timestamp2string(detail.updated_at) : '-'}
-                    readOnly
-                  />
-                </Form.Group>
-              </Form>
+                <AppFormRow>
+                  <AppField label={t('package_manage.table.updated_at')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={detail?.updated_at ? timestamp2string(detail.updated_at) : '-'}
+                      readOnly
+                    />
+                  </AppField>
+                </AppFormRow>
+              </>
             )}
-          </div>
-        </Card.Content>
-      </Card>
+        </div>
+      </AppSection>
     </div>
   );
 };

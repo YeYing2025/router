@@ -1,15 +1,15 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Button,
-  Form,
-  Header,
-  Input,
-  Modal,
-  Segment,
-} from 'semantic-ui-react';
 import { API, showError, showSuccess } from '../helpers';
 import { UserContext } from '../context/User';
+import {
+  AppButton,
+  AppField,
+  AppFormRow,
+  AppInput,
+  AppModal,
+  AppSection,
+} from '../router-ui';
 
 const defaultPasswordModal = {
   open: false,
@@ -214,23 +214,18 @@ const PersonalSetting = () => {
 
   return (
     <div className='router-page-stack'>
-      <Segment>
-        <Header as='h3' className='router-section-title'>
-          账户信息
-        </Header>
-        <Form>
-          <Form.Field>
-            <label>钱包地址</label>
-            <Input
+      <AppSection title='账户信息'>
+        <div className='router-page-stack'>
+          <AppField label='钱包地址'>
+            <AppInput
               className='router-section-input'
               value={walletAddress}
               readOnly
             />
-          </Form.Field>
-          <Form.Field>
-            <label>{t('user.edit.username')}</label>
+          </AppField>
+          <AppField label={t('user.edit.username')}>
             <div className='router-setting-inline-row'>
-              <Input
+              <AppInput
                 className='router-section-input'
                 name='username'
                 placeholder={t('user.edit.username_placeholder')}
@@ -241,41 +236,40 @@ const PersonalSetting = () => {
               <div className='router-setting-inline-actions'>
                 {isEditingUsername ? (
                   <>
-                    <Button
+                    <AppButton
                       className='router-section-button'
                       type='button'
                       onClick={cancelUsernameEdit}
                       disabled={profileSubmitting}
                     >
                       {t('common.cancel', '取消')}
-                    </Button>
-                    <Button
+                    </AppButton>
+                    <AppButton
                       className='router-section-button'
                       type='button'
-                      primary
+                      color='blue'
                       loading={profileSubmitting}
                       disabled={(username || '').trim() === (currentUser?.username || '').trim()}
                       onClick={submitUsername}
                     >
                       保存
-                    </Button>
+                    </AppButton>
                   </>
                 ) : (
-                  <Button
+                  <AppButton
                     className='router-section-button'
                     type='button'
                     onClick={() => setIsEditingUsername(true)}
                   >
                     编辑
-                  </Button>
+                  </AppButton>
                 )}
               </div>
             </div>
-          </Form.Field>
-          <Form.Field>
-            <label>邮箱</label>
+          </AppField>
+          <AppField label='邮箱'>
             <div className='router-setting-inline-row'>
-              <Input
+              <AppInput
                 className='router-section-input'
                 type='email'
                 placeholder='请输入邮箱地址'
@@ -286,18 +280,18 @@ const PersonalSetting = () => {
               <div className='router-setting-inline-actions'>
                 {isEditingEmail ? (
                   <>
-                    <Button
+                    <AppButton
                       className='router-section-button'
                       type='button'
                       onClick={cancelEmailEdit}
                       disabled={profileSubmitting}
                     >
                       {t('common.cancel', '取消')}
-                    </Button>
-                    <Button
+                    </AppButton>
+                    <AppButton
                       className='router-section-button'
                       type='button'
-                      primary
+                      color='blue'
                       loading={profileSubmitting}
                       disabled={
                         (email || '').trim() === '' ||
@@ -307,53 +301,67 @@ const PersonalSetting = () => {
                       onClick={submitEmail}
                     >
                       保存
-                    </Button>
+                    </AppButton>
                   </>
                 ) : (
-                  <Button
+                  <AppButton
                     className='router-section-button'
                     type='button'
                     onClick={() => setIsEditingEmail(true)}
                   >
                     {(currentUser?.email || '').trim() ? '编辑' : '设置'}
-                  </Button>
+                  </AppButton>
                 )}
               </div>
             </div>
-          </Form.Field>
-          <Form.Field>
-            <label>密码</label>
+          </AppField>
+          <AppField label='密码'>
             <div className='router-setting-inline-row'>
-              <Input
+              <AppInput
                 className='router-section-input'
                 value={hasPassword ? '已设置' : '未设置'}
                 readOnly
               />
               <div className='router-setting-inline-actions'>
-                <Button
+                <AppButton
                   className='router-section-button'
                   type='button'
-                  primary
+                  color='blue'
                   onClick={() => openPasswordModal(hasPassword ? 'modify' : 'set')}
                 >
                   {hasPassword ? '修改密码' : '设置密码'}
-                </Button>
+                </AppButton>
               </div>
             </div>
-          </Form.Field>
-        </Form>
-      </Segment>
+          </AppField>
+        </div>
+      </AppSection>
 
-      <Modal size='tiny' open={passwordModal.open} onClose={closePasswordModal}>
-        <Modal.Header>
-          {passwordModal.mode === 'modify' ? '修改密码' : '设置密码'}
-        </Modal.Header>
-        <Modal.Content>
-          <Form>
-            {passwordModal.mode === 'modify' ? (
-              <Form.Field>
-                <label>当前密码</label>
-                <Input
+      <AppModal
+        size='tiny'
+        open={passwordModal.open}
+        onClose={closePasswordModal}
+        title={passwordModal.mode === 'modify' ? '修改密码' : '设置密码'}
+        footer={[
+          <AppButton key='cancel' className='router-modal-button' onClick={closePasswordModal}>
+            {t('common.cancel', '取消')}
+          </AppButton>,
+          <AppButton
+            key='confirm'
+            className='router-modal-button'
+            color='blue'
+            loading={passwordModal.submitting}
+            onClick={submitPassword}
+          >
+            {passwordModal.mode === 'modify' ? '确认修改' : '确认设置'}
+          </AppButton>,
+        ]}
+      >
+        <div className='router-page-stack'>
+          {passwordModal.mode === 'modify' ? (
+            <AppFormRow>
+              <AppField label='当前密码'>
+                <AppInput
                   type='password'
                   value={passwordModal.currentPassword}
                   onChange={(e, { value }) =>
@@ -361,11 +369,12 @@ const PersonalSetting = () => {
                   }
                   autoComplete='current-password'
                 />
-              </Form.Field>
-            ) : null}
-            <Form.Field>
-              <label>新密码</label>
-              <Input
+              </AppField>
+            </AppFormRow>
+          ) : null}
+          <AppFormRow>
+            <AppField label='新密码'>
+              <AppInput
                 type='password'
                 value={passwordModal.newPassword}
                 onChange={(e, { value }) =>
@@ -373,10 +382,11 @@ const PersonalSetting = () => {
                 }
                 autoComplete='new-password'
               />
-            </Form.Field>
-            <Form.Field>
-              <label>确认新密码</label>
-              <Input
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField label='确认新密码'>
+              <AppInput
                 type='password'
                 value={passwordModal.confirmPassword}
                 onChange={(e, { value }) =>
@@ -384,23 +394,10 @@ const PersonalSetting = () => {
                 }
                 autoComplete='new-password'
               />
-            </Form.Field>
-          </Form>
-        </Modal.Content>
-        <Modal.Actions>
-          <Button className='router-modal-button' onClick={closePasswordModal}>
-            {t('common.cancel', '取消')}
-          </Button>
-          <Button
-            className='router-modal-button'
-            primary
-            loading={passwordModal.submitting}
-            onClick={submitPassword}
-          >
-            {passwordModal.mode === 'modify' ? '确认修改' : '确认设置'}
-          </Button>
-        </Modal.Actions>
-      </Modal>
+            </AppField>
+          </AppFormRow>
+        </div>
+      </AppModal>
     </div>
   );
 };

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Card } from 'semantic-ui-react';
 import BalanceStatusPage from './BalanceStatusPage';
 import CurrentPackagePage from './CurrentPackagePage';
 import TopUpRecordsPage from './TopUpRecordsPage';
@@ -66,11 +65,7 @@ const TopUpLayout = () => {
   return (
     <TopUpWorkspaceProvider>
       <div className='dashboard-container'>
-        <Card fluid className='chart-card'>
-          <Card.Content>
-            {activeContent}
-          </Card.Content>
-        </Card>
+        {activeContent}
       </div>
     </TopUpWorkspaceProvider>
   );

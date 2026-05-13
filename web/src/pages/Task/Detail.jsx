@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Breadcrumb, Button, Card, Form, Label } from 'semantic-ui-react';
 import { useTranslation } from 'react-i18next';
 import {
   useLocation,
@@ -8,6 +7,16 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import { API, showError, showSuccess, timestamp2string } from '../../helpers';
+import {
+  AppBreadcrumb,
+  AppButton,
+  AppDetailSection,
+  AppField,
+  AppFormRow,
+  AppInput,
+  AppSection,
+  AppTag,
+} from '../../router-ui';
 
 const TASK_DETAIL_KIND_WORKSPACE_USER = 'workspace_user';
 const TASK_DETAIL_KIND_ADMIN_USER = 'admin_user';
@@ -48,9 +57,9 @@ const renderTaskStatus = (status, t) => {
     canceled: 'grey',
   };
   return (
-    <Label basic color={colorMap[normalized] || 'grey'} className='router-tag'>
+    <AppTag color={colorMap[normalized] || 'grey'} className='router-tag'>
       {t(`task.status.${normalized}`)}
-    </Label>
+    </AppTag>
   );
 };
 
@@ -371,86 +380,91 @@ const TaskDetail = () => {
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <div className='router-entity-detail-page'>
+      <AppSection>
+        <div className='router-entity-detail-page'>
             <div className='router-entity-detail-breadcrumb'>
-              <Breadcrumb size='small'>
-                {isChannelTestHistoryContext ? (
-                  <>
-                    <Breadcrumb.Section
-                      link
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        goToChannelList();
-                      }}
-                    >
-                      {t('header.channel')}
-                    </Breadcrumb.Section>
-                    <Breadcrumb.Divider icon='right chevron' />
-                    <Breadcrumb.Section
-                      link
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        goBackToOrigin();
-                      }}
-                    >
-                      {originLabel || contextLabel || '-'}
-                    </Breadcrumb.Section>
-                    <Breadcrumb.Divider icon='right chevron' />
-                    <Breadcrumb.Section link onClick={backToList}>
-                      {returnLabel || t('channel.edit.model_tester.history_tasks')}
-                    </Breadcrumb.Section>
-                    <Breadcrumb.Divider icon='right chevron' />
-                  </>
-                ) : (
-                  <>
-                    <Breadcrumb.Section link onClick={backToList}>
-                      {returnLabel || t('header.task')}
-                    </Breadcrumb.Section>
-                    <Breadcrumb.Divider icon='right chevron' />
-                  </>
-                )}
-                <Breadcrumb.Section active>
-                  {task?.id || id}
-                </Breadcrumb.Section>
-              </Breadcrumb>
+              <AppBreadcrumb
+                items={
+                  isChannelTestHistoryContext
+                    ? [
+                        {
+                          key: 'channel-list',
+                          label: t('header.channel'),
+                          onClick: (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            goToChannelList();
+                          },
+                        },
+                        {
+                          key: 'channel-origin',
+                          label: originLabel || contextLabel || '-',
+                          onClick: (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            goBackToOrigin();
+                          },
+                        },
+                        {
+                          key: 'task-list',
+                          label: returnLabel || t('channel.edit.model_tester.history_tasks'),
+                          onClick: backToList,
+                        },
+                        {
+                          key: 'task-current',
+                          label: task?.id || id,
+                          active: true,
+                        },
+                      ]
+                    : [
+                        {
+                          key: 'task-list',
+                          label: returnLabel || t('header.task'),
+                          onClick: backToList,
+                        },
+                        {
+                          key: 'task-current',
+                          label: task?.id || id,
+                          active: true,
+                        },
+                      ]
+                }
+              />
             </div>
 
-            <div className='router-detail-section'>
-              <div className='router-entity-detail-section-header'>
-                <div className='router-detail-section-title'>
-                  {t('common.basic_info')}
-                </div>
-                <div className='router-toolbar-start'>
-                  <Button
+            <AppDetailSection
+              className='router-detail-section'
+              title={t('common.basic_info')}
+              titleTag='div'
+              titleClassName='router-detail-section-title'
+              headerEnd={
+                <>
+                  <AppButton
                     className='router-page-button'
                     onClick={loadTask}
                     loading={loading}
                   >
                     {t('task.buttons.refresh')}
-                  </Button>
+                  </AppButton>
                   {isSystemTaskPage ? (
                     <>
-                      <Button
+                      <AppButton
                         className='router-page-button'
                         disabled={!canRetry}
                         onClick={handleRetry}
                       >
                         {t('task.buttons.retry')}
-                      </Button>
-                      <Button
+                      </AppButton>
+                      <AppButton
                         className='router-page-button'
                         disabled={!canCancel}
                         onClick={handleCancel}
                       >
                         {t('task.buttons.cancel')}
-                      </Button>
+                      </AppButton>
                     </>
                   ) : null}
-                  <Button
+                  <AppButton
                     className='router-page-button'
                     disabled={!channelDetailPath}
                     onClick={() =>
@@ -462,116 +476,135 @@ const TaskDetail = () => {
                     }
                   >
                     {t('task.detail.buttons.channel')}
-                  </Button>
-                </div>
-              </div>
-              <Form loading={loading}>
-                <Form.Group widths='equal'>
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('task.table.type')}
-                    value={task ? t(`task.types.${task.type || 'video'}`) : ''}
-                    readOnly
-                  />
-                  <Form.Field>
-                    <label>{t('task.table.status')}</label>
+                  </AppButton>
+                </>
+              }
+              bodyClassName='router-page-stack'
+            >
+                <AppFormRow>
+                  <AppField label={t('task.table.type')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={task ? t(`task.types.${task.type || 'video'}`) : ''}
+                      readOnly
+                    />
+                  </AppField>
+                  <AppField label={t('task.table.status')} readOnly>
                     <div className='router-field-display'>
                       {task ? renderTaskStatus(task.status, t) : null}
                     </div>
-                  </Form.Field>
-                </Form.Group>
+                  </AppField>
+                </AppFormRow>
 
-                <Form.Group widths='equal'>
+                <AppFormRow>
                   {isAdminUserTaskPage ? (
-                    <Form.Input
+                    <AppField label={t('task.table.user')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={task?.user_name || task?.user_id || '-'}
+                        readOnly
+                      />
+                    </AppField>
+                  ) : null}
+                  <AppField label={t('task.table.channel')} readOnly>
+                    <AppInput
                       className='router-section-input'
-                      label={t('task.table.user')}
-                      value={task?.user_name || task?.user_id || '-'}
+                      value={task?.channel_name || task?.channel_id || '-'}
                       readOnly
                     />
-                  ) : null}
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('task.table.channel')}
-                    value={task?.channel_name || task?.channel_id || '-'}
-                    readOnly
-                  />
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('task.table.model')}
-                    value={task?.model || '-'}
-                    readOnly
-                  />
-                </Form.Group>
+                  </AppField>
+                  <AppField label={t('task.table.model')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={task?.model || '-'}
+                      readOnly
+                    />
+                  </AppField>
+                </AppFormRow>
 
-                <Form.Group widths='equal'>
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('task.table.created_at')}
-                    value={
-                      task?.created_at ? timestamp2string(task.created_at) : '-'
-                    }
-                    readOnly
-                  />
-                  <Form.Input
-                    className='router-section-input'
+                <AppFormRow>
+                  <AppField label={t('task.table.created_at')} readOnly>
+                    <AppInput
+                      className='router-section-input'
+                      value={
+                        task?.created_at ? timestamp2string(task.created_at) : '-'
+                      }
+                      readOnly
+                    />
+                  </AppField>
+                  <AppField
                     label={
                       isUserTaskPage
                         ? t('task.table.updated_at')
                         : t('task.table.finished_at')
                     }
-                    value={
-                      isUserTaskPage
-                        ? task?.updated_at
-                          ? timestamp2string(task.updated_at)
-                          : '-'
-                        : task?.finished_at
-                          ? timestamp2string(task.finished_at)
-                          : '-'
-                    }
                     readOnly
-                  />
-                </Form.Group>
+                  >
+                    <AppInput
+                      className='router-section-input'
+                      value={
+                        isUserTaskPage
+                          ? task?.updated_at
+                            ? timestamp2string(task.updated_at)
+                            : '-'
+                          : task?.finished_at
+                            ? timestamp2string(task.finished_at)
+                            : '-'
+                      }
+                      readOnly
+                    />
+                  </AppField>
+                </AppFormRow>
 
                 {isUserTaskPage ? (
                   <>
-                    <Form.Group widths='equal'>
-                      <Form.Input
-                        className='router-section-input'
-                        label={t('task.detail.provider')}
-                        value={task?.provider || '-'}
-                        readOnly
-                      />
-                      <Form.Input
-                        className='router-section-input'
-                        label={t('task.detail.request_id')}
-                        value={task?.request_id || '-'}
-                        readOnly
-                      />
-                    </Form.Group>
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('task.detail.result_url')}
-                      value={task?.result_url || '-'}
-                      readOnly
-                    />
-                    <Form.Input
-                      className='router-section-input'
-                      label={t('task.detail.source')}
-                      value={task?.source || '-'}
-                      readOnly
-                    />
+                    <AppFormRow>
+                      <AppField label={t('task.detail.provider')} readOnly>
+                        <AppInput
+                          className='router-section-input'
+                          value={task?.provider || '-'}
+                          readOnly
+                        />
+                      </AppField>
+                      <AppField label={t('task.detail.request_id')} readOnly>
+                        <AppInput
+                          className='router-section-input'
+                          value={task?.request_id || '-'}
+                          readOnly
+                        />
+                      </AppField>
+                    </AppFormRow>
+                    <AppFormRow>
+                      <AppField label={t('task.detail.result_url')} readOnly>
+                        <AppInput
+                          className='router-section-input'
+                          value={task?.result_url || '-'}
+                          readOnly
+                        />
+                      </AppField>
+                    </AppFormRow>
+                    <AppFormRow>
+                      <AppField label={t('task.detail.source')} readOnly>
+                        <AppInput
+                          className='router-section-input'
+                          value={task?.source || '-'}
+                          readOnly
+                        />
+                      </AppField>
+                    </AppFormRow>
                   </>
                 ) : (
-                  <Form.Input
-                    className='router-section-input'
-                    label={t('task.detail.endpoint')}
-                    value={task?.endpoint || '-'}
-                    readOnly
-                  />
+                  <AppFormRow>
+                    <AppField label={t('task.detail.endpoint')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={task?.endpoint || '-'}
+                        readOnly
+                      />
+                    </AppField>
+                  </AppFormRow>
                 )}
-              </Form>
-            </div>
+              </AppDetailSection>
 
             {isSystemTaskPage
               ? (
@@ -594,9 +627,8 @@ const TaskDetail = () => {
                 </>
               )
               : null}
-          </div>
-        </Card.Content>
-      </Card>
+        </div>
+      </AppSection>
     </div>
   );
 };

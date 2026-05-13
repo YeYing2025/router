@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Breadcrumb, Card, Label } from 'semantic-ui-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { API, showError, timestamp2string } from '../../helpers';
 import { formatAmountWithUnit } from '../../helpers/render';
+import { AppBreadcrumb, AppDetailSection, AppIcon, AppSection, AppTag } from '../../router-ui';
 
 const readOnlyText = (value) => {
   const normalized = (value || '').toString().trim();
@@ -30,39 +30,39 @@ const renderPackageStatus = (status, t) => {
   switch (Number(status)) {
     case 1:
       return (
-        <Label basic color='green' className='router-tag'>
+        <AppTag color='green' className='router-tag'>
           {t('user.detail.package_status_types.active')}
-        </Label>
+        </AppTag>
       );
     case 2:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('user.detail.package_status_types.expired')}
-        </Label>
+        </AppTag>
       );
     case 3:
       return (
-        <Label basic color='blue' className='router-tag'>
+        <AppTag color='blue' className='router-tag'>
           {t('user.detail.package_status_types.replaced')}
-        </Label>
+        </AppTag>
       );
     case 4:
       return (
-        <Label basic color='red' className='router-tag'>
+        <AppTag color='red' className='router-tag'>
           {t('user.detail.package_status_types.canceled')}
-        </Label>
+        </AppTag>
       );
     case 5:
       return (
-        <Label basic color='teal' className='router-tag'>
+        <AppTag color='teal' className='router-tag'>
           {t('user.detail.package_status_types.pending')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('user.detail.package_status_types.unknown')}
-        </Label>
+        </AppTag>
       );
   }
 };
@@ -119,25 +119,31 @@ const PackageDetail = () => {
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <div className='router-entity-detail-page'>
+      <AppSection>
+        <div className='router-entity-detail-page'>
             <div className='router-entity-detail-breadcrumb'>
-              <Breadcrumb size='small'>
-                <Breadcrumb.Section link onClick={() => navigate(listPath)}>
-                  {t('flow.package.title')}
-                </Breadcrumb.Section>
-                <Breadcrumb.Divider icon='right chevron' />
-                <Breadcrumb.Section active>
-                  {readOnlyText(record?.id || id)}
-                </Breadcrumb.Section>
-              </Breadcrumb>
+              <AppBreadcrumb
+                items={[
+                  {
+                    key: 'flow-package-list',
+                    label: t('flow.package.title'),
+                    onClick: () => navigate(listPath),
+                  },
+                  {
+                    key: 'flow-package-current',
+                    label: readOnlyText(record?.id || id),
+                    active: true,
+                  },
+                ]}
+              />
             </div>
 
-            <div className='router-detail-section'>
-              <div className='router-detail-section-title'>
-                {t('flow.package.title')}
-              </div>
+            <AppDetailSection
+              className='router-detail-section'
+              title={t('flow.package.title')}
+              titleTag='div'
+              titleClassName='router-detail-section-title'
+            >
               {loading ? (
                 <div className='router-empty-cell'>{t('common.loading')}</div>
               ) : (
@@ -250,10 +256,9 @@ const PackageDetail = () => {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        </Card.Content>
-      </Card>
+            </AppDetailSection>
+        </div>
+      </AppSection>
     </div>
   );
 };

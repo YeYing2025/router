@@ -1,15 +1,13 @@
 import React from 'react';
-import { Card } from 'semantic-ui-react';
 import UsersTable from '../../components/UsersTable';
+import { AppSection } from '../../router-ui';
 
 const User = () => {
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <UsersTable />
-        </Card.Content>
-      </Card>
+      <AppSection>
+        <UsersTable />
+      </AppSection>
     </div>
   );
 };

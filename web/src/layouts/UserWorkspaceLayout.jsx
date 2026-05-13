@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Button, Container, Icon } from 'semantic-ui-react';
+import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import UserSidebar from '../components/UserSidebar';
+import { AppButton, AppSider } from '../router-ui';
 
 const USER_SIDEBAR_COMPACT_STORAGE_KEY = 'router_user_sidebar_compact_v1';
 
@@ -35,8 +36,11 @@ const UserWorkspaceLayout = () => {
     <>
       <Header workspace='user' hideNavButtons />
       <div className={`router-admin-shell ${sidebarCompact ? 'compact' : ''}`}>
-        <aside
+        <AppSider
           className={`router-admin-sidebar ${sidebarCompact ? 'compact' : ''}`}
+          width={248}
+          collapsedWidth={84}
+          collapsed={sidebarCompact}
         >
           <div className='router-admin-sidebar-toolbar'>
             {!sidebarCompact ? (
@@ -44,10 +48,9 @@ const UserWorkspaceLayout = () => {
                 {t('header.user_workspace')}
               </div>
             ) : null}
-            <Button
+            <AppButton
               type='button'
               basic
-              icon
               size='small'
               className='router-admin-sidebar-toggle'
               title={
@@ -61,21 +64,22 @@ const UserWorkspaceLayout = () => {
                   : t('header.sidebar_compact')
               }
               onClick={() => setSidebarCompact((previous) => !previous)}
-              >
-              <Icon
-                name={
-                  sidebarCompact ? 'angle double right' : 'angle double left'
-                }
-              />
-            </Button>
+              icon={
+                sidebarCompact ? (
+                  <DoubleRightOutlined />
+                ) : (
+                  <DoubleLeftOutlined />
+                )
+              }
+            />
           </div>
           <div className='router-admin-sidebar-scroll'>
             <UserSidebar compact={sidebarCompact} />
           </div>
-        </aside>
-        <Container className='main-content router-admin-main'>
+        </AppSider>
+        <div className='main-content router-admin-main'>
           <Outlet />
-        </Container>
+        </div>
       </div>
       <Footer />
     </>

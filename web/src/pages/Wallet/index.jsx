@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Card, Form, Header, Message, Segment } from 'semantic-ui-react';
+import {
+  AppAlert,
+  AppButton,
+  AppField,
+  AppFormRow,
+  AppInput,
+  AppInputNumber,
+  AppSection,
+  AppTextarea,
+} from '../../router-ui';
 import { showError, showSuccess } from '../../helpers';
 
 const WalletPage = () => {
@@ -126,73 +135,82 @@ const WalletPage = () => {
 
   return (
     <div className='router-page-panel'>
-      <Header as='h2' className='router-page-title'>钱包工具</Header>
+      <h2 className='router-page-title'>钱包工具</h2>
       {!hasWallet && (
-        <Message warning className='router-section-message'>
+        <AppAlert type='warning' className='router-section-message' title={
           未检测到 `window.ethereum`，请安装 MetaMask 或打开浏览器钱包后刷新。
-        </Message>
+        } />
       )}
-      <Segment>
-        <Button className='router-section-button' primary onClick={connect} disabled={!hasWallet}>
-          连接钱包
-        </Button>
-        <div className='router-section-copy router-section-stack'>
-          <div>地址：{address || '-'}</div>
-          <div>链 ID：{chainId || '-'}</div>
-          <div>余额：{balance ? `${balance} ETH` : '-'}</div>
+      <AppSection>
+        <div className='router-page-stack'>
+          <AppButton className='router-section-button' color='blue' onClick={connect} disabled={!hasWallet}>
+            连接钱包
+          </AppButton>
+          <div className='router-section-copy router-section-stack'>
+            <div>地址：{address || '-'}</div>
+            <div>链 ID：{chainId || '-'}</div>
+            <div>余额：{balance ? `${balance} ETH` : '-'}</div>
+          </div>
+          <AppButton className='router-section-button' onClick={() => refreshBalance()}>
+            刷新余额
+          </AppButton>
         </div>
-        <Button className='router-section-button' basic onClick={() => refreshBalance()}>
-          刷新余额
-        </Button>
-      </Segment>
+      </AppSection>
 
-      <Card fluid>
-        <Card.Content>
-          <Card.Header className='router-card-header router-section-title'>签名测试</Card.Header>
-          <Form>
-            <Form.TextArea
-              className='router-section-textarea'
-              label='待签名消息'
-              value={messageToSign}
-              onChange={(e) => setMessageToSign(e.target.value)}
+      <AppSection title='签名测试'>
+        <div className='router-page-stack'>
+          <AppFormRow>
+            <AppField label='待签名消息'>
+              <AppTextarea
+                className='router-section-textarea'
+                value={messageToSign}
+                onChange={(e, { value }) => setMessageToSign(value)}
+              />
+            </AppField>
+          </AppFormRow>
+          <AppButton className='router-section-button' onClick={signMessage}>
+            personal_sign
+          </AppButton>
+          {signResult && (
+            <AppAlert
+              type='success'
+              className='router-section-message router-break-all'
+              title={signResult}
             />
-            <Button className='router-section-button' color='orange' onClick={signMessage}>
-              personal_sign
-            </Button>
-            {signResult && (
-              <Message success className='router-section-message router-break-all'>
-                {signResult}
-              </Message>
-            )}
-          </Form>
-        </Card.Content>
-      </Card>
+          )}
+        </div>
+      </AppSection>
 
-      <Card fluid>
-        <Card.Content>
-          <Card.Header className='router-card-header router-section-title'>发送 ETH</Card.Header>
-          <Form>
-            <Form.Input
-              className='router-section-input'
-              label='收款地址'
-              placeholder='0x...'
-              value={tx.to}
-              onChange={(e) => setTx({ ...tx, to: e.target.value })}
-            />
-            <Form.Input
-              className='router-section-input'
-              label='金额（ETH）'
-              type='number'
-              placeholder='0.01'
-              value={tx.value}
-              onChange={(e) => setTx({ ...tx, value: e.target.value })}
-            />
-            <Button className='router-section-button' color='green' loading={loading} onClick={sendTx}>
-              发送
-            </Button>
-          </Form>
-        </Card.Content>
-      </Card>
+      <AppSection title='发送 ETH'>
+        <div className='router-page-stack'>
+          <AppFormRow>
+            <AppField label='收款地址'>
+              <AppInput
+                className='router-section-input'
+                placeholder='0x...'
+                value={tx.to}
+                onChange={(e, { value }) => setTx({ ...tx, to: value })}
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField label='金额（ETH）'>
+              <AppInputNumber
+                className='router-section-input'
+                fluid
+                placeholder='0.01'
+                value={tx.value}
+                onChange={(e, { value }) => setTx({ ...tx, value })}
+                min={0}
+                step={0.001}
+              />
+            </AppField>
+          </AppFormRow>
+          <AppButton className='router-section-button' color='blue' loading={loading} onClick={sendTx}>
+            发送
+          </AppButton>
+        </div>
+      </AppSection>
     </div>
   );
 };

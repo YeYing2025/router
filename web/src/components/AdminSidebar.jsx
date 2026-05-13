@@ -1,44 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Icon, Menu, Popup } from 'semantic-ui-react';
 import { useTranslation } from 'react-i18next';
 import {
   ADMIN_MENU_GROUPS,
-  isAdminGroupActive,
   isAdminRouteActive,
 } from '../constants/adminMenu';
+import { AppIcon, AppNavMenu } from '../router-ui';
 
-const SIDEBAR_GROUP_COLLAPSED_STORAGE_KEY =
-  'router_admin_sidebar_group_collapsed_v1';
+const SIDEBAR_GROUP_OPEN_STORAGE_KEY = 'router_admin_sidebar_group_open_v2';
 
-const buildDefaultCollapsedState = () => {
-  const defaults = {};
-  ADMIN_MENU_GROUPS.forEach((group) => {
-    defaults[group.key] = false;
-  });
-  return defaults;
-};
+const buildDefaultOpenKeys = () => ADMIN_MENU_GROUPS.map((group) => group.key);
 
-const buildInitialCollapsedState = () => {
-  const defaults = buildDefaultCollapsedState();
+const buildInitialOpenKeys = () => {
+  const defaults = buildDefaultOpenKeys();
   if (typeof window === 'undefined') {
     return defaults;
   }
-  const raw = (localStorage.getItem(SIDEBAR_GROUP_COLLAPSED_STORAGE_KEY) || '')
-    .trim();
+  const raw = (localStorage.getItem(SIDEBAR_GROUP_OPEN_STORAGE_KEY) || '').trim();
   if (raw === '') {
     return defaults;
   }
   try {
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') {
+    if (!Array.isArray(parsed)) {
       return defaults;
     }
-    return Object.keys(defaults).reduce((result, key) => {
-      result[key] = Boolean(parsed[key]);
-      return result;
-    }, {});
-  } catch (error) {
+    const allowed = new Set(defaults);
+    return parsed.filter((key) => allowed.has(key));
+  } catch {
     return defaults;
   }
 };
@@ -47,168 +36,76 @@ const AdminSidebar = ({ compact = false }) => {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const [collapsedGroups, setCollapsedGroups] = useState(
-    buildInitialCollapsedState,
-  );
-  const [compactPopupGroup, setCompactPopupGroup] = useState('');
+  const [openKeys, setOpenKeys] = useState(buildInitialOpenKeys);
+
+  const selectedKeys = useMemo(() => {
+    const active = [];
+    ADMIN_MENU_GROUPS.forEach((group) => {
+      group.items.forEach((item) => {
+        if (isAdminRouteActive(location, item.to)) {
+          active.push(item.to);
+        }
+      });
+    });
+    return active;
+  }, [location]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
-    localStorage.setItem(
-      SIDEBAR_GROUP_COLLAPSED_STORAGE_KEY,
-      JSON.stringify(collapsedGroups),
-    );
-  }, [collapsedGroups]);
+    localStorage.setItem(SIDEBAR_GROUP_OPEN_STORAGE_KEY, JSON.stringify(openKeys));
+  }, [openKeys]);
 
   useEffect(() => {
-    if (!compact) {
-      setCompactPopupGroup('');
-    }
-  }, [compact]);
-
-  useEffect(() => {
-    setCompactPopupGroup('');
-  }, [location.pathname, location.search, location.hash]);
-
-  const toggleGroup = (group) => {
-    if (!group?.key) {
+    if (compact || selectedKeys.length === 0) {
       return;
     }
-    setCollapsedGroups((prev) => ({
-      ...prev,
-      [group.key]: !prev[group.key],
-    }));
-  };
+    const activeGroupKeys = ADMIN_MENU_GROUPS.filter((group) =>
+      group.items.some((item) => selectedKeys.includes(item.to)),
+    ).map((group) => group.key);
+    if (activeGroupKeys.length === 0) {
+      return;
+    }
+    setOpenKeys((previous) => {
+      const next = Array.from(new Set([...previous, ...activeGroupKeys]));
+      return next.length === previous.length &&
+        next.every((item, index) => item === previous[index])
+        ? previous
+        : next;
+    });
+  }, [compact, selectedKeys]);
 
-  const isGroupCollapsed = (group) => Boolean(collapsedGroups[group.key]);
+  const items = useMemo(
+    () =>
+      ADMIN_MENU_GROUPS.map((group) => ({
+        key: group.key,
+        icon: <AppIcon name={group.icon} />,
+        label: t(group.name),
+        children: group.items.map((item) => ({
+          key: item.to,
+          icon: <AppIcon name={item.icon} />,
+          label: t(item.name),
+        })),
+      })),
+    [t],
+  );
 
   return (
-    <Menu vertical fluid className='router-admin-sidebar-menu'>
-      {ADMIN_MENU_GROUPS.map((group) => {
-        const groupActive = isAdminGroupActive(location, group);
-        if (compact) {
-          const popupOpen = compactPopupGroup === group.key;
-          return (
-            <Popup
-              key={group.key}
-              className='router-admin-compact-popup'
-              on='click'
-              position='right center'
-              open={popupOpen}
-              onClose={() =>
-                setCompactPopupGroup((previous) =>
-                  previous === group.key ? '' : previous,
-                )
-              }
-              trigger={
-                <Menu.Item
-                  className={`router-admin-sidebar-group ${groupActive ? 'active' : ''}`}
-                  onClick={() =>
-                    setCompactPopupGroup((previous) =>
-                      previous === group.key ? '' : group.key,
-                    )
-                  }
-                  title={t(group.name)}
-                >
-                  <span className='router-admin-sidebar-group-title'>
-                    <Icon name={group.icon} />
-                    <span className='router-admin-sidebar-group-label'>
-                      {t(group.name)}
-                    </span>
-                  </span>
-                </Menu.Item>
-              }
-            >
-              <Menu vertical secondary className='router-admin-compact-popup-menu'>
-                {group.items.map((item) => {
-                  const active = isAdminRouteActive(location, item.to);
-                  return (
-                    <Menu.Item
-                      key={item.to}
-                      active={active}
-                      className='router-admin-compact-popup-item'
-                      onClick={() => {
-                        setCompactPopupGroup('');
-                        navigate(item.to);
-                      }}
-                    >
-                      <span className='router-admin-compact-popup-item-content'>
-                        <Icon
-                          name={item.icon}
-                          className='router-admin-compact-popup-item-icon'
-                        />
-                        <span className='router-admin-compact-popup-item-label'>
-                          {t(item.name)}
-                        </span>
-                      </span>
-                    </Menu.Item>
-                  );
-                })}
-              </Menu>
-            </Popup>
-          );
+    <AppNavMenu
+      className='router-admin-nav-menu'
+      mode='inline'
+      inlineCollapsed={compact}
+      items={items}
+      selectedKeys={selectedKeys}
+      openKeys={compact ? [] : openKeys}
+      onOpenChange={(nextKeys) => setOpenKeys(nextKeys)}
+      onClick={({ key }) => {
+        if (typeof key === 'string' && key.startsWith('/')) {
+          navigate(key);
         }
-        const collapsed = isGroupCollapsed(group);
-        return (
-          <Menu.Item
-            key={group.key}
-            className={`router-admin-sidebar-group ${groupActive ? 'active' : ''}`}
-          >
-            <div
-              className='router-admin-sidebar-group-header'
-              role='button'
-              tabIndex={0}
-              onClick={() => toggleGroup(group)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  toggleGroup(group);
-                }
-              }}
-            >
-              <span
-                className='router-admin-sidebar-group-title'
-                title={t(group.name)}
-              >
-                <Icon name={group.icon} />
-                <span className='router-admin-sidebar-group-label'>
-                  {t(group.name)}
-                </span>
-              </span>
-              <Icon name={collapsed ? 'angle right' : 'angle down'} />
-            </div>
-            {!collapsed ? (
-              <Menu.Menu>
-                {group.items.map((item) => {
-                  const active = isAdminRouteActive(location, item.to);
-                  return (
-                    <Menu.Item
-                      key={item.to}
-                      active={active}
-                      onClick={() => navigate(item.to)}
-                      className='router-admin-sidebar-item'
-                      title={t(item.name)}
-                    >
-                      <span className='router-admin-sidebar-item-content'>
-                        <Icon
-                          name={item.icon}
-                          className='router-admin-sidebar-item-icon'
-                        />
-                        <span className='router-admin-sidebar-item-label'>
-                          {t(item.name)}
-                        </span>
-                      </span>
-                    </Menu.Item>
-                  );
-                })}
-              </Menu.Menu>
-            ) : null}
-          </Menu.Item>
-        );
-      })}
-    </Menu>
+      }}
+    />
   );
 };
 

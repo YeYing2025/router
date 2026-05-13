@@ -1,6 +1,5 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, Grid, Menu } from 'semantic-ui-react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import SystemSetting from '../../components/SystemSetting';
 import { isRoot } from '../../helpers';
@@ -9,6 +8,7 @@ import PersonalSetting from '../../components/PersonalSetting';
 import OperationSetting from '../../components/OperationSetting';
 import ExchangeRateSetting from '../../components/ExchangeRateSetting';
 import CurrencySetting from '../../components/CurrencySetting';
+import { AppNavMenu, AppSection } from '../../router-ui';
 
 const Setting = () => {
   const { t } = useTranslation();
@@ -19,11 +19,9 @@ const Setting = () => {
   if (!isAdminWorkspace) {
     return (
       <div className='dashboard-container'>
-        <Card fluid className='chart-card'>
-          <Card.Content>
-            <PersonalSetting />
-          </Card.Content>
-        </Card>
+        <AppSection>
+          <PersonalSetting />
+        </AppSection>
       </div>
     );
   }
@@ -154,6 +152,16 @@ const Setting = () => {
     setSearchParams(nextParams);
   };
 
+  const settingsMenuItems = visibleMenuGroups.map((group) => ({
+    key: group.key,
+    type: singleGroupMode ? undefined : 'group',
+    label: singleGroupMode ? undefined : group.label,
+    children: group.sections.map((section) => ({
+      key: `${group.key}:${section.key}`,
+      label: section.label,
+    })),
+  }));
+
   const renderContent = () => {
     if (activeTab === 'operation') {
       return <OperationSetting section={activeSection} />;
@@ -184,51 +192,38 @@ const Setting = () => {
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <Card.Header className='header router-page-title'>
-            {pageTitle}
-          </Card.Header>
-          {visibleMenuGroups.length > 0 ? (
-            hideSettingsMenu ? (
-              renderContent()
-            ) : (
-              <Grid stackable columns={2} className='router-settings-layout'>
-                <Grid.Column width={3} className='router-settings-menu-column'>
-                  <Menu fluid vertical className='router-settings-menu'>
-                    {visibleMenuGroups.map((group) => (
-                      <Menu.Item key={group.key} className='router-settings-menu-group'>
-                        {!singleGroupMode ? <Menu.Header>{group.label}</Menu.Header> : null}
-                        <Menu.Menu>
-                          {group.sections.map((section) => (
-                            <Menu.Item
-                              key={`${group.key}-${section.key}`}
-                              active={
-                                activeTab === group.key &&
-                                activeSection === section.key
-                              }
-                              onClick={() => goToSection(group.key, section.key)}
-                            >
-                              {section.label}
-                            </Menu.Item>
-                          ))}
-                        </Menu.Menu>
-                      </Menu.Item>
-                    ))}
-                  </Menu>
-                </Grid.Column>
-                <Grid.Column width={13}>
-                  {renderContent()}
-                </Grid.Column>
-              </Grid>
-            )
+      <AppSection title={pageTitle}>
+        {visibleMenuGroups.length > 0 ? (
+          hideSettingsMenu ? (
+            renderContent()
           ) : (
-            <div className='router-empty-cell'>
-              {t('setting.empty_admin', '暂无可配置项')}
+            <div className='router-settings-layout'>
+              <div className='router-settings-menu-column'>
+                <AppNavMenu
+                  className='router-settings-nav-menu'
+                  mode='inline'
+                  selectable
+                  items={settingsMenuItems}
+                  selectedKeys={[`${activeTab}:${activeSection}`]}
+                  onClick={({ key }) => {
+                    const [tab, section] = String(key || '').split(':');
+                    if (tab && section) {
+                      goToSection(tab, section);
+                    }
+                  }}
+                />
+              </div>
+              <div className='router-settings-content-column'>
+                {renderContent()}
+              </div>
             </div>
-          )}
-        </Card.Content>
-      </Card>
+          )
+        ) : (
+          <div className='router-empty-cell'>
+            {t('setting.empty_admin', '暂无可配置项')}
+          </div>
+        )}
+      </AppSection>
     </div>
   );
 };

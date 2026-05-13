@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Card, Form, Header, Table } from 'semantic-ui-react';
 import { showError, showInfo, timestamp2string } from '../../helpers';
 import { formatAmountWithUnit } from '../../helpers/render';
 import { useTopUpWorkspace } from './shared.jsx';
+import { AppButton, AppInput, AppSection, AppTable } from '../../router-ui';
 
 const RedeemCodePage = () => {
   const { t } = useTranslation();
@@ -11,6 +11,56 @@ const RedeemCodePage = () => {
   const [redemptionCode, setRedemptionCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [recentResult, setRecentResult] = useState(null);
+
+  const recentResultRows = recentResult
+    ? [
+        {
+          key: 'row-1',
+          leftLabel: t('topup.redemption_result.fields.redeemed_amount'),
+          leftValue: renderDisplayAmount(recentResult.redeemed_yyc),
+          rightLabel: t('topup.redemption_result.fields.redeemed_at'),
+          rightValue: recentResult.redeemed_at
+            ? timestamp2string(recentResult.redeemed_at)
+            : '-',
+        },
+        {
+          key: 'row-2',
+          leftLabel: t('topup.redemption_result.fields.before_balance'),
+          leftValue: renderDisplayAmount(recentResult.before_yyc_balance),
+          rightLabel: t('topup.redemption_result.fields.after_balance'),
+          rightValue: renderDisplayAmount(recentResult.after_yyc_balance),
+        },
+        {
+          key: 'row-3',
+          leftLabel: t('topup.redemption_result.fields.redemption_name'),
+          leftValue: recentResult.redemption_name || '-',
+          rightLabel: t('topup.redemption_result.fields.redemption_id'),
+          rightValue: recentResult.redemption_id || '-',
+        },
+        {
+          key: 'row-4',
+          leftLabel: t('topup.redemption_result.fields.group'),
+          leftValue: recentResult.group_name || recentResult.group_id || '-',
+          rightLabel: t('topup.redemption_result.fields.face_value'),
+          rightValue:
+            recentResult.face_value_amount > 0
+              ? formatAmountWithUnit(
+                  recentResult.face_value_amount,
+                  recentResult.face_value_unit || 'YYC',
+                )
+              : '-',
+        },
+        {
+          key: 'row-5',
+          leftLabel: t('topup.redemption_result.fields.credit_expires_at'),
+          leftValue: recentResult.credit_expires_at
+            ? timestamp2string(recentResult.credit_expires_at)
+            : t('common.never'),
+          rightLabel: '',
+          rightValue: '',
+        },
+      ]
+    : [];
 
   const handleSubmit = async () => {
     if ((redemptionCode || '').trim() === '') {
@@ -34,18 +84,18 @@ const RedeemCodePage = () => {
 
   return (
     <>
-      <Card fluid className='router-soft-card router-soft-card-fill'>
-        <Card.Content className='router-card-fill'>
-          <Card.Header className='router-card-header'>
-            <Header as='h3' className='router-section-title router-title-accent-positive'>
-              {t('topup.redeem.title')}
-            </Header>
-          </Card.Header>
-          <Card.Description className='router-card-fill'>
-            <div className='router-card-body-spread'>
-              <div className='router-text-muted'>{t('topup.redeem.description')}</div>
+      <AppSection
+        className='router-section-fill'
+        title={
+          <div className='router-title-accent-positive'>
+            {t('topup.redeem.title')}
+          </div>
+        }
+      >
+        <div className='router-section-stack-spread'>
+          <div className='router-text-muted'>{t('topup.redeem.description')}</div>
 
-              <Form.Input
+              <AppInput
                 className='router-section-input'
                 fluid
                 icon='key'
@@ -59,7 +109,7 @@ const RedeemCodePage = () => {
                   setRedemptionCode(pastedText.trim());
                 }}
                 action={
-                  <Button
+                  <AppButton
                     className='router-section-button'
                     onClick={async () => {
                       try {
@@ -71,93 +121,76 @@ const RedeemCodePage = () => {
                     }}
                   >
                     {t('topup.redeem.paste')}
-                  </Button>
+                  </AppButton>
                 }
               />
 
-              <div className='router-action-footer'>
-                <Button
-                  className='router-section-button'
-                  color='green'
-                  fluid
-                  onClick={handleSubmit}
-                  loading={submitting}
-                  disabled={submitting}
-                >
-                  {submitting ? t('topup.redeem.submitting') : t('topup.redeem.submit')}
-                </Button>
-              </div>
-            </div>
-          </Card.Description>
-        </Card.Content>
-      </Card>
+          <div className='router-action-footer'>
+            <AppButton
+              className='router-section-button'
+              color='blue'
+              fluid
+              onClick={handleSubmit}
+              loading={submitting}
+              disabled={submitting}
+            >
+              {submitting ? t('topup.redeem.submitting') : t('topup.redeem.submit')}
+            </AppButton>
+          </div>
+        </div>
+      </AppSection>
 
       {recentResult ? (
-        <Card fluid className='router-soft-card' style={{ marginTop: '1rem' }}>
-          <Card.Content>
-            <Card.Header className='router-card-header'>
-              <div className='router-toolbar'>
-                <Header as='h3' className='router-section-title router-title-accent-warning'>
-                  <i className='check circle icon' />
-                  {t('topup.redemption_result.title')}
-                </Header>
-                <Button
-                  className='router-section-button'
-                  basic
-                  size='small'
-                  onClick={() => setRecentResult(null)}
-                >
-                  {t('topup.redemption_result.close')}
-                </Button>
-              </div>
-            </Card.Header>
-            <Table basic='very' compact='very' className='router-list-table'>
-              <Table.Body>
-                <Table.Row>
-                  <Table.Cell width={4}>{t('topup.redemption_result.fields.redeemed_amount')}</Table.Cell>
-                  <Table.Cell>{renderDisplayAmount(recentResult.redeemed_yyc)}</Table.Cell>
-                  <Table.Cell width={4}>{t('topup.redemption_result.fields.redeemed_at')}</Table.Cell>
-                  <Table.Cell>
-                    {recentResult.redeemed_at ? timestamp2string(recentResult.redeemed_at) : '-'}
-                  </Table.Cell>
-                </Table.Row>
-                <Table.Row>
-                  <Table.Cell>{t('topup.redemption_result.fields.before_balance')}</Table.Cell>
-                  <Table.Cell>{renderDisplayAmount(recentResult.before_yyc_balance)}</Table.Cell>
-                  <Table.Cell>{t('topup.redemption_result.fields.after_balance')}</Table.Cell>
-                  <Table.Cell>{renderDisplayAmount(recentResult.after_yyc_balance)}</Table.Cell>
-                </Table.Row>
-                <Table.Row>
-                  <Table.Cell>{t('topup.redemption_result.fields.redemption_name')}</Table.Cell>
-                  <Table.Cell>{recentResult.redemption_name || '-'}</Table.Cell>
-                  <Table.Cell>{t('topup.redemption_result.fields.redemption_id')}</Table.Cell>
-                  <Table.Cell>{recentResult.redemption_id || '-'}</Table.Cell>
-                </Table.Row>
-                <Table.Row>
-                  <Table.Cell>{t('topup.redemption_result.fields.group')}</Table.Cell>
-                  <Table.Cell>{recentResult.group_name || recentResult.group_id || '-'}</Table.Cell>
-                  <Table.Cell>{t('topup.redemption_result.fields.face_value')}</Table.Cell>
-                  <Table.Cell>
-                    {recentResult.face_value_amount > 0
-                      ? formatAmountWithUnit(
-                          recentResult.face_value_amount,
-                          recentResult.face_value_unit || 'YYC',
-                        )
-                      : '-'}
-                  </Table.Cell>
-                </Table.Row>
-                <Table.Row>
-                  <Table.Cell>{t('topup.redemption_result.fields.credit_expires_at')}</Table.Cell>
-                  <Table.Cell colSpan={3}>
-                    {recentResult.credit_expires_at
-                      ? timestamp2string(recentResult.credit_expires_at)
-                      : t('common.never')}
-                  </Table.Cell>
-                </Table.Row>
-              </Table.Body>
-            </Table>
-          </Card.Content>
-        </Card>
+        <AppSection
+          className='router-topup-result-section'
+          title={
+            <div className='router-title-accent-warning'>
+              {t('topup.redemption_result.title')}
+            </div>
+          }
+          extra={
+            <AppButton
+              className='router-section-button'
+              basic
+              size='small'
+              onClick={() => setRecentResult(null)}
+            >
+              {t('topup.redemption_result.close')}
+            </AppButton>
+          }
+        >
+          <AppTable
+            className='router-list-table'
+            rowKey='key'
+            pagination={false}
+            dataSource={recentResultRows}
+            columns={[
+              {
+                title: '',
+                dataIndex: 'leftLabel',
+                width: '20%',
+                render: (value) => <span className='router-text-muted'>{value}</span>,
+              },
+              {
+                title: '',
+                dataIndex: 'leftValue',
+                width: '30%',
+              },
+              {
+                title: '',
+                dataIndex: 'rightLabel',
+                width: '20%',
+                render: (value) =>
+                  value ? <span className='router-text-muted'>{value}</span> : null,
+              },
+              {
+                title: '',
+                dataIndex: 'rightValue',
+                width: '30%',
+              },
+            ]}
+          />
+        </AppSection>
       ) : null}
     </>
   );

@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Form, Card } from 'semantic-ui-react';
 import { useNavigate } from 'react-router-dom';
 import { API, showError, showSuccess } from '../../helpers';
+import {
+  AppButton,
+  AppField,
+  AppFormActions,
+  AppFormRow,
+  AppInput,
+  AppSection,
+} from '../../router-ui';
 
 const AddUser = () => {
   const { t } = useTranslation();
@@ -37,43 +44,40 @@ const AddUser = () => {
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <Card.Header className='header router-page-title'>{t('user.add.title')}</Card.Header>
-          <Form autoComplete='off'>
-            <Form.Field>
-              <Form.Input
-                className='router-section-input'
-                label={t('user.edit.username')}
-                name='username'
-                placeholder={t('user.edit.username_placeholder')}
-                onChange={handleInputChange}
-                value={username}
-                autoComplete='off'
-                required
-              />
-            </Form.Field>
-            <Form.Field>
-              <Form.Input
-                className='router-section-input'
-                label={t('user.edit.password')}
-                name='password'
-                type='password'
-                placeholder={t('user.edit.password_placeholder')}
-                onChange={handleInputChange}
-                value={password}
-                autoComplete='off'
-                required
-              />
-            </Form.Field>
-            <div className='router-toolbar-start router-block-gap-sm'>
-              <Button className='router-page-button' positive type='submit' onClick={submit}>
-                {t('user.edit.buttons.submit')}
-              </Button>
-            </div>
-          </Form>
-        </Card.Content>
-      </Card>
+      <AppSection title={t('user.add.title')}>
+        <AppFormRow>
+          <AppField label={t('user.edit.username')} required>
+            <AppInput
+              className='router-section-input'
+              name='username'
+              placeholder={t('user.edit.username_placeholder')}
+              onChange={handleInputChange}
+              value={username}
+              autoComplete='off'
+              required
+            />
+          </AppField>
+        </AppFormRow>
+        <AppFormRow>
+          <AppField label={t('user.edit.password')} required>
+            <AppInput
+              className='router-section-input'
+              name='password'
+              type='password'
+              placeholder={t('user.edit.password_placeholder')}
+              onChange={handleInputChange}
+              value={password}
+              autoComplete='off'
+              required
+            />
+          </AppField>
+        </AppFormRow>
+        <AppFormActions align='start' className='router-block-gap-sm'>
+          <AppButton className='router-page-button' color='blue' type='submit' onClick={submit}>
+            {t('user.edit.buttons.submit')}
+          </AppButton>
+        </AppFormActions>
+      </AppSection>
     </div>
   );
 };

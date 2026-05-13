@@ -1,6 +1,6 @@
-import { Label, Message, Popup } from 'semantic-ui-react';
 import { getChannelProtocolOption } from './helper';
 import React from 'react';
+import { AppAlert, AppTag, AppTooltip } from '../router-ui';
 
 export const YYC_SYMBOL = 'Ɏ';
 
@@ -18,22 +18,22 @@ export function renderGroup(group) {
   let groups = group.split(',');
   groups.sort();
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '2px',
-        rowGap: '6px',
-      }}
-    >
+    <div className='router-group-tag-list'>
       {groups.map((group) => {
         if (group === 'vip' || group === 'pro') {
-          return <Label key={group} color='yellow'>{group}</Label>;
+          return (
+            <AppTag key={group} color='yellow'>
+              {group}
+            </AppTag>
+          );
         } else if (group === 'svip' || group === 'premium') {
-          return <Label key={group} color='red'>{group}</Label>;
+          return (
+            <AppTag key={group} color='red'>
+              {group}
+            </AppTag>
+          );
         }
-        return <Label key={group}>{group}</Label>;
+        return <AppTag key={group}>{group}</AppTag>;
       })}
     </div>
   );
@@ -172,10 +172,11 @@ export function renderYYC(yycAmount, t, compact = true, amountPrecision = 6) {
     return <span>{triggerText}</span>;
   }
   return (
-    <Popup
-      content={`${formatYYCValue(normalized, false)} (${t('common.quota.display', { amount })})`}
-      trigger={<span>{triggerText}</span>}
-    />
+    <AppTooltip
+      title={`${formatYYCValue(normalized, false)} (${t('common.quota.display', { amount })})`}
+    >
+      <span>{triggerText}</span>
+    </AppTooltip>
   );
 }
 
@@ -251,9 +252,9 @@ export function renderColorLabel(text) {
   }
   let index = Math.abs(hash % colors.length);
   return (
-    <Label basic color={colors[index]} className='router-tag'>
+    <AppTag color={colors[index]} className='router-tag'>
       {text}
-    </Label>
+    </AppTag>
   );
 }
 
@@ -263,8 +264,11 @@ export function renderChannelTip(protocol) {
     return <></>;
   }
   return (
-    <Message>
-      <div dangerouslySetInnerHTML={{ __html: channel.tip }}></div>
-    </Message>
+    <AppAlert
+      type='info'
+      showIcon
+      className='router-section-message'
+      title={<div dangerouslySetInnerHTML={{ __html: channel.tip }}></div>}
+    />
   );
 }

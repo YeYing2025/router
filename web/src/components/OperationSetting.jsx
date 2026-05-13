@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Divider, Form, Grid, Header, Message } from 'semantic-ui-react';
 import {
   API,
   showError,
@@ -19,6 +18,20 @@ import {
   resolveBillingInputStep,
 } from '../helpers/billing';
 import UnitDropdown from './UnitDropdown';
+import {
+  AppAlert,
+  AppButton,
+  AppDivider,
+  AppField,
+  AppFilterHeader,
+  AppFormActions,
+  AppFormRow,
+  AppInput,
+  AppInputNumber,
+  AppSelect,
+  AppSpin,
+  AppSwitch,
+} from '../router-ui';
 
 const normalizeOptionValue = (value, fallback = '') => {
   if (value === null || value === undefined) {
@@ -432,21 +445,23 @@ const OperationSetting = ({ section = '' }) => {
     placeholderKey,
     descriptionKey = '',
   ) => (
-    <Form.Field>
-      <label>{t(labelKey)}</label>
+    <AppField
+      label={t(labelKey)}
+      hint={descriptionKey ? t(descriptionKey) : ''}
+    >
       <div className='router-section-input-with-unit'>
-        <Form.Input
+        <AppInputNumber
           className='router-section-input router-section-input-with-unit-field'
-          autoComplete='new-password'
           value={inputs[optionKey] ?? '0'}
-          type='number'
-          min='0'
+          min={0}
           step={resolveBillingInputStep(billingUnits[optionKey], billingCurrencyIndex)}
           placeholder={t(placeholderKey)}
-          onChange={(e) => {
+          precision={6}
+          fluid
+          onChange={(e, { value }) => {
             setInputs((prev) => ({
               ...prev,
-              [optionKey]: e.target.value || '0',
+              [optionKey]: value ?? '0',
             }));
           }}
         />
@@ -473,10 +488,7 @@ const OperationSetting = ({ section = '' }) => {
           aria-label={t(labelKey)}
         />
       </div>
-      {descriptionKey ? (
-        <div className='router-section-field-description'>{t(descriptionKey)}</div>
-      ) : null}
-    </Form.Field>
+    </AppField>
   );
 
   const renderTopupPlanField = (
@@ -485,11 +497,9 @@ const OperationSetting = ({ section = '' }) => {
     placeholderKey,
     descriptionKey,
   ) => (
-    <Form.Field>
-      <label>{t(labelKey)}</label>
-      <Form.Dropdown
+    <AppField label={t(labelKey)} hint={t(descriptionKey)}>
+      <AppSelect
         className='router-section-input'
-        selection
         clearable
         search
         options={topupPlanOptions}
@@ -498,8 +508,7 @@ const OperationSetting = ({ section = '' }) => {
         onChange={handleInputChange}
         placeholder={t(placeholderKey)}
       />
-      <div className='router-section-field-description'>{t(descriptionKey)}</div>
-    </Form.Field>
+    </AppField>
   );
 
   const deleteHistoryLogs = async () => {
@@ -515,12 +524,16 @@ const OperationSetting = ({ section = '' }) => {
   };
 
   return (
-    <Grid columns={1}>
-      <Grid.Column>
-        <Form loading={loading}>
+    <AppSpin spinning={loading}>
+      <div>
           {sectionVisible.balance ? (
             <>
-              <Form.Group widths='equal'>
+              <AppFilterHeader
+                title={t('setting.operation.quota.title')}
+                titleClassName='router-ui-section-title'
+                className='router-toolbar-compact'
+              />
+              <AppFormRow>
                 {renderBalanceInputField(
                   'setting.operation.quota.pre_consume',
                   BALANCE_OPTION_KEYS.preConsumedAmount,
@@ -539,179 +552,222 @@ const OperationSetting = ({ section = '' }) => {
                   'setting.operation.quota.reward_plan_placeholder',
                   'setting.operation.quota.inviter_reward_description'
                 )}
-              </Form.Group>
-              <Form.Group widths='equal'>
-                <Form.Dropdown
-                  className='router-section-input'
-                  label={t('setting.operation.quota.default_group')}
-                  name={BALANCE_OPTION_KEYS.defaultGroup}
-                  selection
-                  clearable
-                  search
-                  options={groupOptions}
-                  onChange={handleInputChange}
-                  value={inputs[BALANCE_OPTION_KEYS.defaultGroup] || ''}
-                  placeholder={t('setting.operation.quota.default_group_placeholder')}
-                />
-              </Form.Group>
-              <Form.Button
-                className='router-section-button'
-                onClick={() => {
-                  saveSectionConfig('balance').then();
-                }}
-              >
-                {t('setting.operation.quota.buttons.save')}
-              </Form.Button>
-              {shouldRenderDividerAfter('balance') ? <Divider /> : null}
+              </AppFormRow>
+              <AppFormRow>
+                <AppField label={t('setting.operation.quota.default_group')}>
+                  <AppSelect
+                    className='router-section-input'
+                    name={BALANCE_OPTION_KEYS.defaultGroup}
+                    clearable
+                    search
+                    options={groupOptions}
+                    onChange={handleInputChange}
+                    value={inputs[BALANCE_OPTION_KEYS.defaultGroup] || ''}
+                    placeholder={t('setting.operation.quota.default_group_placeholder')}
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormActions align='start'>
+                <AppButton
+                  className='router-section-button'
+                  onClick={() => {
+                    saveSectionConfig('balance').then();
+                  }}
+                >
+                  {t('setting.operation.quota.buttons.save')}
+                </AppButton>
+              </AppFormActions>
+              {shouldRenderDividerAfter('balance') ? <AppDivider /> : null}
             </>
           ) : null}
 
           {sectionVisible.monitor ? (
             <>
-              <Header as='h3' className='router-section-title'>{t('setting.operation.monitor.title')}</Header>
-              <Form.Group widths={3}>
-                <Form.Input
-                  className='router-section-input'
-                  label={t('setting.operation.monitor.max_response_time')}
-                  name='ChannelDisableThreshold'
-                  onChange={handleInputChange}
-                  autoComplete='new-password'
-                  value={inputs.ChannelDisableThreshold}
-                  type='number'
-                  min='0'
-                  placeholder={t(
-                    'setting.operation.monitor.max_response_time_placeholder'
-                  )}
-                />
-                <Form.Input
-                  className='router-section-input'
-                  label={t('setting.operation.monitor.quota_reminder')}
-                  name={BALANCE_OPTION_KEYS.balanceReminderThreshold}
-                  onChange={handleInputChange}
-                  autoComplete='new-password'
-                  value={inputs[BALANCE_OPTION_KEYS.balanceReminderThreshold]}
-                  type='number'
-                  min='0'
-                  placeholder={t(
-                    'setting.operation.monitor.quota_reminder_placeholder'
-                  )}
-                />
-              </Form.Group>
-              <Form.Group inline>
-                <Form.Checkbox
-                  className='router-section-checkbox'
-                  checked={inputs.AutomaticDisableChannelEnabled === 'true'}
-                  label={t('setting.operation.monitor.auto_disable')}
-                  name='AutomaticDisableChannelEnabled'
-                  onChange={handleInputChange}
-                />
-                <Form.Checkbox
-                  className='router-section-checkbox'
-                  checked={inputs.AutomaticEnableChannelEnabled === 'true'}
-                  label={t('setting.operation.monitor.auto_enable')}
-                  name='AutomaticEnableChannelEnabled'
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-              <Form.Button
-                className='router-section-button'
-                onClick={() => {
-                  saveSectionConfig('monitor').then();
-                }}
-              >
-                {t('setting.operation.monitor.buttons.save')}
-              </Form.Button>
-              {shouldRenderDividerAfter('monitor') ? <Divider /> : null}
+              <AppFilterHeader
+                title={t('setting.operation.monitor.title')}
+                titleClassName='router-ui-section-title'
+                className='router-toolbar-compact'
+              />
+              <AppFormRow>
+                <AppField label={t('setting.operation.monitor.max_response_time')}>
+                  <AppInputNumber
+                    className='router-section-input'
+                    name='ChannelDisableThreshold'
+                    onChange={handleInputChange}
+                    value={inputs.ChannelDisableThreshold}
+                    min={0}
+                    precision={0}
+                    fluid
+                    placeholder={t(
+                      'setting.operation.monitor.max_response_time_placeholder'
+                    )}
+                  />
+                </AppField>
+                <AppField label={t('setting.operation.monitor.quota_reminder')}>
+                  <AppInputNumber
+                    className='router-section-input'
+                    name={BALANCE_OPTION_KEYS.balanceReminderThreshold}
+                    onChange={handleInputChange}
+                    value={inputs[BALANCE_OPTION_KEYS.balanceReminderThreshold]}
+                    min={0}
+                    precision={0}
+                    fluid
+                    placeholder={t(
+                      'setting.operation.monitor.quota_reminder_placeholder'
+                    )}
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormRow>
+                <AppField label={t('setting.operation.monitor.auto_disable')}>
+                  <AppSwitch
+                    checked={inputs.AutomaticDisableChannelEnabled === 'true'}
+                    onChange={() =>
+                      handleInputChange(null, {
+                        name: 'AutomaticDisableChannelEnabled',
+                        value: inputs.AutomaticDisableChannelEnabled === 'true'
+                          ? 'false'
+                          : 'true',
+                      })
+                    }
+                  />
+                </AppField>
+                <AppField label={t('setting.operation.monitor.auto_enable')}>
+                  <AppSwitch
+                    checked={inputs.AutomaticEnableChannelEnabled === 'true'}
+                    onChange={() =>
+                      handleInputChange(null, {
+                        name: 'AutomaticEnableChannelEnabled',
+                        value: inputs.AutomaticEnableChannelEnabled === 'true'
+                          ? 'false'
+                          : 'true',
+                      })
+                    }
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormActions align='start'>
+                <AppButton
+                  className='router-section-button'
+                  onClick={() => {
+                    saveSectionConfig('monitor').then();
+                  }}
+                >
+                  {t('setting.operation.monitor.buttons.save')}
+                </AppButton>
+              </AppFormActions>
+              {shouldRenderDividerAfter('monitor') ? <AppDivider /> : null}
             </>
           ) : null}
 
           {sectionVisible.retry ? (
             <>
-              <Header as='h3' className='router-section-title'>
-                {t('setting.operation.retry.title')}
-              </Header>
-              <Message info className='router-section-message'>
-                <Message.Header>
-                  {t('setting.operation.retry.description_title')}
-                </Message.Header>
-                <p>{t('setting.operation.retry.description')}</p>
-                <p>{t('setting.operation.retry.description_effective')}</p>
-                <p>{t('setting.operation.retry.description_disabled')}</p>
-              </Message>
-              <Form.Group widths={2}>
-                <Form.Dropdown
-                  className='router-section-input'
-                  selection
-                  name='RetryTimes'
-                  label={t('setting.operation.retry.limit')}
-                  onChange={handleInputChange}
-                  value={inputs.RetryTimes}
-                  placeholder={t('setting.operation.retry.limit_placeholder')}
-                  options={[
-                    {
-                      key: 'disabled',
-                      text: t('setting.operation.retry.options.disabled'),
-                      value: '0',
-                    },
-                    {
-                      key: 'all_candidates',
-                      text: t('setting.operation.retry.options.all_candidates'),
-                      value: '1',
-                    },
-                  ]}
-                />
-              </Form.Group>
-              <Form.Button
-                className='router-section-button'
-                onClick={() => {
-                  saveSectionConfig('retry').then();
-                }}
-              >
-                {t('setting.operation.retry.buttons.save')}
-              </Form.Button>
-              {shouldRenderDividerAfter('retry') ? <Divider /> : null}
+              <AppFilterHeader
+                title={t('setting.operation.retry.title')}
+                titleClassName='router-ui-section-title'
+                className='router-toolbar-compact'
+              />
+              <AppAlert
+                className='router-section-message'
+                type='info'
+                showIcon
+                title={t('setting.operation.retry.description_title')}
+                description={
+                  <>
+                    <p>{t('setting.operation.retry.description')}</p>
+                    <p>{t('setting.operation.retry.description_effective')}</p>
+                    <p>{t('setting.operation.retry.description_disabled')}</p>
+                  </>
+                }
+              />
+              <AppFormRow>
+                <AppField label={t('setting.operation.retry.limit')}>
+                  <AppSelect
+                    className='router-section-input'
+                    name='RetryTimes'
+                    onChange={handleInputChange}
+                    value={inputs.RetryTimes}
+                    placeholder={t('setting.operation.retry.limit_placeholder')}
+                    options={[
+                      {
+                        key: 'disabled',
+                        text: t('setting.operation.retry.options.disabled'),
+                        value: '0',
+                      },
+                      {
+                        key: 'all_candidates',
+                        text: t('setting.operation.retry.options.all_candidates'),
+                        value: '1',
+                      },
+                    ]}
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormActions align='start'>
+                <AppButton
+                  className='router-section-button'
+                  onClick={() => {
+                    saveSectionConfig('retry').then();
+                  }}
+                >
+                  {t('setting.operation.retry.buttons.save')}
+                </AppButton>
+              </AppFormActions>
+              {shouldRenderDividerAfter('retry') ? <AppDivider /> : null}
             </>
           ) : null}
 
           {sectionVisible.log ? (
             <>
-              <Header as='h3' className='router-section-title'>{t('setting.operation.log.title')}</Header>
-              <Form.Group inline>
-                <Form.Checkbox
-                  className='router-section-checkbox'
-                  checked={inputs.LogConsumeEnabled === 'true'}
-                  label={t('setting.operation.log.enable_consume')}
-                  name='LogConsumeEnabled'
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-              <Form.Group widths={4}>
-                <Form.Input
-                  className='router-section-input'
-                  label={t('setting.operation.log.target_time')}
-                  value={logCleanupTimestamp}
-                  type='datetime-local'
-                  name='history_timestamp'
-                  onChange={(e, { value }) => {
-                    setLogCleanupTimestamp(value);
+              <AppFilterHeader
+                title={t('setting.operation.log.title')}
+                titleClassName='router-ui-section-title'
+                className='router-toolbar-compact'
+              />
+              <AppFormRow>
+                <AppField label={t('setting.operation.log.enable_consume')}>
+                  <AppSwitch
+                    checked={inputs.LogConsumeEnabled === 'true'}
+                    onChange={() =>
+                      handleInputChange(null, {
+                        name: 'LogConsumeEnabled',
+                        value: inputs.LogConsumeEnabled === 'true'
+                          ? 'false'
+                          : 'true',
+                      })
+                    }
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormRow>
+                <AppField label={t('setting.operation.log.target_time')}>
+                  <AppInput
+                    className='router-section-input'
+                    value={logCleanupTimestamp}
+                    type='datetime-local'
+                    name='history_timestamp'
+                    onChange={(e, { value }) => {
+                      setLogCleanupTimestamp(value);
+                    }}
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormActions align='start'>
+                <AppButton
+                  className='router-section-button'
+                  onClick={() => {
+                    deleteHistoryLogs().then();
                   }}
-                />
-              </Form.Group>
-              <Form.Button
-                className='router-section-button'
-                onClick={() => {
-                  deleteHistoryLogs().then();
-                }}
-              >
-                {t('setting.operation.log.buttons.clean')}
-              </Form.Button>
-              {shouldRenderDividerAfter('log') ? <Divider /> : null}
+                >
+                  {t('setting.operation.log.buttons.clean')}
+                </AppButton>
+              </AppFormActions>
+              {shouldRenderDividerAfter('log') ? <AppDivider /> : null}
             </>
           ) : null}
 
-        </Form>
-      </Grid.Column>
-    </Grid>
+      </div>
+    </AppSpin>
   );
 };
 

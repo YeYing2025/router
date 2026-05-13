@@ -1,14 +1,15 @@
 import React from 'react';
 import {
-  Button,
-  Checkbox,
-  Dropdown,
-  Form,
-  Label,
-  Message,
-  Pagination,
-  Table,
-} from 'semantic-ui-react';
+  AppAlert,
+  AppButton,
+  AppDetailSection,
+  AppEmpty,
+  AppInput,
+  AppPagination,
+  AppSelect,
+  AppTable,
+  AppTag,
+} from '../../../router-ui';
 
 const ChannelDetailModelsTab = ({
   t,
@@ -30,7 +31,7 @@ const ChannelDetailModelsTab = ({
   openComplexPricingModal,
   detailModelsEditLocked,
   providerCatalogLoading,
-  renderModelToggleCells,
+  toggleModelSelection,
   canSelectChannelModel,
   detailCurrentPageAllSelected,
   detailCurrentPagePartiallySelected,
@@ -43,20 +44,75 @@ const ChannelDetailModelsTab = ({
   setDetailModelPage,
   modelsSyncError,
 }) => {
+  const tableRowSelection = {
+    columnWidth: columnWidths[0],
+    selectedRowKeys: renderedModelConfigs
+      .filter((row) => row?.selected)
+      .map((row) => `${row.upstream_model}-${row.model}`),
+    getTitleCheckboxProps: () => ({
+      checked: detailCurrentPageAllSelected,
+      indeterminate: detailCurrentPagePartiallySelected,
+      disabled:
+        detailModelsEditing ||
+        detailModelMutating ||
+        providerCatalogLoading ||
+        detailCurrentPageSelectableCount === 0,
+    }),
+    getCheckboxProps: (row) => {
+      const canSelect = canSelectChannelModel(row);
+      const isUnavailable = !canSelect && !row.selected;
+      const disabledReason = isUnavailable
+        ? t('channel.edit.model_selector.selection_disabled_unassigned')
+        : '';
+      return {
+        className: isUnavailable ? 'router-model-toggle-disabled' : undefined,
+        disabled:
+          detailModelMutating ||
+          detailModelsEditing ||
+          providerCatalogLoading ||
+          isUnavailable,
+        title: disabledReason || undefined,
+      };
+    },
+    renderCell: (_, row, __, originNode) => {
+      const canSelect = canSelectChannelModel(row);
+      const isUnavailable = !canSelect && !row.selected;
+      const disabledReason = isUnavailable
+        ? t('channel.edit.model_selector.selection_disabled_unassigned')
+        : '';
+      return (
+        <span
+          className={[
+            'router-inline-block',
+            'router-model-toggle-wrap',
+            isUnavailable ? 'router-model-toggle-wrap-disabled' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          title={disabledReason || undefined}
+          aria-label={disabledReason || undefined}
+        >
+          {originNode}
+        </span>
+      );
+    },
+    onSelect: (record, selected) => {
+      toggleModelSelection(record.upstream_model, selected);
+    },
+    onSelectAll: (selected) => {
+      toggleDetailCurrentPageSelections(selected);
+    },
+  };
+
   return (
-    <section className='router-entity-detail-section'>
-      <div className='router-entity-detail-section-header'>
-        <div className='router-toolbar-start router-block-gap-sm'>
-          <span className='router-entity-detail-section-title'>
-            {t('channel.edit.detail_models_title')}
-          </span>
-          <span className='router-toolbar-meta'>({modelSectionMetaText})</span>
-        </div>
-        <div className='router-toolbar-end router-block-gap-sm'>
-          <Dropdown
-            selection
+    <AppDetailSection
+      title={t('channel.edit.detail_models_title')}
+      titleTag='span'
+      headerStart={<span className='router-toolbar-meta'>({modelSectionMetaText})</span>}
+      headerEnd={
+        <>
+          <AppSelect
             className='router-section-dropdown router-dropdown-min-170 router-detail-filter-dropdown'
-            compact
             disabled={detailModelsEditing}
             options={[
               {
@@ -80,7 +136,7 @@ const ChannelDetailModelsTab = ({
               setDetailModelFilter((value || 'all').toString())
             }
           />
-          <Form.Input
+          <AppInput
             className='router-section-input router-search-form-sm'
             icon='search'
             iconPosition='left'
@@ -89,10 +145,9 @@ const ChannelDetailModelsTab = ({
             value={modelSearchKeyword}
             onChange={(e, { value }) => setModelSearchKeyword(value || '')}
           />
-          <Button
+          <AppButton
             type='button'
             className='router-page-button'
-            color='green'
             loading={fetchModelsLoading || !!activeRefreshModelsTask}
             disabled={
               detailModelsEditing ||
@@ -103,202 +158,159 @@ const ChannelDetailModelsTab = ({
             onClick={() => handleFetchModels({ silent: false })}
           >
             {t('channel.edit.buttons.sync_models')}
-          </Button>
-        </div>
-      </div>
-      <Form.Field>
-        <Message info className='router-section-message'>
-          {t('channel.edit.model_selector.enable_hint')}
-        </Message>
-        <Table
-          celled
-          stackable
+          </AppButton>
+        </>
+      }
+    >
+      <div>
+        <AppAlert
+          type='info'
+          showIcon
+          className='router-section-message'
+          title={t('channel.edit.model_selector.enable_hint')}
+        />
+        <AppTable
           className='router-detail-table router-channel-detail-model-table'
-          compact='very'
-        >
-          <colgroup>
-            {columnWidths.map((width, index) => (
-              <col
-                key={`channel-detail-model-col-${index}`}
-                style={{ width }}
-              />
-            ))}
-          </colgroup>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell
-                textAlign='center'
-                className='router-create-model-selected-col'
-              >
-                <div className='router-model-header-checkbox'>
-                  <span className='router-model-header-checkbox-label'>
-                    {t('channel.edit.model_selector.table.selected')}
-                  </span>
-                  <Checkbox
-                    checked={detailCurrentPageAllSelected}
-                    indeterminate={detailCurrentPagePartiallySelected}
-                    disabled={
-                      detailModelsEditing ||
-                      detailModelMutating ||
-                      providerCatalogLoading ||
-                      detailCurrentPageSelectableCount === 0
-                    }
-                    onChange={(e, { checked }) =>
-                      toggleDetailCurrentPageSelections(!!checked)
-                    }
-                  />
+          pagination={false}
+          scroll={{ x: 1120 }}
+          rowSelection={tableRowSelection}
+          locale={{
+            emptyText: (
+              <AppEmpty>
+                {modelSearchKeyword.trim() !== ''
+                  ? t('channel.edit.model_selector.empty_search')
+                  : visibleModelConfigs.length > 0
+                    ? t('channel.edit.model_selector.empty_filtered')
+                    : t('channel.edit.model_selector.empty')}
+              </AppEmpty>
+            ),
+          }}
+          rowKey={(row) => `${row.upstream_model}-${row.model}`}
+          dataSource={searchedModelConfigs.length === 0 ? [] : renderedModelConfigs}
+          columns={[
+            {
+              title: t('channel.edit.model_selector.table.name'),
+              dataIndex: 'upstream_model',
+              key: 'upstream_model',
+              width: columnWidths[1],
+              render: (value, row) => (
+                <div className='router-cell-truncate' title={value}>
+                  <span className='router-nowrap'>{value}</span>
+                  {row.inactive && (
+                    <AppTag color='grey' className='router-tag'>
+                      {t('channel.edit.model_selector.inactive')}
+                    </AppTag>
+                  )}
                 </div>
-              </Table.HeaderCell>
-              <Table.HeaderCell>
-                {t('channel.edit.model_selector.table.name')}
-              </Table.HeaderCell>
-              <Table.HeaderCell>
-                {t('channel.edit.model_selector.table.type')}
-              </Table.HeaderCell>
-              <Table.HeaderCell>
-                {t('channel.edit.model_selector.table.alias')}
-              </Table.HeaderCell>
-              <Table.HeaderCell>
-                {t('channel.edit.model_selector.table.price_unit')}
-              </Table.HeaderCell>
-              <Table.HeaderCell>
-                {t('channel.edit.model_selector.table.input_price')}
-              </Table.HeaderCell>
-              <Table.HeaderCell>
-                {t('channel.edit.model_selector.table.output_price')}
-              </Table.HeaderCell>
-              <Table.HeaderCell>{t('channel.table.actions')}</Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {searchedModelConfigs.length === 0 ? (
-              <Table.Row>
-                <Table.Cell className='router-empty-cell' colSpan={8}>
-                  {modelSearchKeyword.trim() !== ''
-                    ? t('channel.edit.model_selector.empty_search')
-                    : visibleModelConfigs.length > 0
-                      ? t('channel.edit.model_selector.empty_filtered')
-                      : t('channel.edit.model_selector.empty')}
-                </Table.Cell>
-              </Table.Row>
-            ) : (
-              renderedModelConfigs.map((row) => {
-                const complexPricingDetails =
-                  getComplexPricingDetailsForModel(row);
-                const hasComplexInputPricing = complexPricingDetails.some(
-                  (detail) =>
-                    (detail.price_components || []).some(
-                      (component) => Number(component.input_price || 0) > 0,
-                    ),
+              ),
+            },
+            {
+              title: t('channel.edit.model_selector.table.type'),
+              key: 'type',
+              width: columnWidths[2],
+              render: (_, row) =>
+                t(`channel.model_types.${normalizeChannelModelType(row.type)}`),
+            },
+            {
+              title: t('channel.edit.model_selector.table.alias'),
+              dataIndex: 'model',
+              key: 'model',
+              width: columnWidths[3],
+              render: (value) => (
+                <span className='router-cell-truncate' title={value}>
+                  {value}
+                </span>
+              ),
+            },
+            {
+              title: t('channel.edit.model_selector.table.price_unit'),
+              dataIndex: 'price_unit',
+              key: 'price_unit',
+              width: columnWidths[4],
+              render: (value) => <span className='router-nowrap'>{value}</span>,
+            },
+            {
+              title: t('channel.edit.model_selector.table.input_price'),
+              key: 'input_price',
+              width: columnWidths[5],
+              render: (_, row) => {
+                const complexPricingDetails = getComplexPricingDetailsForModel(row);
+                const hasComplexInputPricing = complexPricingDetails.some((detail) =>
+                  (detail.price_components || []).some(
+                    (component) => Number(component.input_price || 0) > 0,
+                  ),
                 );
-                const hasComplexOutputPricing = complexPricingDetails.some(
-                  (detail) =>
-                    (detail.price_components || []).some(
-                      (component) => Number(component.output_price || 0) > 0,
-                    ),
+                if (hasComplexInputPricing) {
+                  return (
+                    <AppButton
+                      type='button'
+                      className='router-inline-button'
+                      onClick={() => openComplexPricingModal(row)}
+                    >
+                      {t('channel.edit.model_selector.pricing_detail_button')}
+                    </AppButton>
+                  );
+                }
+                return <span className='router-nowrap'>{row.input_price ?? '-'}</span>;
+              },
+            },
+            {
+              title: t('channel.edit.model_selector.table.output_price'),
+              key: 'output_price',
+              width: columnWidths[6],
+              render: (_, row) => {
+                const complexPricingDetails = getComplexPricingDetailsForModel(row);
+                const hasComplexOutputPricing = complexPricingDetails.some((detail) =>
+                  (detail.price_components || []).some(
+                    (component) => Number(component.output_price || 0) > 0,
+                  ),
                 );
+                if (hasComplexOutputPricing) {
+                  return (
+                    <AppButton
+                      type='button'
+                      className='router-inline-button'
+                      onClick={() => openComplexPricingModal(row)}
+                    >
+                      {t('channel.edit.model_selector.pricing_detail_button')}
+                    </AppButton>
+                  );
+                }
+                return <span className='router-nowrap'>{row.output_price ?? '-'}</span>;
+              },
+            },
+            {
+              title: t('channel.table.actions'),
+              key: 'actions',
+              width: columnWidths[7],
+              render: (_, row) => {
                 const rowEditDisabled =
-                  detailModelsEditLocked ||
-                  detailModelMutating ||
-                  detailModelsEditing;
-                const rowActionBlocked =
-                  !canSelectChannelModel(row) && !row.selected;
+                  detailModelsEditLocked || detailModelMutating || detailModelsEditing;
+                const rowActionBlocked = !canSelectChannelModel(row) && !row.selected;
                 const rowActionDisabled = rowEditDisabled || rowActionBlocked;
                 const rowActionDisabledReason = rowActionBlocked
-                  ? t(
-                      'channel.edit.model_selector.selection_disabled_unassigned',
-                    )
+                  ? t('channel.edit.model_selector.selection_disabled_unassigned')
                   : '';
                 return (
-                  <Table.Row key={`${row.upstream_model}-${row.model}`}>
-                    {renderModelToggleCells({
-                      row,
-                      canSelect: canSelectChannelModel(row),
-                      selectDisabled:
-                        detailModelMutating ||
-                        detailModelsEditing ||
-                        providerCatalogLoading,
-                      inDetailMode: true,
-                    })}
-                    <Table.Cell
-                      title={row.upstream_model}
-                      className='router-cell-truncate'
+                  <div className='router-inline-actions'>
+                    <AppButton
+                      type='button'
+                      className='router-inline-button'
+                      disabled={rowActionDisabled}
+                      title={rowActionDisabledReason || undefined}
+                      onClick={() => startDetailModelEdit(row.upstream_model)}
                     >
-                      <span className='router-nowrap'>{row.upstream_model}</span>
-                      {row.inactive && (
-                        <Label basic color='grey' className='router-tag'>
-                          {t('channel.edit.model_selector.inactive')}
-                        </Label>
-                      )}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {t(
-                        `channel.model_types.${normalizeChannelModelType(row.type)}`,
-                      )}
-                    </Table.Cell>
-                    <Table.Cell
-                      title={row.model}
-                      className='router-cell-truncate'
-                    >
-                      {row.model}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <span className='router-nowrap'>{row.price_unit}</span>
-                    </Table.Cell>
-                    <Table.Cell>
-                      {hasComplexInputPricing ? (
-                        <Button
-                          type='button'
-                          basic
-                          className='router-inline-button'
-                          onClick={() => openComplexPricingModal(row)}
-                        >
-                          {t('channel.edit.model_selector.pricing_detail_button')}
-                        </Button>
-                      ) : (
-                        <span className='router-nowrap'>
-                          {row.input_price ?? '-'}
-                        </span>
-                      )}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {hasComplexOutputPricing ? (
-                        <Button
-                          type='button'
-                          basic
-                          className='router-inline-button'
-                          onClick={() => openComplexPricingModal(row)}
-                        >
-                          {t('channel.edit.model_selector.pricing_detail_button')}
-                        </Button>
-                      ) : (
-                        <span className='router-nowrap'>
-                          {row.output_price ?? '-'}
-                        </span>
-                      )}
-                    </Table.Cell>
-                    <Table.Cell collapsing className='router-nowrap'>
-                      <div className='router-inline-actions'>
-                        <Button
-                          type='button'
-                          className='router-inline-button'
-                          disabled={rowActionDisabled}
-                          title={rowActionDisabledReason || undefined}
-                          onClick={() => startDetailModelEdit(row.upstream_model)}
-                        >
-                          {t('common.edit')}
-                        </Button>
-                      </div>
-                    </Table.Cell>
-                  </Table.Row>
+                      {t('common.edit')}
+                    </AppButton>
+                  </div>
                 );
-              })
-            )}
-          </Table.Body>
-        </Table>
+              },
+            },
+          ]}
+        />
         {detailModelTotalPages > 1 && (
           <div className='router-pagination-wrap'>
-            <Pagination
+            <AppPagination
               className='router-section-pagination'
               activePage={detailModelPage}
               totalPages={detailModelTotalPages}
@@ -313,8 +325,8 @@ const ChannelDetailModelsTab = ({
             {modelsSyncError}
           </div>
         )}
-      </Form.Field>
-    </section>
+      </div>
+    </AppDetailSection>
   );
 };
 

@@ -1,5 +1,16 @@
 import React from 'react';
-import { Button, Checkbox, Dropdown, Form, Message, Modal } from 'semantic-ui-react';
+import {
+  AppAlert,
+  AppButton,
+  AppField,
+  AppFormActions,
+  AppFormRow,
+  AppInput,
+  AppModal,
+  AppSelect,
+  AppSwitch,
+  AppTextarea,
+} from '../../../router-ui';
 
 const ChannelEndpointPolicyEditorModal = ({
   t,
@@ -15,25 +26,46 @@ const ChannelEndpointPolicyEditorModal = ({
   saveEndpointPolicy,
 }) => {
   return (
-    <Modal
+    <AppModal
       size='large'
       open={open}
       onClose={onClose}
       closeOnDimmerClick={!policyEditorSaving}
+      title={t('channel.edit.endpoint_policies.editor.title')}
+      footer={
+        <AppFormActions>
+          <AppButton
+            type='button'
+            className='router-modal-button'
+            onClick={onClose}
+            disabled={policyEditorSaving}
+          >
+            {t('channel.edit.buttons.cancel')}
+          </AppButton>
+          <AppButton
+            type='button'
+            className='router-modal-button'
+            color='blue'
+            loading={policyEditorSaving}
+            disabled={policyEditorSaving}
+            onClick={saveEndpointPolicy}
+          >
+            {t('channel.edit.buttons.save')}
+          </AppButton>
+        </AppFormActions>
+      }
     >
-      <Modal.Header>
-        {t('channel.edit.endpoint_policies.editor.title')}
-      </Modal.Header>
-      <Modal.Content scrolling>
-        <Form>
-          <Message info className='router-section-message'>
-            {t('channel.edit.endpoint_policies.editor.hint')}
-          </Message>
-          <Form.Group widths='equal'>
-            <Form.Field>
-              <label>{t('channel.edit.endpoint_policies.editor.template')}</label>
-              <Dropdown
-                selection
+      <div className='router-modal-scroll-body'>
+        <div className='router-block-gap'>
+          <AppAlert
+            type='info'
+            showIcon
+            className='router-section-message'
+            title={t('channel.edit.endpoint_policies.editor.hint')}
+          />
+          <AppFormRow>
+            <AppField label={t('channel.edit.endpoint_policies.editor.template')}>
+              <AppSelect
                 clearable
                 className='router-modal-dropdown'
                 options={endpointPolicyTemplates}
@@ -54,31 +86,44 @@ const ChannelEndpointPolicyEditorModal = ({
                   applyEndpointPolicyTemplate(nextValue);
                 }}
               />
-            </Form.Field>
-          </Form.Group>
+            </AppField>
+          </AppFormRow>
           {(policyDraft.template_key || '') === 'ANTHROPIC_IMAGE_URL_TO_BASE64' ? (
-            <Message warning className='router-section-message'>
-              {t('channel.edit.endpoint_policies.editor.anthropic_image_url_hint')}
-            </Message>
+            <AppAlert
+              type='warning'
+              showIcon
+              className='router-section-message'
+              title={t('channel.edit.endpoint_policies.editor.anthropic_image_url_hint')}
+            />
           ) : null}
-          <Form.Group widths='equal'>
-            <Form.Input
-              className='router-modal-input'
+          <AppFormRow>
+            <AppField
               label={t('channel.edit.endpoint_policies.table.model')}
-              value={policyDraft.model}
               readOnly
-            />
-            <Form.Input
-              className='router-modal-input'
+            >
+              <AppInput
+                className='router-modal-input'
+                value={policyDraft.model}
+                readOnly
+              />
+            </AppField>
+            <AppField
               label={t('channel.edit.endpoint_policies.table.endpoint')}
-              value={policyDraft.endpoint}
               readOnly
-            />
-          </Form.Group>
-          <Form.Group widths='equal'>
-            <Form.Field>
-              <label>{t('channel.edit.endpoint_policies.editor.template_key')}</label>
-              <Form.Input
+            >
+              <AppInput
+                className='router-modal-input'
+                value={policyDraft.endpoint}
+                readOnly
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField
+              label={t('channel.edit.endpoint_policies.editor.template_key')}
+              readOnly
+            >
+              <AppInput
                 className='router-modal-input'
                 value={policyDraft.template_key || ''}
                 readOnly
@@ -86,93 +131,89 @@ const ChannelEndpointPolicyEditorModal = ({
                   'channel.edit.endpoint_policies.editor.template_key_placeholder',
                 )}
               />
-            </Form.Field>
-          </Form.Group>
-          <Form.Group widths='equal'>
-            <Form.Field>
-              <label>{t('channel.edit.endpoint_policies.table.status')}</label>
-              <Checkbox
-                toggle
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField label={t('channel.edit.endpoint_policies.table.status')}>
+              <AppSwitch
                 checked={policyDraft.enabled === true}
-                onChange={(e, { checked }) =>
+                onChange={(_, { checked }) =>
                   setPolicyDraft((prev) => ({
                     ...prev,
-                    enabled: !!checked,
+                    enabled: checked === true,
                   }))
                 }
               />
-            </Form.Field>
-          </Form.Group>
-          <Form.TextArea
-            className='router-section-textarea router-code-textarea router-code-textarea-sm'
-            label={t('channel.edit.endpoint_policies.table.reason')}
-            value={policyDraft.reason}
-            onChange={(e, { value }) =>
-              setPolicyDraft((prev) => ({
-                ...prev,
-                reason: value || '',
-              }))
-            }
-          />
-          <Form.TextArea
-            className='router-section-textarea router-code-textarea router-code-textarea-md'
-            label={t('channel.edit.endpoint_policies.editor.capabilities')}
-            placeholder='{"input_image_url": false}'
-            value={policyDraft.capabilities}
-            onChange={(e, { value }) =>
-              setPolicyDraft((prev) => ({
-                ...prev,
-                capabilities: value || '',
-              }))
-            }
-          />
-          <Form.TextArea
-            className='router-section-textarea router-code-textarea router-code-textarea-md'
-            label={t('channel.edit.endpoint_policies.editor.request_policy')}
-            placeholder='{"actions":[{"type":"image_url_to_base64","input_types":["anthropic.image_url"]}]}'
-            value={policyDraft.request_policy}
-            onChange={(e, { value }) =>
-              setPolicyDraft((prev) => ({
-                ...prev,
-                request_policy: value || '',
-              }))
-            }
-          />
-          <Form.TextArea
-            className='router-section-textarea router-code-textarea router-code-textarea-md'
-            label={t('channel.edit.endpoint_policies.editor.response_policy')}
-            placeholder='{}'
-            value={policyDraft.response_policy}
-            onChange={(e, { value }) =>
-              setPolicyDraft((prev) => ({
-                ...prev,
-                response_policy: value || '',
-              }))
-            }
-          />
-        </Form>
-      </Modal.Content>
-      <Modal.Actions>
-        <Button
-          type='button'
-          className='router-modal-button'
-          onClick={onClose}
-          disabled={policyEditorSaving}
-        >
-          {t('channel.edit.buttons.cancel')}
-        </Button>
-        <Button
-          type='button'
-          className='router-modal-button'
-          color='blue'
-          loading={policyEditorSaving}
-          disabled={policyEditorSaving}
-          onClick={saveEndpointPolicy}
-        >
-          {t('channel.edit.buttons.save')}
-        </Button>
-      </Modal.Actions>
-    </Modal>
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField label={t('channel.edit.endpoint_policies.table.reason')}>
+              <AppTextarea
+                className='router-section-textarea router-code-textarea router-code-textarea-sm'
+                value={policyDraft.reason}
+                onChange={(e, { value }) =>
+                  setPolicyDraft((prev) => ({
+                    ...prev,
+                    reason: value || '',
+                  }))
+                }
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField
+              label={t('channel.edit.endpoint_policies.editor.capabilities')}
+            >
+              <AppTextarea
+                className='router-section-textarea router-code-textarea router-code-textarea-md'
+                placeholder='{"input_image_url": false}'
+                value={policyDraft.capabilities}
+                onChange={(e, { value }) =>
+                  setPolicyDraft((prev) => ({
+                    ...prev,
+                    capabilities: value || '',
+                  }))
+                }
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField
+              label={t('channel.edit.endpoint_policies.editor.request_policy')}
+            >
+              <AppTextarea
+                className='router-section-textarea router-code-textarea router-code-textarea-md'
+                placeholder='{"actions":[{"type":"image_url_to_base64","input_types":["anthropic.image_url"]}]}'
+                value={policyDraft.request_policy}
+                onChange={(e, { value }) =>
+                  setPolicyDraft((prev) => ({
+                    ...prev,
+                    request_policy: value || '',
+                  }))
+                }
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField
+              label={t('channel.edit.endpoint_policies.editor.response_policy')}
+            >
+              <AppTextarea
+                className='router-section-textarea router-code-textarea router-code-textarea-md'
+                placeholder='{}'
+                value={policyDraft.response_policy}
+                onChange={(e, { value }) =>
+                  setPolicyDraft((prev) => ({
+                    ...prev,
+                    response_policy: value || '',
+                  }))
+                }
+              />
+            </AppField>
+          </AppFormRow>
+        </div>
+      </div>
+    </AppModal>
   );
 };
 

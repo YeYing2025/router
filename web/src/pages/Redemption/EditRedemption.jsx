@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Form, Card } from 'semantic-ui-react';
 import { useNavigate } from 'react-router-dom';
 import { API, downloadTextAsFile, showError, showSuccess } from '../../helpers';
 import {
@@ -9,6 +8,18 @@ import {
 } from '../../helpers/billing';
 import { formatYYCValue } from '../../helpers/render';
 import UnitDropdown from '../../components/UnitDropdown';
+import {
+  AppButton,
+  AppField,
+  AppFilterHeader,
+  AppFormActions,
+  AppFormRow,
+  AppInput,
+  AppInputNumber,
+  AppSection,
+  AppSelect,
+  AppSpin,
+} from '../../router-ui';
 
 const YYC_UNIT = 'YYC';
 
@@ -187,69 +198,71 @@ const EditRedemption = () => {
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <Card.Header className='header router-page-title'>
-            {t('redemption.edit.title_create')}
-          </Card.Header>
-          <div className='router-toolbar router-block-gap-sm'>
-            <div className='router-toolbar-start'>
-              <Button className='router-page-button' onClick={handleCancel} disabled={submitting}>
+      <AppSection>
+        <AppFilterHeader
+          title={t('redemption.edit.title_create')}
+          className='router-block-gap-sm'
+          actions={
+            <>
+              <AppButton className='router-page-button' onClick={handleCancel} disabled={submitting}>
                 {t('redemption.edit.buttons.cancel')}
-              </Button>
-              <Button
+              </AppButton>
+              <AppButton
                 className='router-page-button'
-                positive
+                color='blue'
                 onClick={submit}
                 loading={submitting}
                 disabled={loading || submitting}
               >
                 {t('redemption.edit.buttons.submit')}
-              </Button>
-            </div>
-          </div>
-          <Form autoComplete='off' loading={loading}>
-            <Form.Field>
-              <Form.Input
-                className='router-section-input'
-                label={t('redemption.edit.name')}
-                name='name'
-                placeholder={t('redemption.edit.name_placeholder')}
-                onChange={handleInputChange}
-                value={name}
-                autoComplete='off'
-                required
-              />
-            </Form.Field>
-            <Form.Field>
-              <Form.Select
-                className='router-section-input'
-                label={t('redemption.edit.group')}
-                name='group_id'
-                placeholder={t('redemption.edit.group_placeholder')}
-                options={groupOptions}
-                value={group_id}
-                onChange={handleInputChange}
-                search
-                selection
-                required
-              />
-            </Form.Field>
-            <Form.Group widths='equal'>
-              <Form.Input
-                className='router-section-input'
-                label={t('redemption.edit.face_value_amount')}
-                name='face_value_amount'
-                placeholder={t('redemption.edit.face_value_amount_placeholder')}
-                onChange={handleInputChange}
-                value={face_value_amount}
-                autoComplete='off'
-                type='number'
-                step={face_value_unit === YYC_UNIT ? '1' : '0.01'}
-                min='0'
-              />
-              <Form.Field className='router-section-input'>
-                <label>{t('redemption.edit.face_value_unit')}</label>
+              </AppButton>
+            </>
+          }
+        />
+        <AppSpin spinning={loading}>
+          <div className='router-page-stack'>
+            <AppFormRow>
+              <AppField label={t('redemption.edit.name')} required>
+                <AppInput
+                  className='router-section-input'
+                  name='name'
+                  placeholder={t('redemption.edit.name_placeholder')}
+                  onChange={handleInputChange}
+                  value={name}
+                  autoComplete='off'
+                  required
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField label={t('redemption.edit.group')} required>
+                <AppSelect
+                  className='router-section-input'
+                  name='group_id'
+                  placeholder={t('redemption.edit.group_placeholder')}
+                  options={groupOptions}
+                  value={group_id}
+                  onChange={handleInputChange}
+                  search
+                  required
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField label={t('redemption.edit.face_value_amount')}>
+                <AppInputNumber
+                  className='router-section-input'
+                  name='face_value_amount'
+                  placeholder={t('redemption.edit.face_value_amount_placeholder')}
+                  onChange={handleInputChange}
+                  value={face_value_amount}
+                  step={face_value_unit === YYC_UNIT ? 1 : 0.01}
+                  precision={face_value_unit === YYC_UNIT ? 0 : 2}
+                  min={0}
+                  fluid
+                />
+              </AppField>
+              <AppField label={t('redemption.edit.face_value_unit')}>
                 <UnitDropdown
                   variant='section'
                   fluid
@@ -259,56 +272,74 @@ const EditRedemption = () => {
                   value={face_value_unit}
                   onChange={handleInputChange}
                 />
-              </Form.Field>
-            </Form.Group>
-            <Form.Field>
-              <Form.Input
-                className='router-section-input'
-                label={t('redemption.edit.credit_yyc')}
-                value={yycPreview > 0 ? formatYYCValue(yycPreview) : '-'}
-                readOnly
-              />
-            </Form.Field>
-            <Form.Field>
-              <Form.Input
-                className='router-section-input'
-                label={t('redemption.edit.count')}
-                name='count'
-                placeholder={t('redemption.edit.count_placeholder')}
-                onChange={handleInputChange}
-                value={count}
-                autoComplete='off'
-                type='number'
-                min='1'
-              />
-            </Form.Field>
-            <Form.Group widths='equal'>
-              <Form.Input
-                className='router-section-input'
-                label={t('redemption.edit.code_validity_days')}
-                name='code_validity_days'
-                placeholder={t('redemption.edit.code_validity_days_placeholder')}
-                onChange={handleInputChange}
-                value={code_validity_days}
-                autoComplete='off'
-                type='number'
-                min='0'
-              />
-              <Form.Input
-                className='router-section-input'
-                label={t('redemption.edit.credit_validity_days')}
-                name='credit_validity_days'
-                placeholder={t('redemption.edit.credit_validity_days_placeholder')}
-                onChange={handleInputChange}
-                value={credit_validity_days}
-                autoComplete='off'
-                type='number'
-                min='0'
-              />
-            </Form.Group>
-          </Form>
-        </Card.Content>
-      </Card>
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField label={t('redemption.edit.credit_yyc')} readOnly>
+                <AppInput
+                  className='router-section-input'
+                  value={yycPreview > 0 ? formatYYCValue(yycPreview) : '-'}
+                  readOnly
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField label={t('redemption.edit.count')}>
+                <AppInputNumber
+                  className='router-section-input'
+                  name='count'
+                  placeholder={t('redemption.edit.count_placeholder')}
+                  onChange={handleInputChange}
+                  value={count}
+                  min={1}
+                  precision={0}
+                  fluid
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField label={t('redemption.edit.code_validity_days')}>
+                <AppInputNumber
+                  className='router-section-input'
+                  name='code_validity_days'
+                  placeholder={t('redemption.edit.code_validity_days_placeholder')}
+                  onChange={handleInputChange}
+                  value={code_validity_days}
+                  min={0}
+                  precision={0}
+                  fluid
+                />
+              </AppField>
+              <AppField label={t('redemption.edit.credit_validity_days')}>
+                <AppInputNumber
+                  className='router-section-input'
+                  name='credit_validity_days'
+                  placeholder={t('redemption.edit.credit_validity_days_placeholder')}
+                  onChange={handleInputChange}
+                  value={credit_validity_days}
+                  min={0}
+                  precision={0}
+                  fluid
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormActions align='start'>
+              <AppButton className='router-page-button' onClick={handleCancel} disabled={submitting}>
+                {t('redemption.edit.buttons.cancel')}
+              </AppButton>
+              <AppButton
+                className='router-page-button'
+                color='blue'
+                onClick={submit}
+                loading={submitting}
+                disabled={loading || submitting}
+              >
+                {t('redemption.edit.buttons.submit')}
+              </AppButton>
+            </AppFormActions>
+          </div>
+        </AppSpin>
+      </AppSection>
     </div>
   );
 };

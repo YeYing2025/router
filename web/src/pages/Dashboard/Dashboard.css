@@ -1,9 +1,9 @@
 .dashboard-container {
     padding: 20px 24px 40px;
     background-color: #ffffff;
-    margin-top: -15px; /* 减小与导航栏的间距 */
-    max-width: 1600px;        /* 设置最大宽度 */
-    margin-left: auto;        /* 水平居中 */
+    margin-top: -15px;
+    max-width: 1600px;
+    margin-left: auto;
     margin-right: auto;
 }
 
@@ -31,22 +31,14 @@
     padding: 0.5rem !important;
 }
 
-.chart-card {
-    height: 100%;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04) !important;
-    border: none !important;
-    border-radius: 16px !important;
-    padding: 8px!important;
-}
-
 .dashboard-spend-section {
-    margin-bottom: 1rem;
+    margin-bottom: 12px;
 }
 
 .dashboard-spend-stack {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
 }
 
 .dashboard-spend-grid .column {
@@ -55,6 +47,14 @@
 
 .dashboard-spend-card {
     height: 100%;
+}
+
+.dashboard-card-title {
+    margin-bottom: 10px;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
 }
 
 .dashboard-package-header-row {
@@ -67,13 +67,13 @@
 .dashboard-spend-summary {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .dashboard-spend-summary-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 10px;
 }
 
 .dashboard-package-metrics-row {
@@ -83,13 +83,13 @@
 .dashboard-spend-metric {
     background: #f9fafb;
     border: 1px solid rgba(0, 0, 0, 0.04);
-    border-radius: 12px;
-    padding: 12px 14px;
+    border-radius: 10px;
+    padding: 10px 12px;
 }
 
 .dashboard-spend-label {
     color: #6b7280;
-    font-size: 0.9em;
+    font-size: 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -108,7 +108,7 @@
     width: 100%;
 }
 
-.dashboard-spend-period-row .ui.dropdown {
+.dashboard-spend-period-row .router-ui-select {
     width: 100%;
     max-width: 100%;
 }
@@ -119,8 +119,8 @@
 }
 
 .dashboard-spend-value {
-    margin-top: 6px;
-    font-size: 1.3em;
+    margin-top: 5px;
+    font-size: 20px;
     font-weight: 600;
     color: #2B3674;
 }
@@ -151,36 +151,46 @@
 }
 
 .dashboard-calendar-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-    padding: 8px 12px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
     background: #f6f7fb;
-    border-radius: 999px;
+    border-radius: 12px;
 }
 
-.dashboard-calendar-toolbar .ui.buttons {
+.dashboard-calendar-toolbar > .router-toolbar-start,
+.dashboard-calendar-toolbar > .router-toolbar-end {
+    gap: 10px;
+}
+
+.dashboard-calendar-segmented.ant-segmented {
     border-radius: 999px;
-    overflow: hidden;
     background: #ffffff;
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
 }
 
-.dashboard-calendar-toolbar .ui.button {
-    border: none !important;
-    background: transparent !important;
-    color: #7b8794 !important;
-    padding: 6px 12px !important;
-    font-weight: 600 !important;
+.dashboard-calendar-segmented.ant-segmented .ant-segmented-item {
+    border-radius: 999px;
 }
 
-.dashboard-calendar-toolbar .ui.button.active {
-    background: #ffffff !important;
-    color: #1d4ed8 !important;
-    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12) !important;
+.dashboard-calendar-segmented.ant-segmented .ant-segmented-item-label {
+    padding: 0 12px;
+    color: #7b8794;
+    font-weight: 600;
+}
+
+.dashboard-calendar-segmented.ant-segmented .ant-segmented-item-selected {
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+}
+
+.dashboard-calendar-segmented.ant-segmented .ant-segmented-item-selected .ant-segmented-item-label {
+    color: #1d4ed8;
+}
+
+.dashboard-calendar-toolbar .calendar-view-toggle,
+.dashboard-calendar-toolbar .calendar-granularity-toggle,
+.dashboard-calendar-toolbar .calendar-unit-toggle {
+    display: inline-flex;
+    align-items: center;
 }
 
 .dashboard-calendar-nav {
@@ -188,7 +198,7 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
-    margin: 12px 0 16px;
+    margin: 10px 0 14px;
 }
 
 .calendar-nav-button {
@@ -205,7 +215,7 @@
 .dashboard-calendar-current {
     min-width: 160px;
     text-align: center;
-    padding: 8px 16px;
+    padding: 8px 14px;
     border-radius: 12px;
     background: #ffffff;
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
@@ -229,7 +239,7 @@
 
 .dashboard-calendar-grid {
     display: grid;
-    gap: 10px;
+    gap: 8px;
 }
 
 .dashboard-calendar-grid.is-day {
@@ -243,13 +253,13 @@
 .dashboard-calendar-cell {
     background: #fdf5f5;
     border: 1px solid rgba(0, 0, 0, 0.04);
-    border-radius: 14px;
-    padding: 12px 14px;
+    border-radius: 12px;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-height: 72px;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+    gap: 5px;
+    min-height: 68px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .dashboard-calendar-cell.is-active {
@@ -266,7 +276,7 @@
 }
 
 .dashboard-calendar-label {
-    font-size: 0.85em;
+    font-size: 12px;
     color: #6b7280;
     font-weight: 600;
 }
@@ -283,15 +293,15 @@
 }
 
 .dashboard-spend-dimension {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: #6b7280;
-    font-size: 0.9em;
+    font-size: 12px;
 }
 
 .dashboard-spend-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .dashboard-spend-list-item {
@@ -301,18 +311,20 @@
     background: #f9fafb;
     border: 1px solid rgba(0, 0, 0, 0.04);
     border-radius: 10px;
-    padding: 8px 12px;
+    padding: 7px 10px;
     gap: 12px;
 }
 
 .dashboard-spend-list-name {
     color: #2B3674;
     font-weight: 500;
+    font-size: 13px;
 }
 
 .dashboard-spend-list-value {
     color: #2B3674;
     font-weight: 600;
+    font-size: 13px;
 }
 
 .dashboard-spend-empty {
@@ -322,38 +334,25 @@
 
 .chart-container {
     margin-top: 2px;
-    padding: 16px;
+    padding: 14px;
     background-color: white;
     border-radius: 12px;
-}
-
-.ui.card > .content > .header {
-    color: #2B3674;
-    font-size: 1.2em;
-    margin-bottom: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: 600;
-    gap: 12px; /* 增加标题和数值之间的间距 */
 }
 
 .stat-value {
     color: #4318FF;
     font-weight: bold;
-    font-size: 1.1em;
+    font-size: 1em;
     background: rgba(67, 24, 255, 0.1);
     padding: 4px 12px;
     border-radius: 8px;
-    white-space: nowrap; /* 防止数值换行 */
+    white-space: nowrap;
     margin-left: 16px;
 }
-
-/* 优化图表响应式布局 */
 @media (max-width: 768px) {
     .dashboard-container {
-        padding: 10px 16px;   /* 移动端也相应减小内边距 */
-        max-width: 100%;      /* 移动端占满全宽 */
+        padding: 10px 16px;
+        max-width: 100%;
     }
 
     .dashboard-package-header-row {
@@ -373,12 +372,6 @@
     }
 }
 
-.ui.tab.segment {
-    border: none !important;
-    box-shadow: none !important;
-    padding: 1rem 0 !important;
-} 
-
 .dashboard-filter-card {
     margin-bottom: 1rem !important;
 }
@@ -392,18 +385,7 @@
 }
 
 .dashboard-filter-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.dashboard-filter-toolbar-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    margin-bottom: 10px;
 }
 
 .dashboard-inline-field {
@@ -413,7 +395,7 @@
     background: #f9fafb;
     border: 1px solid rgba(0, 0, 0, 0.06);
     border-radius: 10px;
-    padding: 6px 8px;
+    padding: 5px 8px;
 }
 
 .dashboard-inline-label {
@@ -422,7 +404,7 @@
     white-space: nowrap;
 }
 
-.dashboard-inline-dropdown.ui.dropdown {
+.dashboard-inline-dropdown {
     min-width: 128px;
 }
 
@@ -442,7 +424,7 @@
     min-width: 84px;
 }
 
-.dashboard-add-condition.ui.dropdown.button {
+.dashboard-add-condition {
     border-radius: 10px !important;
     box-shadow: none !important;
     white-space: nowrap;
@@ -471,13 +453,13 @@
     font-weight: 600;
 }
 
-.dashboard-model-condition-dropdown.ui.dropdown {
+.dashboard-model-condition-dropdown {
     min-width: 300px;
     max-width: 680px;
     flex: 1 1 340px;
 }
 
-.dashboard-model-condition-dropdown.ui.multiple.dropdown > .label {
+.dashboard-model-condition-dropdown .ant-select-selection-overflow-item {
     margin-top: 2px;
     margin-bottom: 2px;
 }

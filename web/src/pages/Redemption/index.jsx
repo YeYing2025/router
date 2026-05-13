@@ -1,15 +1,13 @@
 import React from 'react';
-import { Card } from 'semantic-ui-react';
 import RedemptionsTable from '../../components/RedemptionsTable';
+import { AppSection } from '../../router-ui';
 
 const Redemption = () => {
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
+      <AppSection>
           <RedemptionsTable />
-        </Card.Content>
-      </Card>
+      </AppSection>
     </div>
   );
 };

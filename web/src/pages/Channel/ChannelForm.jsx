@@ -7,21 +7,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Breadcrumb,
-  Button,
-  Card,
-  Checkbox,
-  Dropdown,
-  Form,
-  Icon,
-  Label,
-  Message,
-  Menu,
-  Modal,
-  Pagination,
-  Table,
-} from 'semantic-ui-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   API,
@@ -42,6 +27,21 @@ import ChannelAppendProviderModal from './components/ChannelAppendProviderModal'
 import ChannelComplexPricingModal from './components/ChannelComplexPricingModal';
 import ChannelModelEditorModal from './components/ChannelModelEditorModal';
 import ChannelEndpointPolicyEditorModal from './components/ChannelEndpointPolicyEditorModal';
+import {
+  AppAlert,
+  AppBreadcrumb,
+  AppButton,
+  AppField,
+  AppFormActions,
+  AppFormRow,
+  AppIcon,
+  AppInput,
+  AppModal,
+  AppSection,
+  AppSelect,
+  AppSpin,
+  AppTabs,
+} from '../../router-ui';
 
 const normalizeModelId = (model) => {
   if (typeof model === 'string') return model;
@@ -962,6 +962,7 @@ const normalizeChannelModelConfigRow = (row, protocol) => {
     currency: normalizeCurrencyValue(row.currency),
     price_components: normalizeComplexPriceComponents(row.price_components),
   };
+
 };
 
 const normalizeChannelModelConfigs = (rows, protocol) => {
@@ -1684,6 +1685,28 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const detailModelsEditing =
     isDetailMode && detailEditingModelKey.toString().trim() !== '';
   const isAnyDetailSectionEditing = detailBasicEditing || detailModelsEditing;
+  const detailTabItems = [
+    {
+      key: 'overview',
+      label: t('channel.edit.detail_tabs.overview'),
+      disabled: isAnyDetailSectionEditing && activeDetailTab !== 'overview',
+    },
+    {
+      key: 'models',
+      label: t('channel.edit.detail_tabs.models'),
+      disabled: isAnyDetailSectionEditing && activeDetailTab !== 'models',
+    },
+    {
+      key: 'tests',
+      label: t('channel.edit.detail_tabs.tests'),
+      disabled: isAnyDetailSectionEditing && activeDetailTab !== 'tests',
+    },
+    {
+      key: 'endpoints',
+      label: t('channel.edit.detail_tabs.endpoints'),
+      disabled: isAnyDetailSectionEditing && activeDetailTab !== 'endpoints',
+    },
+  ];
   const detailBasicEditLocked =
     isDetailMode &&
     !detailBasicEditing &&
@@ -2244,24 +2267,25 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       return null;
     }
     return (
-      <Form.Field>
-        <Form.Input
-          className='router-section-input'
-          label={t('channel.edit.key')}
-          name='key'
-          type='password'
-          required={isCreateMode}
-          placeholder={
-            channelKeySet && (inputs.key || '').trim() === ''
-              ? '********'
-              : protocol2secretPrompt(inputs.protocol, t)
-          }
-          onChange={handleInputChange}
-          value={inputs.key}
-          autoComplete='new-password'
-          {...inputReadonlyProps}
-        />
-      </Form.Field>
+      <AppFormRow>
+        <AppField label={t('channel.edit.key')} required={isCreateMode}>
+          <AppInput
+            className='router-section-input'
+            name='key'
+            type='password'
+            required={isCreateMode}
+            placeholder={
+              channelKeySet && (inputs.key || '').trim() === ''
+                ? '********'
+                : protocol2secretPrompt(inputs.protocol, t)
+            }
+            onChange={handleInputChange}
+            value={inputs.key}
+            autoComplete='new-password'
+            {...inputReadonlyProps}
+          />
+        </AppField>
+      </AppFormRow>
     );
   }, [
     channelKeySet,
@@ -3654,72 +3678,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     [detailEditingModelKey, detailModelsEditing, isDetailMode, visibleModelConfigs],
   );
 
-  const renderModelToggleCells = useCallback(
-    ({
-      row,
-      canSelect,
-      selectDisabled = false,
-      inDetailMode = false,
-      cellClassName = '',
-    }) => {
-      const selectCellClassName = [inDetailMode ? 'router-cell-checkbox' : '', cellClassName]
-        .filter(Boolean)
-        .join(' ');
-      const isUnavailable = !canSelect && !row.selected;
-      const disabledReason =
-        isUnavailable
-          ? t('channel.edit.model_selector.selection_disabled_unassigned')
-          : '';
-      const handleDisabledClick = () => {
-        if (disabledReason) {
-          showInfo(disabledReason);
-        }
-      };
-      return (
-        <Table.Cell
-          textAlign='center'
-          className={[
-            selectCellClassName,
-            isUnavailable ? 'router-model-toggle-cell-disabled' : '',
-          ]
-            .filter(Boolean)
-            .join(' ') || undefined}
-        >
-          <span
-            className={[
-              'router-inline-block',
-              'router-model-toggle-wrap',
-              isUnavailable ? 'router-model-toggle-wrap-disabled' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            onClick={handleDisabledClick}
-            role={disabledReason ? 'button' : undefined}
-            tabIndex={disabledReason ? 0 : undefined}
-            title={disabledReason || undefined}
-            aria-label={disabledReason || undefined}
-            onKeyDown={(e) => {
-              if ((e.key === 'Enter' || e.key === ' ') && disabledReason) {
-                e.preventDefault();
-                showInfo(disabledReason);
-              }
-            }}
-          >
-            <Checkbox
-              className={isUnavailable ? 'router-model-toggle-disabled' : undefined}
-              checked={!!row.selected}
-              disabled={selectDisabled || isUnavailable}
-              onChange={(e, { checked }) =>
-                toggleModelSelection(row.upstream_model, checked)
-              }
-            />
-          </span>
-        </Table.Cell>
-      );
-    },
-    [t, toggleModelSelection],
-  );
-
   useEffect(() => {
     const selectedModels = visibleModelConfigs
       .filter((row) => row.selected)
@@ -4029,37 +3987,31 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const renderAddressRoutingFields = () => {
     return (
       <>
-        <Form.Group widths='equal'>
-          <Form.Input
-            className='router-section-input'
-            label={t('channel.edit.api_base_url')}
-            name='api_base_url'
-            placeholder={t('channel.edit.api_base_url_placeholder')}
-            onChange={handleConfigChange}
-            value={config.api_base_url || ''}
-            autoComplete='new-password'
-            {...inputReadonlyProps}
-          />
-          <Form.Input
-            className='router-section-input'
-            label={t('channel.edit.account_base_url')}
-            name='account_base_url'
-            placeholder={t('channel.edit.account_base_url_placeholder')}
-            onChange={handleConfigChange}
-            value={config.account_base_url || ''}
-            autoComplete='new-password'
-            {...inputReadonlyProps}
-          />
-        </Form.Group>
-        <div
-          style={{
-            marginTop: '-6px',
-            marginBottom: '0',
-            color: 'var(--router-text-muted, rgba(0,0,0,0.45))',
-            fontSize: '12px',
-            lineHeight: 1.5,
-          }}
-        >
+        <AppFormRow>
+          <AppField label={t('channel.edit.api_base_url')}>
+            <AppInput
+              className='router-section-input'
+              name='api_base_url'
+              placeholder={t('channel.edit.api_base_url_placeholder')}
+              onChange={handleConfigChange}
+              value={config.api_base_url || ''}
+              autoComplete='new-password'
+              {...inputReadonlyProps}
+            />
+          </AppField>
+          <AppField label={t('channel.edit.account_base_url')}>
+            <AppInput
+              className='router-section-input'
+              name='account_base_url'
+              placeholder={t('channel.edit.account_base_url_placeholder')}
+              onChange={handleConfigChange}
+              value={config.account_base_url || ''}
+              autoComplete='new-password'
+              {...inputReadonlyProps}
+            />
+          </AppField>
+        </AppFormRow>
+        <div className='router-form-hint router-form-hint-tight'>
           {t('channel.edit.address_routing_hint')}
         </div>
       </>
@@ -4071,7 +4023,12 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       <>
         {inputs.protocol === 'azure' && (
           <>
-            <Message className='router-section-message'>
+            <AppAlert
+              type='info'
+              showIcon
+              className='router-section-message'
+              title={
+                <span>
               注意，<strong>模型部署名称必须和模型名称保持一致</strong>
               ，因为 Router 会把请求体中的 model
               参数替换为你的部署名称（模型名称中的点会被剔除），
@@ -4083,182 +4040,208 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 图片演示
               </a>
               。
-            </Message>
-            <Form.Field>
-              <Form.Input
+                </span>
+              }
+            />
+            <AppFormRow>
+              <AppField label='默认 API 版本'>
+                <AppInput
+                  className='router-section-input'
+                  name='other'
+                  placeholder='请输入默认 API 版本，例如：2024-03-01-preview，该配置可以被实际的请求查询参数所覆盖'
+                  onChange={handleInputChange}
+                  value={inputs.other}
+                  autoComplete='new-password'
+                  {...inputReadonlyProps}
+                />
+              </AppField>
+            </AppFormRow>
+          </>
+        )}
+        {inputs.protocol === 'xunfei' && (
+          <AppFormRow>
+            <AppField label={t('channel.edit.spark_version')}>
+              <AppInput
                 className='router-section-input'
-                label='默认 API 版本'
                 name='other'
-                placeholder='请输入默认 API 版本，例如：2024-03-01-preview，该配置可以被实际的请求查询参数所覆盖'
+                placeholder={t('channel.edit.spark_version_placeholder')}
                 onChange={handleInputChange}
                 value={inputs.other}
                 autoComplete='new-password'
                 {...inputReadonlyProps}
               />
-            </Form.Field>
-          </>
-        )}
-        {inputs.protocol === 'xunfei' && (
-          <Form.Field>
-            <Form.Input
-              className='router-section-input'
-              label={t('channel.edit.spark_version')}
-              name='other'
-              placeholder={t('channel.edit.spark_version_placeholder')}
-              onChange={handleInputChange}
-              value={inputs.other}
-              autoComplete='new-password'
-              {...inputReadonlyProps}
-            />
-          </Form.Field>
+            </AppField>
+          </AppFormRow>
         )}
         {inputs.protocol === 'aiproxy-library' && (
-          <Form.Field>
-            <Form.Input
-              className='router-section-input'
-              label={t('channel.edit.knowledge_id')}
-              name='other'
-              placeholder={t('channel.edit.knowledge_id_placeholder')}
-              onChange={handleInputChange}
-              value={inputs.other}
-              autoComplete='new-password'
-              {...inputReadonlyProps}
-            />
-          </Form.Field>
+          <AppFormRow>
+            <AppField label={t('channel.edit.knowledge_id')}>
+              <AppInput
+                className='router-section-input'
+                name='other'
+                placeholder={t('channel.edit.knowledge_id_placeholder')}
+                onChange={handleInputChange}
+                value={inputs.other}
+                autoComplete='new-password'
+                {...inputReadonlyProps}
+              />
+            </AppField>
+          </AppFormRow>
         )}
         {inputs.protocol === 'ali' && (
-          <Form.Field>
-            <Form.Input
-              className='router-section-input'
-              label={t('channel.edit.plugin_param')}
-              name='other'
-              placeholder={t('channel.edit.plugin_param_placeholder')}
-              onChange={handleInputChange}
-              value={inputs.other}
-              autoComplete='new-password'
-              {...inputReadonlyProps}
-            />
-          </Form.Field>
+          <AppFormRow>
+            <AppField label={t('channel.edit.plugin_param')}>
+              <AppInput
+                className='router-section-input'
+                name='other'
+                placeholder={t('channel.edit.plugin_param_placeholder')}
+                onChange={handleInputChange}
+                value={inputs.other}
+                autoComplete='new-password'
+                {...inputReadonlyProps}
+              />
+            </AppField>
+          </AppFormRow>
         )}
         {inputs.protocol === 'coze' && (
-          <Message className='router-section-message'>
-            {t('channel.edit.coze_notice')}
-          </Message>
-        )}
-        {inputs.protocol === 'doubao' && (
-          <Message className='router-section-message'>
-            {t('channel.edit.douban_notice')}
-            <a
-              target='_blank'
-              rel='noreferrer'
-              href='https://console.volcengine.com/ark/region:ark+cn-beijing/endpoint'
-            >
-              {t('channel.edit.douban_notice_link')}
-            </a>
-            {t('channel.edit.douban_notice_2')}
-          </Message>
-        )}
-        {inputs.protocol === 'awsclaude' && (
-          <Form.Field>
-            <Form.Input
-              className='router-section-input'
-              label='Region'
-              name='region'
-              required
-              placeholder={t('channel.edit.aws_region_placeholder')}
-              onChange={handleConfigChange}
-              value={config.region}
-              autoComplete=''
-              {...inputReadonlyProps}
-            />
-            <Form.Input
-              className='router-section-input'
-              label='AK'
-              name='ak'
-              required
-              placeholder={t('channel.edit.aws_ak_placeholder')}
-              onChange={handleConfigChange}
-              value={config.ak}
-              autoComplete=''
-              {...inputReadonlyProps}
-            />
-            <Form.Input
-              className='router-section-input'
-              label='SK'
-              name='sk'
-              required
-              placeholder={t('channel.edit.aws_sk_placeholder')}
-              onChange={handleConfigChange}
-              value={config.sk}
-              autoComplete=''
-              {...inputReadonlyProps}
-            />
-          </Form.Field>
-        )}
-        {inputs.protocol === 'vertexai' && (
-          <Form.Field>
-            <Form.Input
-              className='router-section-input'
-              label='Region'
-              name='region'
-              required
-              placeholder={t('channel.edit.vertex_region_placeholder')}
-              onChange={handleConfigChange}
-              value={config.region}
-              autoComplete=''
-              {...inputReadonlyProps}
-            />
-            <Form.Input
-              className='router-section-input'
-              label={t('channel.edit.vertex_project_id')}
-              name='vertex_ai_project_id'
-              required
-              placeholder={t('channel.edit.vertex_project_id_placeholder')}
-              onChange={handleConfigChange}
-              value={config.vertex_ai_project_id}
-              autoComplete=''
-              {...inputReadonlyProps}
-            />
-            <Form.Input
-              className='router-section-input'
-              label={t('channel.edit.vertex_credentials')}
-              name='vertex_ai_adc'
-              required
-              placeholder={t('channel.edit.vertex_credentials_placeholder')}
-              onChange={handleConfigChange}
-              value={config.vertex_ai_adc}
-              autoComplete=''
-              {...inputReadonlyProps}
-            />
-          </Form.Field>
-        )}
-        {inputs.protocol === 'coze' && (
-          <Form.Input
-            className='router-section-input'
-            label={t('channel.edit.user_id')}
-            name='user_id'
-            required
-            placeholder={t('channel.edit.user_id_placeholder')}
-            onChange={handleConfigChange}
-            value={config.user_id}
-            autoComplete=''
-            {...inputReadonlyProps}
+          <AppAlert
+            type='info'
+            showIcon
+            className='router-section-message'
+            title={t('channel.edit.coze_notice')}
           />
         )}
+        {inputs.protocol === 'doubao' && (
+          <AppAlert
+            type='info'
+            showIcon
+            className='router-section-message'
+            title={
+              <span>
+                {t('channel.edit.douban_notice')}
+                <a
+                  target='_blank'
+                  rel='noreferrer'
+                  href='https://console.volcengine.com/ark/region:ark+cn-beijing/endpoint'
+                >
+                  {t('channel.edit.douban_notice_link')}
+                </a>
+                {t('channel.edit.douban_notice_2')}
+              </span>
+            }
+          />
+        )}
+        {inputs.protocol === 'awsclaude' && (
+          <AppFormRow>
+            <AppField label='Region' required>
+              <AppInput
+                className='router-section-input'
+                name='region'
+                required
+                placeholder={t('channel.edit.aws_region_placeholder')}
+                onChange={handleConfigChange}
+                value={config.region}
+                autoComplete=''
+                {...inputReadonlyProps}
+              />
+            </AppField>
+            <AppField label='AK' required>
+              <AppInput
+                className='router-section-input'
+                name='ak'
+                required
+                placeholder={t('channel.edit.aws_ak_placeholder')}
+                onChange={handleConfigChange}
+                value={config.ak}
+                autoComplete=''
+                {...inputReadonlyProps}
+              />
+            </AppField>
+            <AppField label='SK' required>
+              <AppInput
+                className='router-section-input'
+                name='sk'
+                required
+                placeholder={t('channel.edit.aws_sk_placeholder')}
+                onChange={handleConfigChange}
+                value={config.sk}
+                autoComplete=''
+                {...inputReadonlyProps}
+              />
+            </AppField>
+          </AppFormRow>
+        )}
+        {inputs.protocol === 'vertexai' && (
+          <AppFormRow>
+            <AppField label='Region' required>
+              <AppInput
+                className='router-section-input'
+                name='region'
+                required
+                placeholder={t('channel.edit.vertex_region_placeholder')}
+                onChange={handleConfigChange}
+                value={config.region}
+                autoComplete=''
+                {...inputReadonlyProps}
+              />
+            </AppField>
+            <AppField label={t('channel.edit.vertex_project_id')} required>
+              <AppInput
+                className='router-section-input'
+                name='vertex_ai_project_id'
+                required
+                placeholder={t('channel.edit.vertex_project_id_placeholder')}
+                onChange={handleConfigChange}
+                value={config.vertex_ai_project_id}
+                autoComplete=''
+                {...inputReadonlyProps}
+              />
+            </AppField>
+            <AppField label={t('channel.edit.vertex_credentials')} required>
+              <AppInput
+                className='router-section-input'
+                name='vertex_ai_adc'
+                required
+                placeholder={t('channel.edit.vertex_credentials_placeholder')}
+                onChange={handleConfigChange}
+                value={config.vertex_ai_adc}
+                autoComplete=''
+                {...inputReadonlyProps}
+              />
+            </AppField>
+          </AppFormRow>
+        )}
+        {inputs.protocol === 'coze' && (
+          <AppFormRow>
+            <AppField label={t('channel.edit.user_id')} required>
+              <AppInput
+                className='router-section-input'
+                name='user_id'
+                required
+                placeholder={t('channel.edit.user_id_placeholder')}
+                onChange={handleConfigChange}
+                value={config.user_id}
+                autoComplete=''
+                {...inputReadonlyProps}
+              />
+            </AppField>
+          </AppFormRow>
+        )}
         {inputs.protocol === 'cloudflare' && (
-          <Form.Field>
-            <Form.Input
-              className='router-section-input'
-              label='Account ID'
-              name='user_id'
-              required
-              placeholder='请输入 Account ID，例如：d8d7c61dbc334c32d3ced580e4bf42b4'
-              onChange={handleConfigChange}
-              value={config.user_id}
-              autoComplete=''
-              {...inputReadonlyProps}
-            />
-          </Form.Field>
+          <AppFormRow>
+            <AppField label='Account ID' required>
+              <AppInput
+                className='router-section-input'
+                name='user_id'
+                required
+                placeholder='请输入 Account ID，例如：d8d7c61dbc334c32d3ced580e4bf42b4'
+                onChange={handleConfigChange}
+                value={config.user_id}
+                autoComplete=''
+                {...inputReadonlyProps}
+              />
+            </AppField>
+          </AppFormRow>
         )}
       </>
     );
@@ -4270,30 +4253,29 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     }
     return !isDetailMode ? (
       <>
-        <Form.Group widths='equal'>
-          <Form.Input
-            className='router-section-input'
-            label={t('channel.edit.identifier')}
-            name='name'
-            placeholder={t('channel.edit.identifier_placeholder')}
-            onChange={handleInputChange}
-            value={inputs.name}
-            required
-            maxLength={CHANNEL_IDENTIFIER_MAX_LENGTH}
-            readOnly={detailBasicReadonly}
-          />
-          <Form.Field>
+        <AppFormRow>
+          <AppField label={t('channel.edit.identifier')} required>
+            <AppInput
+              className='router-section-input'
+              name='name'
+              placeholder={t('channel.edit.identifier_placeholder')}
+              onChange={handleInputChange}
+              value={inputs.name}
+              required
+              maxLength={CHANNEL_IDENTIFIER_MAX_LENGTH}
+              readOnly={detailBasicReadonly}
+            />
+          </AppField>
+          <AppField label={t('channel.edit.type')}>
             {detailBasicReadonly ? (
-              <Form.Input
+              <AppInput
                 className='router-section-input'
-                label={t('channel.edit.type')}
                 value={currentProtocolOption?.text || inputs.protocol || '-'}
                 readOnly
               />
             ) : (
-              <Form.Select
+              <AppSelect
                 className='router-section-dropdown'
-                label={t('channel.edit.type')}
                 name='protocol'
                 required
                 search
@@ -4302,18 +4284,10 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 onChange={handleInputChange}
               />
             )}
-          </Form.Field>
-        </Form.Group>
+          </AppField>
+        </AppFormRow>
         {!detailBasicReadonly && (
-          <div
-            style={{
-              marginTop: '-6px',
-              marginBottom: '12px',
-              color: 'var(--router-text-muted, rgba(0,0,0,0.45))',
-              fontSize: '12px',
-              lineHeight: 1.5,
-            }}
-          >
+          <div className='router-form-hint router-form-hint-section'>
             {protocolSelectionHint(t)}
           </div>
         )}
@@ -4363,15 +4337,33 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         setPolicyDraft={setPolicyDraft}
         saveEndpointPolicy={saveEndpointPolicy}
       />
-      <Modal
+      <AppModal
         size='tiny'
         open={endpointEnableConfirmOpen}
         onClose={closeEndpointEnableConfirm}
+        title={t('channel.edit.endpoint_capabilities.enable_confirm_title')}
+        footer={
+          <AppFormActions>
+            <AppButton
+              type='button'
+              onClick={closeEndpointEnableConfirm}
+              disabled={endpointEnableConfirmLoading}
+            >
+              {t('common.cancel')}
+            </AppButton>
+            <AppButton
+              type='button'
+              color='blue'
+              loading={endpointEnableConfirmLoading}
+              disabled={endpointEnableConfirmLoading}
+              onClick={confirmEnableEndpointWithoutSuccessfulTest}
+            >
+              {t('channel.edit.endpoint_capabilities.enable_confirm_action')}
+            </AppButton>
+          </AppFormActions>
+        }
       >
-        <Modal.Header>
-          {t('channel.edit.endpoint_capabilities.enable_confirm_title')}
-        </Modal.Header>
-        <Modal.Content>
+        <div>
           <p>{t('channel.edit.endpoint_capabilities.enable_confirm_content')}</p>
           <p className='router-muted-text'>
             {pendingEndpointEnableRow
@@ -4381,25 +4373,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 })
               : ''}
           </p>
-        </Modal.Content>
-        <Modal.Actions>
-          <Button
-            type='button'
-            onClick={closeEndpointEnableConfirm}
-            disabled={endpointEnableConfirmLoading}
-          >
-            {t('common.cancel')}
-          </Button>
-          <Button
-            type='button'
-            primary
-            loading={endpointEnableConfirmLoading}
-            onClick={confirmEnableEndpointWithoutSuccessfulTest}
-          >
-            {t('channel.edit.endpoint_capabilities.enable_confirm_action')}
-          </Button>
-        </Modal.Actions>
-      </Modal>
+        </div>
+      </AppModal>
       <ChannelAppendProviderModal
         t={t}
         open={appendProviderModalOpen}
@@ -4413,83 +4388,56 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         normalizeChannelModelType={normalizeChannelModelType}
         handleAppendModelToProvider={handleAppendModelToProvider}
       />
-      <Card fluid className='chart-card'>
-        <Card.Content>
+      <AppSection>
           {isDetailMode && (
             <div className='router-entity-detail-breadcrumb router-block-gap-sm'>
-              <Breadcrumb size='small'>
-                <Breadcrumb.Section link onClick={handleBackToChannelList}>
-                  {t('header.channel')}
-                </Breadcrumb.Section>
-                <Breadcrumb.Divider icon='right chevron' />
-                <Breadcrumb.Section active>
-                  {inputs.name || returnChannelLabel || channelId || '-'}
-                </Breadcrumb.Section>
-              </Breadcrumb>
+              <div className='router-provider-detail-breadcrumb'>
+                <AppBreadcrumb
+                  items={[
+                    {
+                      key: 'channel-list',
+                      label: t('header.channel'),
+                      onClick: handleBackToChannelList,
+                    },
+                    {
+                      key: 'channel-current',
+                      label: inputs.name || returnChannelLabel || channelId || '-',
+                      active: true,
+                    },
+                  ]}
+                />
+              </div>
             </div>
           )}
           {isDetailMode && (
             <div className='router-entity-detail-tabs router-block-gap-sm'>
-              <Menu secondary pointing className='router-detail-tab-menu'>
-                <Menu.Item
-                  active={activeDetailTab === 'overview'}
-                  disabled={
-                    isAnyDetailSectionEditing && activeDetailTab !== 'overview'
-                  }
-                  onClick={() => goToDetailTab('overview')}
-                >
-                  {t('channel.edit.detail_tabs.overview')}
-                </Menu.Item>
-                <Menu.Item
-                  active={activeDetailTab === 'models'}
-                  disabled={
-                    isAnyDetailSectionEditing && activeDetailTab !== 'models'
-                  }
-                  onClick={() => goToDetailTab('models')}
-                >
-                  {t('channel.edit.detail_tabs.models')}
-                </Menu.Item>
-                <Menu.Item
-                  active={activeDetailTab === 'tests'}
-                  disabled={
-                    isAnyDetailSectionEditing && activeDetailTab !== 'tests'
-                  }
-                  onClick={() => goToDetailTab('tests')}
-                >
-                  {t('channel.edit.detail_tabs.tests')}
-                </Menu.Item>
-                <Menu.Item
-                  active={activeDetailTab === 'endpoints'}
-                  disabled={
-                    isAnyDetailSectionEditing && activeDetailTab !== 'endpoints'
-                  }
-                  onClick={() => goToDetailTab('endpoints')}
-                >
-                  {t('channel.edit.detail_tabs.endpoints')}
-                </Menu.Item>
-              </Menu>
+              <AppTabs
+                className='router-detail-tab-menu'
+                activeKey={activeDetailTab}
+                items={detailTabItems}
+                onChange={goToDetailTab}
+              />
             </div>
           )}
           {isCreateMode && (
-            <div className='router-toolbar-start router-block-gap-sm'>
-              <Button
-                type='button'
+            <AppFormActions align='start' className='router-block-gap-sm'>
+              <AppButton
                 className='router-page-button'
                 onClick={handleCancel}
               >
                 {t('channel.edit.buttons.cancel')}
-              </Button>
-              <Button
-                type='button'
+              </AppButton>
+              <AppButton
                 className='router-page-button'
-                positive
+                color='blue'
                 onClick={submit}
               >
                 {t('channel.edit.buttons.submit')}
-              </Button>
-            </div>
+              </AppButton>
+            </AppFormActions>
           )}
-          <Form loading={loading} autoComplete='new-password'>
+          <AppSpin spinning={loading}>
+            <div>
             {renderCreateStepNavigation()}
             {renderBasicInfoSection()}
             {showDetailOverviewTab && showStepOne && (
@@ -4511,15 +4459,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 addressRoutingFields={renderAddressRoutingFields()}
                 protocolSelectionHintContent={
                   !detailBasicReadonly ? (
-                    <div
-                      style={{
-                        marginTop: '-6px',
-                        marginBottom: '12px',
-                        color: 'var(--router-text-muted, rgba(0,0,0,0.45))',
-                        fontSize: '12px',
-                        lineHeight: 1.5,
-                      }}
-                    >
+                    <div className='router-form-hint router-form-hint-section'>
                       {protocolSelectionHint(t)}
                     </div>
                   ) : null
@@ -4553,7 +4493,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                     openComplexPricingModal={openComplexPricingModal}
                     detailModelsEditLocked={detailModelsEditLocked}
                     providerCatalogLoading={providerCatalogLoading}
-                    renderModelToggleCells={renderModelToggleCells}
+                    toggleModelSelection={toggleModelSelection}
                     canSelectChannelModel={canSelectChannelModel}
                     detailCurrentPageAllSelected={
                       detailCurrentPageAllSelected
@@ -4642,9 +4582,9 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 setAudioTestLanguage={setAudioTestLanguage}
               />
             )}
-          </Form>
-        </Card.Content>
-      </Card>
+            </div>
+          </AppSpin>
+      </AppSection>
     </div>
   );
 };

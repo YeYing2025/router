@@ -1,16 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Button,
-  Form,
-  Icon,
-  Input,
-  Label,
-  Pagination,
-  Popup,
-  Table,
-} from 'semantic-ui-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   API,
   showError,
@@ -25,6 +15,17 @@ import {
   loadChannelProtocolOptions,
 } from '../helpers/helper';
 import { renderNumber } from '../helpers/render';
+import {
+  AppButton,
+  AppFilterHeader,
+  AppIcon,
+  AppInput,
+  AppInputNumber,
+  AppMenuDropdown,
+  AppPagination,
+  AppTable,
+  AppTooltip,
+} from '../router-ui';
 
 const normalizeAsyncTaskStatus = (value) => {
   const normalized = (value || '').toString().trim().toLowerCase();
@@ -144,6 +145,7 @@ function renderBalance(protocol, balance, t) {
 const selectionModeNone = '';
 const selectionModeDelete = 'delete';
 const selectionModeDisable = 'disable';
+const channelStatusCreating = 4;
 const ChannelsTable = () => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -379,27 +381,19 @@ const ChannelsTable = () => {
         );
       case 2:
         return (
-          <Popup
-            trigger={
-              <span className='router-text-danger'>
-                {t('channel.table.status_disabled')}
-              </span>
-            }
-            content={t('channel.table.status_disabled_tip')}
-            basic
-          />
+          <AppTooltip title={t('channel.table.status_disabled_tip')}>
+            <span className='router-text-danger'>
+              {t('channel.table.status_disabled')}
+            </span>
+          </AppTooltip>
         );
       case 3:
         return (
-          <Popup
-            trigger={
-              <span className='router-text-warning'>
-                {t('channel.table.status_auto_disabled')}
-              </span>
-            }
-            content={t('channel.table.status_auto_disabled_tip')}
-            basic
-          />
+          <AppTooltip title={t('channel.table.status_auto_disabled_tip')}>
+            <span className='router-text-warning'>
+              {t('channel.table.status_auto_disabled')}
+            </span>
+          </AppTooltip>
         );
       case channelStatusCreating:
         return plainStatusText(
@@ -496,6 +490,7 @@ const ChannelsTable = () => {
   };
 
   const pagedChannels = channels;
+  const visibleChannels = pagedChannels.filter((channel) => !channel.deleted);
   const pagedChannelIds = pagedChannels
     .filter((channel) => !channel.deleted)
     .map((channel) => channel.id);
@@ -503,7 +498,6 @@ const ChannelsTable = () => {
     pagedChannelIds.length > 0 &&
     pagedChannelIds.every((id) => selectedChannelIds.includes(id));
   const inBatchSelectMode = selectionMode !== selectionModeNone;
-  const footerColSpan = 9 + (inBatchSelectMode ? 1 : 0);
   const actionBusy = batchDeleting || batchDisabling;
 
   const toggleChannelSelection = (channelId, checked) => {
@@ -551,6 +545,22 @@ const ChannelsTable = () => {
   const stopRowClick = (event) => {
     event.stopPropagation();
   };
+
+  const tableRowSelection = inBatchSelectMode
+    ? {
+        columnWidth: 56,
+        selectedRowKeys: selectedChannelIds,
+        onSelect: (record, selected) => {
+          toggleChannelSelection(record.id, selected);
+        },
+        onSelectAll: (selected) => {
+          togglePagedSelection(selected);
+        },
+        getTitleCheckboxProps: () => ({
+          checked: allPagedSelected,
+        }),
+      }
+    : undefined;
 
   const collectSelectedTargets = () => {
     return selectedChannelIds
@@ -703,307 +713,337 @@ const ChannelsTable = () => {
 
   return (
     <>
-      <div className='router-toolbar router-block-gap-sm'>
-        <div className='router-toolbar-start'>
-          {selectionMode === selectionModeNone ? (
-            <>
-              <Button
-                className='router-page-button'
-                as={Link}
-                to='/channel/add'
-                disabled={batchDeleting || batchDisabling}
-              >
-                {t('channel.buttons.add')}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                className='router-page-button'
-                negative={selectionMode === selectionModeDelete}
-                color={
-                  selectionMode === selectionModeDisable ? 'orange' : undefined
-                }
-                loading={batchDeleting || batchDisabling}
-                disabled={batchDeleting || batchDisabling}
+      <AppFilterHeader
+        title={t('header.channel')}
+        meta={
+          inBatchSelectMode
+            ? `${t('common.selected')} ${selectedChannelIds.length}`
+            : `${visibleChannels.length} / ${totalChannels}`
+        }
+        actions={
+          <div className='router-list-toolbar-actions'>
+            {selectionMode === selectionModeNone ? (
+              <>
+                <AppButton
+                  className='router-page-button'
+                  color='blue'
+                  disabled={batchDeleting || batchDisabling}
+                  onClick={() => navigate('/channel/add')}
+                >
+                  {t('channel.buttons.add')}
+                </AppButton>
+                <AppMenuDropdown
+                  items={[
+                    {
+                      key: 'batch-disable',
+                      label: t('channel.buttons.batch_disable'),
+                      onClick: () => setSelectionMode(selectionModeDisable),
+                    },
+                    {
+                      key: 'batch-delete',
+                      label: t('channel.buttons.batch_delete'),
+                      danger: true,
+                      onClick: () => setSelectionMode(selectionModeDelete),
+                    },
+                  ]}
+                >
+                  <AppButton className='router-page-button' disabled={actionBusy}>
+                    {t('channel.buttons.batch_actions')}
+                  </AppButton>
+                </AppMenuDropdown>
+              </>
+            ) : (
+              <>
+                <AppButton
+                  className='router-page-button'
+                  color={selectionMode === selectionModeDelete ? 'red' : undefined}
+                  loading={batchDeleting || batchDisabling}
+                  disabled={batchDeleting || batchDisabling}
+                  onClick={() => {
+                    if (selectionMode === selectionModeDisable) {
+                      confirmBatchDisable();
+                      return;
+                    }
+                    confirmBatchDelete();
+                  }}
+                >
+                  {t('channel.buttons.confirm')}
+                </AppButton>
+                <AppButton
+                  className='router-page-button'
+                  disabled={batchDeleting || batchDisabling}
+                  onClick={cancelBatchSelection}
+                >
+                  {t('channel.buttons.cancel')}
+                </AppButton>
+              </>
+            )}
+            <AppButton
+              className='router-page-button'
+              onClick={refresh}
+              loading={loading}
+              disabled={actionBusy}
+            >
+              {t('channel.buttons.refresh')}
+            </AppButton>
+          </div>
+        }
+        query={
+          <div className='router-list-toolbar-query'>
+            <AppInput
+              className='router-section-input'
+              icon='search'
+              iconPosition='left'
+              fluid
+              placeholder={t('channel.search')}
+              value={searchKeyword}
+              loading={searching}
+              onChange={handleKeywordChange}
+            />
+          </div>
+        }
+      />
+      <AppTable
+        className='router-hover-table router-list-table'
+        pagination={false}
+        rowKey={(channel) => channel.id}
+        dataSource={visibleChannels}
+        rowSelection={tableRowSelection}
+        locale={{ emptyText: '-' }}
+        onRow={(channel) => ({
+          onClick: () => openChannelByStatus(channel),
+          className: inBatchSelectMode ? undefined : 'router-row-clickable',
+        })}
+        columns={[
+          {
+            title: (
+              <span
+                className='router-sortable-header'
                 onClick={() => {
-                  if (selectionMode === selectionModeDisable) {
-                    confirmBatchDisable();
-                    return;
-                  }
-                  confirmBatchDelete();
+                  sortChannel('name');
                 }}
               >
-                {t('channel.buttons.confirm')}
-              </Button>
-              <Button
-                className='router-page-button'
-                disabled={batchDeleting || batchDisabling}
-                onClick={cancelBatchSelection}
+                {t('channel.table.id')}
+              </span>
+            ),
+            dataIndex: 'name',
+            key: 'name',
+            render: (_, channel) => renderChannelName(channel, t),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortChannel('protocol');
+                }}
               >
-                {t('channel.buttons.cancel')}
-              </Button>
-            </>
-          )}
-          <Button
-            className='router-page-button'
-            onClick={refresh}
-            loading={loading}
-            disabled={actionBusy}
-          >
-            {t('channel.buttons.refresh')}
-          </Button>
-        </div>
-
-        <Form onSubmit={searchChannels} className='router-search-form-md'>
-          <Form.Input
-            className='router-section-input'
-            icon='search'
-            iconPosition='left'
-            placeholder={t('channel.search')}
-            value={searchKeyword}
-            loading={searching}
-            onChange={handleKeywordChange}
-          />
-        </Form>
-      </div>
-      <Table
-        basic={'very'}
-        compact
-        className='router-hover-table router-list-table'
-      >
-        <Table.Header>
-          <Table.Row>
-            {inBatchSelectMode && (
-              <Table.HeaderCell collapsing textAlign='center'>
-                <Form.Checkbox
-                  checked={allPagedSelected}
-                  onChange={(e, { checked }) => {
-                    togglePagedSelection(!!checked);
-                  }}
-                />
-              </Table.HeaderCell>
-            )}
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortChannel('name');
-              }}
-            >
-              {t('channel.table.id')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortChannel('protocol');
-              }}
-            >
-              {t('channel.table.type')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortChannel('status');
-              }}
-            >
-              {t('channel.table.status')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortChannel('created_time');
-              }}
-            >
-              {t('channel.table.created_time')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortChannel('updated_at');
-              }}
-            >
-              {t('channel.table.updated_at')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortChannel('capabilities');
-              }}
-            >
-              {t('channel.table.capabilities')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortChannel('balance');
-              }}
-            >
-              {t('channel.table.balance')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortChannel('priority');
-              }}
-            >
-              {t('channel.table.priority')}
-            </Table.HeaderCell>
-            <Table.HeaderCell className='router-table-action-cell'>
-              {t('channel.table.actions')}
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-
-        <Table.Body>
-          {pagedChannels.map((channel, idx) => {
-            if (channel.deleted) return <></>;
-            return (
-              <Table.Row
-                key={channel.id}
-                onClick={() => openChannelByStatus(channel)}
-                className={
-                  inBatchSelectMode ? undefined : 'router-row-clickable'
-                }
+                {t('channel.table.type')}
+              </span>
+            ),
+            dataIndex: 'protocol',
+            key: 'protocol',
+            render: (value) => renderProtocol(value, protocolMap),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortChannel('status');
+                }}
               >
-                {inBatchSelectMode && (
-                  <Table.Cell
-                    collapsing
-                    textAlign='center'
-                    onClick={stopRowClick}
+                {t('channel.table.status')}
+              </span>
+            ),
+            dataIndex: 'status',
+            key: 'status',
+            render: (value) => renderStatus(value, t),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortChannel('created_time');
+                }}
+              >
+                {t('channel.table.created_time')}
+              </span>
+            ),
+            dataIndex: 'created_time',
+            key: 'created_time',
+            render: (value) => (value ? renderTimestamp(value) : '-'),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortChannel('updated_at');
+                }}
+              >
+                {t('channel.table.updated_at')}
+              </span>
+            ),
+            dataIndex: 'updated_at',
+            key: 'updated_at',
+            render: (value) => (value ? renderTimestamp(value) : '-'),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortChannel('capabilities');
+                }}
+              >
+                {t('channel.table.capabilities')}
+              </span>
+            ),
+            dataIndex: 'capabilities',
+            key: 'capabilities',
+            render: (value) => renderCapabilities(value, t),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortChannel('balance');
+                }}
+              >
+                {t('channel.table.balance')}
+              </span>
+            ),
+            dataIndex: 'balance',
+            key: 'balance',
+            render: (_, channel, idx) => (
+              <div onClick={stopRowClick}>
+                <AppTooltip title={t('channel.table.click_to_update')}>
+                  <span
+                    onClick={() => {
+                      if (balanceRefreshTasks[channel.id]) {
+                        return;
+                      }
+                      updateChannelBalance(
+                        channel.id,
+                        getChannelDisplayName(channel),
+                        idx,
+                      );
+                    }}
+                    className='router-row-clickable'
                   >
-                    <Form.Checkbox
-                      checked={selectedChannelIds.includes(channel.id)}
-                      onChange={(e, { checked }) => {
-                        toggleChannelSelection(channel.id, !!checked);
-                      }}
-                    />
-                  </Table.Cell>
-                )}
-                <Table.Cell>{renderChannelName(channel, t)}</Table.Cell>
-                <Table.Cell>
-                  {renderProtocol(channel.protocol, protocolMap)}
-                </Table.Cell>
-                <Table.Cell>{renderStatus(channel.status, t)}</Table.Cell>
-                <Table.Cell>
-                  {channel.created_time ? renderTimestamp(channel.created_time) : '-'}
-                </Table.Cell>
-                <Table.Cell>
-                  {channel.updated_at ? renderTimestamp(channel.updated_at) : '-'}
-                </Table.Cell>
-                <Table.Cell>
-                  {renderCapabilities(channel.capabilities, t)}
-                </Table.Cell>
-                <Table.Cell onClick={stopRowClick}>
-                  <Popup
-                    trigger={
-                      <span
-                        onClick={() => {
-                          if (balanceRefreshTasks[channel.id]) {
-                            return;
-                          }
-                          updateChannelBalance(
-                            channel.id,
-                            getChannelDisplayName(channel),
-                            idx
-                          );
-                        }}
-                        className='router-row-clickable'
-                      >
-                        {balanceRefreshTasks[channel.id] ? (
-                          <>
-                            <Icon loading name='spinner' />
-                            {renderBalance(channel.protocol, channel.balance, t)}
-                          </>
-                        ) : (
-                          renderBalance(channel.protocol, channel.balance, t)
-                        )}
-                      </span>
-                    }
-                    content={t('channel.table.click_to_update')}
-                    basic
+                    {balanceRefreshTasks[channel.id] ? (
+                      <>
+                        <AppIcon name='spinner' className='router-spin-icon' />
+                        {renderBalance(channel.protocol, channel.balance, t)}
+                      </>
+                    ) : (
+                      renderBalance(channel.protocol, channel.balance, t)
+                    )}
+                  </span>
+                </AppTooltip>
+              </div>
+            ),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortChannel('priority');
+                }}
+              >
+                {t('channel.table.priority')}
+              </span>
+            ),
+            dataIndex: 'priority',
+            key: 'priority',
+            render: (value, channel, idx) => (
+              <div onClick={stopRowClick}>
+                <AppTooltip title={t('channel.table.priority_tip')}>
+                  <AppInputNumber
+                    className='router-inline-number-input router-inline-input-short'
+                    defaultValue={value}
+                    onBlur={(event) => {
+                      manageChannel(
+                        channel.id,
+                        'priority',
+                        idx,
+                        event.target.value,
+                      );
+                    }}
                   />
-                </Table.Cell>
-                <Table.Cell onClick={stopRowClick}>
-                  <Popup
-                    trigger={
-                      <Input
-                        className='router-inline-input router-inline-input-short'
-                        type='number'
-                        defaultValue={channel.priority}
-                        onBlur={(event) => {
-                          manageChannel(
-                            channel.id,
-                            'priority',
-                            idx,
-                            event.target.value
-                          );
-                        }}
-                      />
-                    }
-                    content={t('channel.table.priority_tip')}
-                    basic
-                  />
-                </Table.Cell>
-                <Table.Cell
-                  className='router-table-action-cell'
-                  onClick={stopRowClick}
+                </AppTooltip>
+              </div>
+            ),
+          },
+          {
+            title: t('channel.table.actions'),
+            key: 'actions',
+            className: 'router-table-action-cell',
+            render: (_, channel, idx) => (
+              <div
+                className='router-action-group-tight'
+                onClick={stopRowClick}
+              >
+                <AppButton
+                  className='router-inline-button'
+                  color={channel.status === 1 ? undefined : 'blue'}
+                  onClick={() => {
+                    manageChannel(
+                      channel.id,
+                      channel.status === 1 ? 'disable' : 'enable',
+                      idx,
+                    );
+                  }}
                 >
-                  <div className='router-action-group-tight'>
-                    <Button
-                      className='router-inline-button'
-                      onClick={() => {
-                        manageChannel(
-                          channel.id,
-                          channel.status === 1 ? 'disable' : 'enable',
-                          idx
-                        );
-                      }}
-                    >
-                      {channel.status === 1
-                        ? t('channel.buttons.disable')
-                        : t('channel.buttons.enable')}
-                    </Button>
-                    <Button
-                      className='router-inline-button'
-                      as={Link}
-                      to={`/channel/add?copy_from=${channel.id}`}
-                    >
-                      {t('channel.buttons.copy')}
-                    </Button>
-                    <Button
-                      className='router-inline-button'
-                      negative
-                      onClick={() => {
+                  {channel.status === 1
+                    ? t('channel.buttons.disable')
+                    : t('channel.buttons.enable')}
+                </AppButton>
+                <AppButton
+                  className='router-inline-button'
+                  onClick={() => navigate(`/channel/add?copy_from=${channel.id}`)}
+                >
+                  {t('channel.buttons.copy')}
+                </AppButton>
+                <AppMenuDropdown
+                  items={[
+                    {
+                      key: 'copy',
+                      label: t('channel.buttons.copy'),
+                      onClick: () => navigate(`/channel/add?copy_from=${channel.id}`),
+                    },
+                    {
+                      key: 'delete',
+                      label: t('channel.buttons.delete'),
+                      danger: true,
+                      onClick: () => {
                         manageChannel(channel.id, 'delete', idx);
-                      }}
-                    >
-                      {t('channel.buttons.delete')}
-                    </Button>
-                  </div>
-                </Table.Cell>
-              </Table.Row>
-            );
-          })}
-        </Table.Body>
-
-        <Table.Footer>
-          <Table.Row>
-            <Table.HeaderCell colSpan={footerColSpan}>
-              <Pagination
-                className='router-page-pagination'
-                floated='right'
-                activePage={activePage}
-                onPageChange={onPaginationChange}
-                siblingRange={1}
-                totalPages={Math.max(
-                  1,
-                  Math.ceil(totalChannels / ITEMS_PER_PAGE)
-                )}
-              />
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Footer>
-      </Table>
+                      },
+                    },
+                  ]}
+                >
+                  <AppButton className='router-inline-button' type='button'>
+                    {t('common.operation')}
+                  </AppButton>
+                </AppMenuDropdown>
+              </div>
+            ),
+          },
+        ]}
+      />
+      <div className='router-pagination-wrap'>
+        <AppPagination
+          className='router-page-pagination'
+          activePage={activePage}
+          onPageChange={onPaginationChange}
+          siblingRange={1}
+          totalPages={Math.max(1, Math.ceil(totalChannels / ITEMS_PER_PAGE))}
+        />
+      </div>
     </>
   );
 };

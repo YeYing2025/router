@@ -1,5 +1,4 @@
 import { createContext, useContext } from 'react';
-import { Label, Popup } from 'semantic-ui-react';
 import {
   convertYYCToDisplayAmount,
   DEFAULT_FIAT_DISPLAY_CODE,
@@ -9,6 +8,7 @@ import {
   YYC_DISPLAY_CODE,
 } from '../../helpers/billing';
 import { formatAmountWithUnit } from '../../helpers/render';
+import { AppTag, AppTooltip } from '../../router-ui';
 
 export const TOPUP_DISPLAY_CURRENCY_STORAGE_KEY = 'topup_display_currency';
 export const TOPUP_DEFAULT_TAB = 'balance';
@@ -144,42 +144,42 @@ export const renderTopupOrderStatus = (status, t) => {
   switch (status) {
     case 'created':
       return (
-        <Label basic color='blue' className='router-tag'>
+        <AppTag color='blue' className='router-tag'>
           {t('topup.external_topup_orders.status.created')}
-        </Label>
+        </AppTag>
       );
     case 'pending':
       return (
-        <Label basic color='orange' className='router-tag'>
+        <AppTag color='orange' className='router-tag'>
           {t('topup.external_topup_orders.status.pending')}
-        </Label>
+        </AppTag>
       );
     case 'paid':
       return (
-        <Label basic color='teal' className='router-tag'>
+        <AppTag color='teal' className='router-tag'>
           {t('topup.external_topup_orders.status.paid')}
-        </Label>
+        </AppTag>
       );
     case 'fulfilled':
       return (
-        <Label basic color='green' className='router-tag'>
+        <AppTag color='green' className='router-tag'>
           {t('topup.external_topup_orders.status.fulfilled')}
-        </Label>
+        </AppTag>
       );
     case 'failed':
       return (
-        <Label basic color='red' className='router-tag'>
+        <AppTag color='red' className='router-tag'>
           {t('topup.external_topup_orders.status.failed')}
-        </Label>
+        </AppTag>
       );
     case 'canceled':
       return (
-        <Label basic className='router-tag'>
+        <AppTag className='router-tag'>
           {t('topup.external_topup_orders.status.canceled')}
-        </Label>
+        </AppTag>
       );
     default:
-      return <Label basic className='router-tag'>{status || '-'}</Label>;
+      return <AppTag className='router-tag'>{status || '-'}</AppTag>;
   }
 };
 
@@ -331,10 +331,9 @@ export const renderTopupIntegerAmountWithExactPopup = ({
     return '-';
   }
   return (
-    <Popup
-      content={exactText}
-      trigger={renderTopupAmountTrigger(integerText)}
-    />
+    <AppTooltip title={exactText}>
+      {renderTopupAmountTrigger(integerText)}
+    </AppTooltip>
   );
 };
 

@@ -1,47 +1,47 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Breadcrumb, Card, Label } from 'semantic-ui-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { API, showError, timestamp2string } from '../../helpers';
 import { renderDisplayAmount, YYC_SYMBOL } from '../../helpers/render';
+import { AppBreadcrumb, AppDetailSection, AppIcon, AppSection, AppTag } from '../../router-ui';
 
 function renderType(type, t) {
   switch (Number(type)) {
     case 1:
       return (
-        <Label basic color='green' className='router-tag'>
+        <AppTag color='green' className='router-tag'>
           {t('log.type.topup')}
-        </Label>
+        </AppTag>
       );
     case 2:
       return (
-        <Label basic color='olive' className='router-tag'>
+        <AppTag color='olive' className='router-tag'>
           {t('log.type.usage')}
-        </Label>
+        </AppTag>
       );
     case 3:
       return (
-        <Label basic color='orange' className='router-tag'>
+        <AppTag color='orange' className='router-tag'>
           {t('log.type.admin')}
-        </Label>
+        </AppTag>
       );
     case 4:
       return (
-        <Label basic color='purple' className='router-tag'>
+        <AppTag color='purple' className='router-tag'>
           {t('log.type.system')}
-        </Label>
+        </AppTag>
       );
     case 5:
       return (
-        <Label basic color='violet' className='router-tag'>
+        <AppTag color='violet' className='router-tag'>
           {t('log.type.test')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label basic color='black' className='router-tag'>
+        <AppTag color='black' className='router-tag'>
           -
-        </Label>
+        </AppTag>
       );
   }
 }
@@ -176,29 +176,37 @@ const LogDetail = () => {
 
   return (
     <div className='dashboard-container'>
-      <Card fluid className='chart-card'>
-        <Card.Content>
-          <div className='router-entity-detail-page'>
+      <AppSection>
+        <div className='router-entity-detail-page'>
             <div className='router-entity-detail-breadcrumb'>
-              <Breadcrumb size='small'>
-                <Breadcrumb.Section link onClick={() => navigate(listPath)}>
-                  {t('header.log')}
-                </Breadcrumb.Section>
-                <Breadcrumb.Divider icon='right chevron' />
-                <Breadcrumb.Section active>
-                  {renderText(log?.id || id)}
-                </Breadcrumb.Section>
-              </Breadcrumb>
+              <div className='router-provider-detail-breadcrumb'>
+                <AppBreadcrumb
+                  items={[
+                    {
+                      key: 'log-list',
+                      label: t('header.log'),
+                      onClick: () => navigate(listPath),
+                    },
+                    {
+                      key: 'log-current',
+                      label: renderText(log?.id || id),
+                      active: true,
+                    },
+                  ]}
+                />
+              </div>
             </div>
 
             {loading ? (
               <div className='router-empty-cell'>{t('common.loading')}</div>
             ) : (
               <>
-                <div className='router-detail-section'>
-                  <div className='router-detail-section-title'>
-                    {t('log.detail.sections.basic')}
-                  </div>
+                <AppDetailSection
+                  className='router-detail-section'
+                  title={t('log.detail.sections.basic')}
+                  titleTag='div'
+                  titleClassName='router-detail-section-title'
+                >
                   <div className='router-detail-grid'>
                     <div className='router-detail-item'>
                       <div className='router-detail-label'>
@@ -231,17 +239,16 @@ const LogDetail = () => {
                         {t('log.detail.fields.channel')}
                       </div>
                       <div className='router-detail-value'>
-                        {isAdminPage ? (
-                          log?.channel ? (
-                            <Label
-                              basic
+                          {isAdminPage ? (
+                            log?.channel ? (
+                            <AppTag
                               className='router-tag'
                               as={Link}
                               to={`/admin/channel/detail/${log.channel}`}
                               state={{ from: currentPagePath }}
                             >
                               {log?.channel_name || log?.channel}
-                            </Label>
+                            </AppTag>
                           ) : (
                             '-'
                           )
@@ -257,15 +264,14 @@ const LogDetail = () => {
                         </div>
                         <div className='router-detail-value'>
                           {log?.group_id ? (
-                            <Label
-                              basic
+                            <AppTag
                               className='router-tag'
                               as={Link}
                               to={`/admin/group/detail/${log.group_id}`}
                               state={{ from: currentPagePath }}
                             >
                               {log?.group_name || log?.group_id}
-                            </Label>
+                            </AppTag>
                           ) : (
                             '-'
                           )}
@@ -377,12 +383,14 @@ const LogDetail = () => {
                       </pre>
                     </div>
                   </div>
-                </div>
+                </AppDetailSection>
 
-                <div className='router-detail-section'>
-                  <div className='router-detail-section-title'>
-                    {t('log.detail.sections.billing')}
-                  </div>
+                <AppDetailSection
+                  className='router-detail-section'
+                  title={t('log.detail.sections.billing')}
+                  titleTag='div'
+                  titleClassName='router-detail-section-title'
+                >
                   <div className='router-detail-grid'>
                     <div className='router-detail-item'>
                       <div className='router-detail-label'>
@@ -560,21 +568,22 @@ const LogDetail = () => {
                       </div>
                     </div>
                   </div>
-                </div>
+                </AppDetailSection>
 
-                <div className='router-detail-section'>
-                  <div className='router-detail-section-title'>
-                    {t('log.detail.sections.content')}
-                  </div>
+                <AppDetailSection
+                  className='router-detail-section'
+                  title={t('log.detail.sections.content')}
+                  titleTag='div'
+                  titleClassName='router-detail-section-title'
+                >
                   <pre className='router-detail-pre'>
                     {renderText(log?.content)}
                   </pre>
-                </div>
+                </AppDetailSection>
               </>
             )}
-          </div>
-        </Card.Content>
-      </Card>
+        </div>
+      </AppSection>
     </div>
   );
 };

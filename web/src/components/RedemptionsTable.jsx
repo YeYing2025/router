@@ -1,13 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Button,
-  Form,
-  Label,
-  Popup,
-  Pagination,
-  Table,
-} from 'semantic-ui-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   API,
@@ -27,6 +19,15 @@ import {
   formatDecimalNumber,
 } from '../helpers/render';
 import UnitDropdown from './UnitDropdown';
+import {
+  AppButton,
+  AppFilterHeader,
+  AppInput,
+  AppPagination,
+  AppPopconfirm,
+  AppTable,
+  AppTag,
+} from '../router-ui';
 
 function renderTimestamp(timestamp) {
   return <>{timestamp2string(timestamp)}</>;
@@ -94,27 +95,27 @@ function renderStatus(status, t) {
   switch (status) {
     case 1:
       return (
-        <Label basic color='green' className='router-tag'>
+        <AppTag color='green' className='router-tag'>
           {t('redemption.status.unused')}
-        </Label>
+        </AppTag>
       );
     case 2:
       return (
-        <Label basic color='red' className='router-tag'>
+        <AppTag color='red' className='router-tag'>
           {t('redemption.status.disabled')}
-        </Label>
+        </AppTag>
       );
     case 3:
       return (
-        <Label basic color='grey' className='router-tag'>
+        <AppTag color='grey' className='router-tag'>
           {t('redemption.status.used')}
-        </Label>
+        </AppTag>
       );
     default:
       return (
-        <Label basic color='black' className='router-tag'>
+        <AppTag color='black' className='router-tag'>
           {t('redemption.status.unknown')}
-        </Label>
+        </AppTag>
       );
   }
 }
@@ -320,64 +321,109 @@ const RedemptionsTable = () => {
 
   return (
     <>
-      <div className='router-toolbar router-block-gap-md'>
-        <div className='router-toolbar-start'>
-          <Button
-            className='router-page-button'
-            as={Link}
-            to='/redemption/add'
-          >
-            {t('redemption.buttons.add')}
-          </Button>
-          <Button className='router-page-button' onClick={refresh} loading={loading}>
-            {t('redemption.buttons.refresh')}
-          </Button>
-        </div>
-        <Form onSubmit={searchRedemptions} className='router-search-form-lg'>
-          <Form.Input
-            className='router-section-input'
-            icon='search'
-            fluid
-            iconPosition='left'
-            placeholder={t('redemption.search')}
-            value={searchKeyword}
-            loading={searching}
-            onChange={handleKeywordChange}
-          />
-        </Form>
-      </div>
+      <AppFilterHeader
+        className='router-block-gap-md'
+        title={t('header.redemption')}
+        meta={`${redemptions.filter((row) => !row?.deleted).length} / ${totalCount}`}
+        actions={
+          <div className='router-list-toolbar-actions'>
+            <AppButton
+              className='router-page-button'
+              color='blue'
+              onClick={() => navigate('/redemption/add')}
+            >
+              {t('redemption.buttons.add')}
+            </AppButton>
+            <AppButton className='router-page-button' onClick={refresh} loading={loading}>
+              {t('redemption.buttons.refresh')}
+            </AppButton>
+          </div>
+        }
+        query={
+          <div className='router-list-toolbar-query'>
+            <AppInput
+              className='router-section-input'
+              icon='search'
+              fluid
+              iconPosition='left'
+              placeholder={t('redemption.search')}
+              value={searchKeyword}
+              loading={searching}
+              onChange={handleKeywordChange}
+            />
+          </div>
+        }
+      />
 
-      <Table basic={'very'} compact className='router-hover-table router-list-table'>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortRedemption('name');
-              }}
-            >
-              {t('redemption.table.name')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortRedemption('group_name');
-              }}
-            >
-              {t('redemption.table.group')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortRedemption('status');
-              }}
-            >
-              {t('redemption.table.status')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-redemption-face-value-header'
-            >
-              <div className='router-table-header-with-control'>
+      <AppTable
+        className='router-hover-table router-list-table'
+        pagination={false}
+        rowKey={(redemption) => redemption.id}
+        dataSource={redemptions
+          .slice(
+            (activePage - 1) * ITEMS_PER_PAGE,
+            activePage * ITEMS_PER_PAGE,
+          )
+          .filter((redemption) => !redemption?.deleted)}
+        onRow={(redemption) => ({
+          className: 'router-row-clickable',
+          onClick: () => {
+            navigate(`/redemption/${redemption.id}`, {
+              state: {
+                from: currentPagePath,
+              },
+            });
+          },
+        })}
+        columns={[
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortRedemption('name');
+                }}
+              >
+                {t('redemption.table.name')}
+              </span>
+            ),
+            dataIndex: 'name',
+            key: 'name',
+            render: (value) => value || t('redemption.table.no_name'),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortRedemption('group_name');
+                }}
+              >
+                {t('redemption.table.group')}
+              </span>
+            ),
+            dataIndex: 'groupLabel',
+            key: 'groupLabel',
+            render: (value) => value || '-',
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortRedemption('status');
+                }}
+              >
+                {t('redemption.table.status')}
+              </span>
+            ),
+            dataIndex: 'status',
+            key: 'status',
+            render: (value) => renderStatus(value, t),
+          },
+          {
+            title: (
+              <div className='router-table-header-with-control router-redemption-face-value-header'>
                 <span
                   className='router-sortable-header'
                   onClick={() => {
@@ -399,163 +445,122 @@ const RedemptionsTable = () => {
                   }}
                 />
               </div>
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortRedemption('created_time');
-              }}
-            >
-              {t('redemption.table.created_time')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortRedemption('code_expires_at');
-              }}
-            >
-              {t('redemption.table.code_expires_at')}
-            </Table.HeaderCell>
-            <Table.HeaderCell
-              className='router-sortable-header'
-              onClick={() => {
-                sortRedemption('redeemed_time');
-              }}
-            >
-              {t('redemption.table.redeemed_time')}
-            </Table.HeaderCell>
-            <Table.HeaderCell className='router-table-action-cell router-redemption-action-cell'>
-              {t('redemption.table.actions')}
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-
-        <Table.Body>
-          {redemptions
-            .slice(
-              (activePage - 1) * ITEMS_PER_PAGE,
-              activePage * ITEMS_PER_PAGE
-            )
-            .map((redemption, idx) => {
-              if (redemption.deleted) return null;
-              return (
-                <Table.Row
-                  key={redemption.id}
-                  className='router-row-clickable'
-                  onClick={() => {
-                    navigate(`/redemption/${redemption.id}`, {
-                      state: {
-                        from: currentPagePath,
-                      },
-                    });
+            ),
+            key: 'face_value',
+            render: (_, redemption) =>
+              renderDisplayFaceValue(redemption, displayUnit, currencyIndex),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortRedemption('created_time');
+                }}
+              >
+                {t('redemption.table.created_time')}
+              </span>
+            ),
+            key: 'created_time',
+            render: (_, redemption) =>
+              renderTimestamp(redemption.createdTime || redemption.created_time),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortRedemption('code_expires_at');
+                }}
+              >
+                {t('redemption.table.code_expires_at')}
+              </span>
+            ),
+            dataIndex: 'code_expires_at',
+            key: 'code_expires_at',
+            render: (value) => renderExpiryTime(value, t),
+          },
+          {
+            title: (
+              <span
+                className='router-sortable-header'
+                onClick={() => {
+                  sortRedemption('redeemed_time');
+                }}
+              >
+                {t('redemption.table.redeemed_time')}
+              </span>
+            ),
+            key: 'redeemed_time',
+            render: (_, redemption) =>
+              redemption.redeemedTime
+                ? renderTimestamp(redemption.redeemedTime)
+                : t('redemption.table.not_redeemed'),
+          },
+          {
+            title: t('redemption.table.actions'),
+            key: 'actions',
+            className: 'router-table-action-cell router-redemption-action-cell',
+            render: (_, redemption, idx) => (
+              <div
+                className='router-action-group-tight'
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                <AppButton
+                  className='router-inline-button'
+                  color='blue'
+                  onClick={async () => {
+                    if (await copy(redemption.code)) {
+                      showSuccess(t('token.messages.copy_success'));
+                    } else {
+                      showWarning(t('token.messages.copy_failed'));
+                      setSearchKeyword(redemption.code);
+                    }
                   }}
                 >
-                  <Table.Cell>
-                    {redemption.name ? redemption.name : t('redemption.table.no_name')}
-                  </Table.Cell>
-                  <Table.Cell>{redemption.groupLabel || '-'}</Table.Cell>
-                  <Table.Cell>{renderStatus(redemption.status, t)}</Table.Cell>
-                  <Table.Cell>{renderDisplayFaceValue(redemption, displayUnit, currencyIndex)}</Table.Cell>
-                  <Table.Cell>
-                    {renderTimestamp(redemption.createdTime || redemption.created_time)}
-                  </Table.Cell>
-                  <Table.Cell>
-                    {renderExpiryTime(redemption.code_expires_at, t)}
-                  </Table.Cell>
-                  <Table.Cell>
-                    {redemption.redeemedTime
-                      ? renderTimestamp(redemption.redeemedTime)
-                      : t('redemption.table.not_redeemed')}{' '}
-                  </Table.Cell>
-                  <Table.Cell
-                    className='router-table-action-cell router-redemption-action-cell'
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    <div className='router-action-group-tight'>
-                      <Button
-                        className='router-inline-button'
-                        positive
-                        size='mini'
-                        compact
-                        onClick={async () => {
-                          if (await copy(redemption.code)) {
-                            showSuccess(t('token.messages.copy_success'));
-                          } else {
-                            showWarning(t('token.messages.copy_failed'));
-                            setSearchKeyword(redemption.code);
-                          }
-                        }}
-                      >
-                        {t('redemption.buttons.copy')}
-                      </Button>
-                      <Popup
-                        trigger={
-                          <Button
-                            className='router-inline-button'
-                            negative
-                            size='mini'
-                            compact
-                          >
-                            {t('redemption.buttons.delete')}
-                          </Button>
-                        }
-                        on='click'
-                        flowing
-                        hoverable
-                      >
-                        <Button
-                          className='router-inline-button'
-                          negative
-                          size='mini'
-                          compact
-                          onClick={() => {
-                            manageRedemption(redemption.id, 'delete', idx);
-                          }}
-                        >
-                          {t('redemption.buttons.confirm_delete')}
-                        </Button>
-                      </Popup>
-                      <Button
-                        className='router-inline-button'
-                        size='mini'
-                        compact
-                        disabled={redemption.status === 3} // used
-                        onClick={() => {
-                          manageRedemption(
-                            redemption.id,
-                            redemption.status === 1 ? 'disable' : 'enable',
-                            idx
-                          );
-                        }}
-                      >
-                        {redemption.status === 1
-                          ? t('redemption.buttons.disable')
-                          : t('redemption.buttons.enable')}
-                      </Button>
-                    </div>
-                  </Table.Cell>
-                </Table.Row>
-              );
-            })}
-        </Table.Body>
-
-        <Table.Footer>
-          <Table.Row>
-            <Table.HeaderCell colSpan='8'>
-              <Pagination
-                className='router-page-pagination'
-                floated='right'
-                activePage={activePage}
-                onPageChange={onPaginationChange}
-                siblingRange={1}
-                totalPages={totalPages}
-              />
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Footer>
-      </Table>
+                  {t('redemption.buttons.copy')}
+                </AppButton>
+                <AppPopconfirm
+                  title={t('redemption.buttons.confirm_delete')}
+                  onConfirm={() => {
+                    manageRedemption(redemption.id, 'delete', idx);
+                  }}
+                >
+                  <AppButton className='router-inline-button' color='red'>
+                    {t('redemption.buttons.delete')}
+                  </AppButton>
+                </AppPopconfirm>
+                <AppButton
+                  className='router-inline-button'
+                  disabled={redemption.status === 3}
+                  onClick={() => {
+                    manageRedemption(
+                      redemption.id,
+                      redemption.status === 1 ? 'disable' : 'enable',
+                      idx,
+                    );
+                  }}
+                >
+                  {redemption.status === 1
+                    ? t('redemption.buttons.disable')
+                    : t('redemption.buttons.enable')}
+                </AppButton>
+              </div>
+            ),
+          },
+        ]}
+      />
+      <div className='router-pagination-wrap'>
+        <AppPagination
+          className='router-page-pagination'
+          activePage={activePage}
+          onPageChange={onPaginationChange}
+          siblingRange={1}
+          totalPages={totalPages}
+        />
+      </div>
     </>
   );
 };

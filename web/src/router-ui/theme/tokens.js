@@ -1,0 +1,31 @@
+export const routerTokens = {
+  colorPrimary: '#1677ff',
+  colorSuccess: '#52c41a',
+  colorWarning: '#faad14',
+  colorError: '#ff4d4f',
+  colorText: '#1f2329',
+  colorTextSecondary: '#667085',
+  colorTextMuted: 'rgba(31, 35, 41, 0.6)',
+  colorBorder: '#d9d9d9',
+  colorBgContainer: '#ffffff',
+  colorBgMuted: '#f5f6f7',
+  borderRadiusSM: 6,
+  borderRadius: 8,
+  borderRadiusLG: 10,
+  controlHeightSM: 28,
+  controlHeight: 32,
+  controlHeightLG: 36,
+  fontFamily:
+    "'Helvetica Neue', Arial, Helvetica, 'Microsoft YaHei', sans-serif",
+  fontSizeSM: 13,
+  fontSize: 14,
+  fontSizeLG: 16,
+  lineHeight: 1.5,
+  spaceXS: 4,
+  spaceSM: 8,
+  spaceMD: 12,
+  spaceLG: 16,
+  spaceXL: 24,
+};
+
+export default routerTokens;

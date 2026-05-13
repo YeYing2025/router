@@ -1,9 +1,9 @@
 import React, { useContext, useState } from 'react';
-import { Button, Form, Grid, Header, Image, Message, Card } from 'semantic-ui-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { API, getLogo, showError, showInfo, showSuccess } from '../helpers';
 import { StatusContext } from '../context/Status';
+import { AppAlert, AppButton, AppInput, AppSection } from '../router-ui';
 
 const RegisterForm = () => {
   const { t } = useTranslation();
@@ -83,24 +83,25 @@ const RegisterForm = () => {
   }
 
   return (
-    <Grid textAlign='center' className='router-auth-shell'>
-      <Grid.Column>
-        <Card fluid className='chart-card router-auth-card'>
-          <Card.Content>
-            <Card.Header>
-              <Header as='h2' textAlign='center' className='router-auth-title router-auth-header'>
-                <Image src={logo} className='router-auth-logo' />
-                <Header.Content>{t('auth.register.title')}</Header.Content>
-              </Header>
-            </Card.Header>
+    <div className='router-auth-shell'>
+      <div className='router-auth-panel'>
+        <AppSection className='router-auth-card'>
+          <div className='router-auth-card-body'>
+            <div className='router-auth-title router-auth-header'>
+              <img src={logo} alt='logo' className='router-auth-logo' />
+              <h2>{t('auth.register.title')}</h2>
+            </div>
             {!registerEnabled && (
-              <Message warning className='router-auth-message'>
-                {registerDisabledMessage}
-              </Message>
+              <AppAlert
+                type='warning'
+                showIcon
+                className='router-auth-message'
+                title={registerDisabledMessage}
+              />
             )}
             {registerEnabled && (
-              <Form className='router-auth-form'>
-                <Form.Input
+              <div className='router-auth-form'>
+                <AppInput
                   className='router-auth-input'
                   fluid
                   icon='user'
@@ -109,7 +110,7 @@ const RegisterForm = () => {
                   onChange={handleChange}
                   name='username'
                 />
-                <Form.Input
+                <AppInput
                   className='router-auth-input'
                   fluid
                   icon='lock'
@@ -119,7 +120,7 @@ const RegisterForm = () => {
                   name='password'
                   type='password'
                 />
-                <Form.Input
+                <AppInput
                   className='router-auth-input'
                   fluid
                   icon='lock'
@@ -129,29 +130,29 @@ const RegisterForm = () => {
                   name='password2'
                   type='password'
                 />
-                <Button
+                <AppButton
                   className='router-auth-button router-auth-primary'
                   fluid
                   onClick={handleSubmit}
                   loading={loading}
                 >
                   {t('auth.register.button')}
-                </Button>
-              </Form>
+                </AppButton>
+              </div>
             )}
 
-            <Message className='router-auth-message'>
+            <div className='router-auth-message'>
               <div className='router-auth-secondary-text'>
                 {t('auth.register.has_account')}
                 <Link to='/login' className='router-auth-link'>
                   {t('auth.register.login')}
                 </Link>
               </div>
-            </Message>
-          </Card.Content>
-        </Card>
-      </Grid.Column>
-    </Grid>
+            </div>
+          </div>
+        </AppSection>
+      </div>
+    </div>
   );
 };
 

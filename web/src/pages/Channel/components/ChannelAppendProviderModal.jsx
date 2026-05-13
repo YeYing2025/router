@@ -1,5 +1,12 @@
 import React from 'react';
-import { Button, Dropdown, Form, Modal } from 'semantic-ui-react';
+import {
+  AppButton,
+  AppField,
+  AppFormActions,
+  AppInput,
+  AppModal,
+  AppSelect,
+} from '../../../router-ui';
 
 const ChannelAppendProviderModal = ({
   t,
@@ -15,21 +22,41 @@ const ChannelAppendProviderModal = ({
   handleAppendModelToProvider,
 }) => {
   return (
-    <Modal
+    <AppModal
       size='tiny'
       open={open}
       onClose={onClose}
       closeOnDimmerClick={!appendingProviderModel}
+      title={t('channel.edit.model_selector.append_dialog.title')}
+      footer={
+        <AppFormActions>
+          <AppButton
+            type='button'
+            className='router-modal-button'
+            onClick={onClose}
+            disabled={appendingProviderModel}
+          >
+            {t('channel.edit.model_selector.append_dialog.cancel')}
+          </AppButton>
+          <AppButton
+            type='button'
+            className='router-modal-button'
+            color='blue'
+            loading={appendingProviderModel}
+            disabled={appendingProviderModel}
+            onClick={handleAppendModelToProvider}
+          >
+            {t('channel.edit.model_selector.append_dialog.confirm')}
+          </AppButton>
+        </AppFormActions>
+      }
     >
-      <Modal.Header>
-        {t('channel.edit.model_selector.append_dialog.title')}
-      </Modal.Header>
-      <Modal.Content>
-        <Form>
-          <Form.Field>
-            <label>{t('channel.edit.model_selector.append_dialog.provider')}</label>
-            <Dropdown
-              selection
+      <div>
+        <div className='router-block-gap'>
+          <AppField
+            label={t('channel.edit.model_selector.append_dialog.provider')}
+          >
+            <AppSelect
               search={filterProviderOptionsByQuery}
               className='router-modal-dropdown'
               placeholder={t(
@@ -45,48 +72,35 @@ const ChannelAppendProviderModal = ({
                 }))
               }
             />
-          </Form.Field>
-          <Form.Input
-            className='router-modal-input'
-            label={t('channel.edit.model_selector.append_dialog.model')}
-            value={appendProviderForm.model}
-            onChange={(e, { value }) =>
-              setAppendProviderForm((prev) => ({
-                ...prev,
-                model: value || '',
-              }))
-            }
-          />
-          <Form.Select
-            className='router-modal-dropdown'
-            label={t('channel.edit.model_selector.append_dialog.type')}
-            options={channelModelTypeOptions}
-            value={appendProviderForm.type}
-            onChange={(e, { value }) =>
-              setAppendProviderForm((prev) => ({
-                ...prev,
-                type: normalizeChannelModelType(value),
-              }))
-            }
-          />
-        </Form>
-      </Modal.Content>
-      <Modal.Actions>
-        <Button type='button' className='router-modal-button' onClick={onClose}>
-          {t('channel.edit.model_selector.append_dialog.cancel')}
-        </Button>
-        <Button
-          type='button'
-          className='router-modal-button'
-          color='blue'
-          loading={appendingProviderModel}
-          disabled={appendingProviderModel}
-          onClick={handleAppendModelToProvider}
-        >
-          {t('channel.edit.model_selector.append_dialog.confirm')}
-        </Button>
-      </Modal.Actions>
-    </Modal>
+          </AppField>
+          <AppField label={t('channel.edit.model_selector.append_dialog.model')}>
+            <AppInput
+              className='router-modal-input'
+              value={appendProviderForm.model}
+              onChange={(e, { value }) =>
+                setAppendProviderForm((prev) => ({
+                  ...prev,
+                  model: value || '',
+                }))
+              }
+            />
+          </AppField>
+          <AppField label={t('channel.edit.model_selector.append_dialog.type')}>
+            <AppSelect
+              className='router-modal-dropdown'
+              options={channelModelTypeOptions}
+              value={appendProviderForm.type}
+              onChange={(e, { value }) =>
+                setAppendProviderForm((prev) => ({
+                  ...prev,
+                  type: normalizeChannelModelType(value),
+                }))
+              }
+            />
+          </AppField>
+        </div>
+      </div>
+    </AppModal>
   );
 };
 
