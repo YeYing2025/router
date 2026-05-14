@@ -1765,8 +1765,9 @@ const ProvidersManager = () => {
           />
         ) : null}
         <AppTable
-          className='router-detail-table'
+          className='router-detail-table router-provider-model-detail-table'
           size='small'
+          tableLayout='fixed'
           pagination={false}
           rowKey={(record) =>
             `${record?.detail?.model || 'model'}-${record?.index ?? '0'}`
@@ -1775,7 +1776,6 @@ const ProvidersManager = () => {
           locale={{
             emptyText: t('channel.providers.model_detail_table.empty'),
           }}
-          scroll={{ x: 1480 }}
           expandable={{
             expandedRowKeys: visibleDetailRows.map(
               ({ detail, index }) => `${detail?.model || 'model'}-${index}`,
@@ -1801,9 +1801,9 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.model'),
               key: 'model',
-              width: 160,
+              width: 128,
               render: (_, { detail, index: detailIndex }) => (
-                <div className='router-cell-min-130'>
+                <div>
                   <AppInput
                     className='router-inline-input'
                     value={detail.model || ''}
@@ -1824,9 +1824,9 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.description'),
               key: 'description',
-              width: 240,
+              width: 150,
               render: (_, { detail, index: detailIndex }) => (
-                <div className='router-cell-min-220'>
+                <div>
                   <AppTextarea
                     className='router-inline-input'
                     rows={2}
@@ -1851,9 +1851,9 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.status'),
               key: 'status',
-              width: 140,
+              width: 92,
               render: (_, { detail, index: detailIndex }) => (
-                <div className='router-cell-min-120'>
+                <div>
                   <AppSelect
                     className='router-inline-dropdown'
                     options={PROVIDER_MODEL_STATUS_OPTIONS}
@@ -1875,9 +1875,9 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.type'),
               key: 'type',
-              width: 140,
+              width: 72,
               render: (_, { detail, index: detailIndex }) => (
-                <div className='router-cell-min-120'>
+                <div>
                   <AppSelect
                     className='router-inline-dropdown'
                     options={MODEL_TYPE_OPTIONS}
@@ -1899,9 +1899,9 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.supported_endpoints'),
               key: 'supported_endpoints',
-              width: 360,
+              width: 170,
               render: (_, { detail, index: detailIndex }) => (
-                <div className='router-cell-min-360'>
+                <div>
                   <AppSelect
                     className='router-inline-dropdown'
                     multiple
@@ -1928,14 +1928,14 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.price_compact'),
               key: 'price_compact',
-              width: 220,
+              width: 188,
               render: (_, { detail, index: detailIndex }) => (
                 <div className='router-block-gap-xs'>
                   <div className='router-muted'>
                     {t('channel.providers.model_detail_table.input_price')}
                   </div>
                   <AppInputNumber
-                    className='router-inline-input'
+                    className='router-inline-input router-inline-input-price'
                     step='0.000001'
                     min={0}
                     precision={6}
@@ -1955,7 +1955,7 @@ const ProvidersManager = () => {
                     {t('channel.providers.model_detail_table.output_price')}
                   </div>
                   <AppInputNumber
-                    className='router-inline-input'
+                    className='router-inline-input router-inline-input-price'
                     step='0.000001'
                     min={0}
                     precision={6}
@@ -1977,7 +1977,7 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.price_unit'),
               key: 'price_unit',
-              width: 160,
+              width: 96,
               render: (_, { detail, index: detailIndex }) => (
                 <AppInput
                   className='router-inline-input'
@@ -1998,7 +1998,7 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.currency'),
               key: 'currency',
-              width: 120,
+              width: 76,
               render: (_, { detail, index: detailIndex }) => (
                 <AppInput
                   className='router-inline-input'
@@ -2019,7 +2019,7 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.price_components'),
               key: 'price_components',
-              width: 180,
+              width: 96,
               render: (_, { index: detailIndex }) => (
                 <AppButton
                   type='button'
@@ -2036,7 +2036,7 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.actions'),
               key: 'actions',
-              width: 120,
+              width: 56,
               render: (_, { index: detailIndex }) => (
                 <AppButton
                   type='button'
@@ -2127,8 +2127,9 @@ const ProvidersManager = () => {
             />
         ) : null}
         <AppTable
-          className='router-detail-table'
+          className='router-detail-table router-provider-model-detail-table'
           size='small'
+          tableLayout='fixed'
           pagination={false}
           rowKey={(record) =>
             `${record?.detail?.model || 'model'}-${record?.index ?? '0'}`
@@ -2137,15 +2138,14 @@ const ProvidersManager = () => {
           locale={{
             emptyText: t('channel.providers.model_detail_table.empty'),
           }}
-          scroll={{ x: 1280 }}
           columns={[
             {
               title: t('channel.providers.model_detail_table.model'),
               dataIndex: ['detail', 'model'],
               key: 'model',
-              width: 150,
+              width: 132,
               render: (value) => (
-                <div className='router-model-title router-cell-min-130'>
+                <div className='router-model-title'>
                   {value || '-'}
                 </div>
               ),
@@ -2154,10 +2154,10 @@ const ProvidersManager = () => {
               title: t('channel.providers.model_detail_table.description'),
               dataIndex: ['detail', 'description'],
               key: 'description',
-              width: 240,
+              width: 170,
               render: (value) =>
                 value ? (
-                  <div className='router-model-description router-cell-min-220'>
+                  <div className='router-model-description'>
                     {value}
                   </div>
                 ) : (
@@ -2168,28 +2168,24 @@ const ProvidersManager = () => {
               title: t('channel.providers.model_detail_table.status'),
               dataIndex: ['detail', 'status'],
               key: 'status',
-              width: 96,
-              render: (value) => (
-                <div className='router-cell-min-90'>{value || 'active'}</div>
-              ),
+              width: 80,
+              render: (value) => value || 'active',
             },
             {
               title: t('channel.providers.model_detail_table.type'),
               dataIndex: ['detail', 'type'],
               key: 'type',
-              width: 88,
-              render: (value) => (
-                <div className='router-cell-min-80'>{value || 'text'}</div>
-              ),
+              width: 68,
+              render: (value) => value || 'text',
             },
             {
               title: t('channel.providers.model_detail_table.supported_endpoints'),
               dataIndex: ['detail', 'supported_endpoints'],
               key: 'supported_endpoints',
-              width: 320,
+              width: 210,
               render: (endpoints, record) =>
                 Array.isArray(endpoints) && endpoints.length > 0 ? (
-                  <div className='router-cell-min-300'>
+                  <div>
                     {endpoints.map((endpoint) => (
                       <AppTag
                         key={`${record.detail?.model || 'model'}-${endpoint}`}
@@ -2206,6 +2202,7 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.price_compact'),
               key: 'price_compact',
+              width: 188,
               render: (_, { detail }) => {
                 const showInputDetail = hasComplexInputPricing(detail);
                 const showOutputDetail = hasComplexOutputPricing(detail);
@@ -2236,26 +2233,22 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.price_unit'),
               key: 'price_unit',
-              width: 132,
-              render: (_, { detail }) => (
-                <div className='router-cell-min-120'>
-                  {summarizeModelPriceUnit(detail, t)}
-                </div>
-              ),
+              width: 110,
+              render: (_, { detail }) => summarizeModelPriceUnit(detail, t),
             },
             {
               title: t('channel.providers.model_detail_table.currency'),
               dataIndex: ['detail', 'currency'],
               key: 'currency',
-              width: 96,
+              width: 72,
               render: (value) => value || 'USD',
             },
             {
               title: t('channel.providers.model_detail_table.actions'),
               key: 'actions',
-              width: 160,
+              width: 112,
               render: (_, { index: detailIndex }) => (
-                <div className='router-nowrap'>
+                <div className='router-provider-model-detail-actions'>
                   <AppButton
                     type='button'
                     className='router-inline-button'

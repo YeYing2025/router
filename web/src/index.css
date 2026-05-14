@@ -2011,6 +2011,16 @@ body,
     padding-bottom: 18px !important;
 }
 
+.router-ui-table.router-provider-model-detail-table .ant-table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.router-ui-table.router-provider-model-detail-table .ant-table-thead > tr > th,
+.router-ui-table.router-provider-model-detail-table .ant-table-tbody > tr > td {
+    word-break: break-word;
+}
+
 .router-ui-table.router-list-table .ant-table-thead > tr > th.router-topup-reconcile-message-cell,
 .router-ui-table.router-list-table .ant-table-tbody > tr > td.router-topup-reconcile-message-cell {
     width: 180px !important;
@@ -3143,6 +3153,12 @@ body,
     white-space: nowrap;
 }
 
+.router-provider-model-detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .router-ui-table.router-create-model-table .ant-table {
     width: 100%;
     table-layout: fixed;
@@ -3793,6 +3809,12 @@ body,
 .router-ui-input-number.router-inline-input-short,
 .router-ui-input-number.router-inline-input-short .ant-input-number-input {
     max-width: 60px !important;
+}
+
+.router-ui-input.router-inline-input-price .ant-input,
+.router-ui-input-number.router-inline-input-price,
+.router-ui-input-number.router-inline-input-price .ant-input-number-input-wrap {
+    max-width: 140px !important;
 }
 
 .router-pagination-wrap {
