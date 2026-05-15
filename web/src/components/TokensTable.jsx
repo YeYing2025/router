@@ -443,7 +443,7 @@ const TokensTable = () => {
               className='router-page-button'
               color='blue'
               as={Link}
-              to='/token/add'
+              to='/workspace/token/add'
             >
               {t('token.buttons.add')}
             </AppButton>

@@ -1155,6 +1155,7 @@
       "messages": {
         "update_success": "Token updated successfully!",
         "create_success": "Token created successfully, please copy it from the list page!",
+        "name_required": "Please enter a token name.",
         "expire_time_invalid": "Invalid expiry time format!",
         "models_required": "Please select at least one model."
       }

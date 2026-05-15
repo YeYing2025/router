@@ -296,7 +296,10 @@ const EditToken = () => {
   }, [isDetailMode, loadAvailableModels, loadToken]);
 
   const submit = async () => {
-    if (isCreateMode && inputs.name === '') return;
+    if (isCreateMode && inputs.name.trim() === '') {
+      showError(t('token.edit.messages.name_required'));
+      return;
+    }
     const localInputs = { ...inputs };
     localInputs.remain_quota = parseInt(localInputs.remain_quota);
     if (localInputs.expired_time) {
