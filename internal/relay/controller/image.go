@@ -550,7 +550,7 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	// do request
 	resp, err := adaptor.DoRequest(c, meta, requestBody)
 	if err != nil {
-		return openai.ErrorWrapper(err, "do_request_failed", http.StatusInternalServerError)
+		return openai.ErrorWrapper(err, classifyImageRequestErrorCode(err), http.StatusInternalServerError)
 	}
 
 	defer func(ctx context.Context) {
@@ -630,4 +630,17 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	}
 
 	return nil
+}
+
+func classifyImageRequestErrorCode(err error) string {
+	if err == nil {
+		return "do_request_failed"
+	}
+	lowerMessage := strings.ToLower(strings.TrimSpace(err.Error()))
+	switch {
+	case strings.Contains(lowerMessage, "server sent goaway"):
+		return "upstream_transport_goaway"
+	default:
+		return "do_request_failed"
+	}
 }
