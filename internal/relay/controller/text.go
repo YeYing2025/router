@@ -165,6 +165,12 @@ func RelayTextHelper(c *gin.Context) *model.ErrorWithStatusCode {
 		logger.Warnf(ctx, "preConsumeQuota failed: %+v", *bizErr)
 		return bizErr
 	}
+	preConsumedQuotaSettled := false
+	defer func() {
+		if !preConsumedQuotaSettled && preConsumedQuota > 0 {
+			billing.ReturnPreConsumedQuota(ctx, preConsumedQuota, meta.TokenId, meta.UserId, billingPlan.ChargeUserBalance())
+		}
+	}()
 
 	upstreamRequest, err := convertTextRequestForUpstream(textRequest, meta.Mode, upstreamMode)
 	if err != nil {
@@ -193,18 +199,17 @@ func RelayTextHelper(c *gin.Context) *model.ErrorWithStatusCode {
 		return openai.ErrorWrapper(err, "do_request_failed", http.StatusInternalServerError)
 	}
 	if isErrorHappened(meta, resp) {
-		billing.ReturnPreConsumedQuota(ctx, preConsumedQuota, meta.TokenId, meta.UserId, billingPlan.ChargeUserBalance())
 		return RelayErrorHandler(meta, resp)
 	}
 
 	// do response
 	usage, respErr := adaptor.DoResponse(c, resp, meta)
 	if respErr != nil {
-		billing.ReturnPreConsumedQuota(ctx, preConsumedQuota, meta.TokenId, meta.UserId, billingPlan.ChargeUserBalance())
 		return respErr
 	}
 	// post-consume quota
 	go postConsumeQuota(ctx, usage, meta, upstreamRequest, pricing, preConsumedQuota, groupRatio, estimateResult, responsesImageTools, false, billingPlan.ChargeUserBalance(), packageReservation)
+	preConsumedQuotaSettled = true
 	groupQuotaSettled = true
 	return nil
 }
