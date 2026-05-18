@@ -187,6 +187,9 @@ func Insert(channel *model.Channel) error {
 		if err := tx.Create(channel).Error; err != nil {
 			return err
 		}
+		if err := model.ValidateManualChannelModelConfigsWithDB(tx, channel.Id, channel.GetModelConfigs()); err != nil {
+			return err
+		}
 		if err := model.ReplaceChannelModelConfigsWithDB(tx, channel.Id, channel.GetModelConfigs()); err != nil {
 			return err
 		}
@@ -201,7 +204,7 @@ func Insert(channel *model.Channel) error {
 	if err := model.HydrateChannelWithTests(model.DB, channel); err != nil {
 		return err
 	}
-	return channel.AddGroupModelRoutes()
+	return channel.AddGroupModelChannels()
 }
 
 func Update(channel *model.Channel) error {
@@ -231,6 +234,11 @@ func Update(channel *model.Channel) error {
 		if err := ensureChannelIdentifierUniqueWithDB(tx, channel); err != nil {
 			return err
 		}
+		if channel.Status == model.ChannelStatusManuallyDisabled && existing.Status != model.ChannelStatusManuallyDisabled {
+			if err := model.EnsureChannelCanBeManuallyDisabledWithDB(tx, channel.Id); err != nil {
+				return err
+			}
+		}
 		channel.UpdatedAt = helper.GetTimestamp()
 		if channel.NameProvided {
 			if err := tx.Model(&model.Channel{}).Where("id = ?", channel.Id).Update("name", model.NormalizeChannelIdentifier(channel.Name)).Error; err != nil {
@@ -241,6 +249,9 @@ func Update(channel *model.Channel) error {
 			return err
 		}
 		if channel.ModelConfigsProvided {
+			if err := model.ValidateManualChannelModelConfigsWithDB(tx, channel.Id, channel.GetModelConfigs()); err != nil {
+				return err
+			}
 			if err := model.ReplaceChannelModelConfigsWithDB(tx, channel.Id, channel.GetModelConfigs()); err != nil {
 				return err
 			}
@@ -248,6 +259,10 @@ func Update(channel *model.Channel) error {
 				return err
 			}
 		} else if channel.ModelsProvided {
+			nextRows := previewChannelModelSelection(existing.GetModelConfigs(), channel.SelectedModelIDs())
+			if err := model.ValidateManualChannelModelConfigsWithDB(tx, channel.Id, nextRows); err != nil {
+				return err
+			}
 			if err := model.ReplaceChannelSelectedModelsWithDB(tx, channel.Id, channel.SelectedModelIDs()); err != nil {
 				return err
 			}
@@ -269,7 +284,40 @@ func Update(channel *model.Channel) error {
 	if err := model.HydrateChannelWithTests(model.DB, channel); err != nil {
 		return err
 	}
-	return channel.UpdateGroupModelRoutes()
+	return channel.UpdateGroupModelChannels()
+}
+
+func previewChannelModelSelection(existingRows []model.ChannelModel, selected []string) []model.ChannelModel {
+	selectedSet := make(map[string]struct{}, len(selected))
+	for _, modelID := range model.NormalizeChannelModelIDsPreserveOrder(selected) {
+		selectedSet[modelID] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(existingRows)+len(selected))
+	rows := make([]model.ChannelModel, 0, len(existingRows)+len(selected))
+	for _, row := range existingRows {
+		if _, ok := seen[row.Model]; ok {
+			continue
+		}
+		seen[row.Model] = struct{}{}
+		row.Selected = false
+		if !row.Inactive {
+			if _, ok := selectedSet[row.Model]; ok {
+				row.Selected = true
+			}
+		}
+		rows = append(rows, row)
+	}
+	for _, modelID := range model.NormalizeChannelModelIDsPreserveOrder(selected) {
+		if _, ok := seen[modelID]; ok {
+			continue
+		}
+		rows = append(rows, model.ChannelModel{
+			Model:         modelID,
+			UpstreamModel: modelID,
+			Selected:      true,
+		})
+	}
+	return model.NormalizeChannelModelConfigsPreserveOrder(rows)
 }
 
 func UpdateResponseTime(channel *model.Channel, responseTime int64) {
@@ -300,7 +348,7 @@ func Delete(channel *model.Channel) error {
 		if err := model.DeleteChannelTestsByChannelIDWithDB(tx, channel.Id); err != nil {
 			return err
 		}
-		if err := tx.Where("channel_id = ?", strings.TrimSpace(channel.Id)).Delete(&model.GroupModelRoute{}).Error; err != nil {
+		if err := tx.Where("channel_id = ?", strings.TrimSpace(channel.Id)).Delete(&model.GroupModelChannel{}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&model.Channel{}, "id = ?", strings.TrimSpace(channel.Id)).Error
@@ -319,16 +367,17 @@ func DeleteDisabled() (int64, error) {
 
 func UpdateStatusByID(id string, status int) {
 	id = strings.TrimSpace(id)
-	err := model.UpdateGroupModelRouteStatus(id, status == model.ChannelStatusEnabled)
-	if err != nil {
-		logger.SysError("failed to update ability status: " + err.Error())
-	}
-	err = model.DB.Model(&model.Channel{}).Where("id = ?", id).Updates(map[string]any{
+	err := model.DB.Model(&model.Channel{}).Where("id = ?", id).Updates(map[string]any{
 		"status":     status,
 		"updated_at": helper.GetTimestamp(),
 	}).Error
 	if err != nil {
 		logger.SysError("failed to update channel status: " + err.Error())
+		return
+	}
+	err = model.RefreshGroupModelChannelsByChannelStatus(id, status == model.ChannelStatusEnabled)
+	if err != nil {
+		logger.SysError("failed to update ability status: " + err.Error())
 	}
 }
 
@@ -376,7 +425,7 @@ func deleteChannelsByQuery(query *gorm.DB) (int64, error) {
 		if err := model.DeleteChannelTestsByChannelIDsWithDB(tx, channelIDs); err != nil {
 			return err
 		}
-		if err := tx.Where("channel_id IN ?", channelIDs).Delete(&model.GroupModelRoute{}).Error; err != nil {
+		if err := tx.Where("channel_id IN ?", channelIDs).Delete(&model.GroupModelChannel{}).Error; err != nil {
 			return err
 		}
 		result := tx.Where("id IN ?", channelIDs).Delete(&model.Channel{})

@@ -12,6 +12,7 @@ import {
 } from '../helpers';
 
 import { ITEMS_PER_PAGE } from '../constants';
+import { TOKEN_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
 import {
   buildDisplayUnitOptions,
   buildPublicDisplayCurrencyIndex,
@@ -505,13 +506,12 @@ const TokensTable = () => {
       />
 
       <AppTable
-        className='router-list-table'
+        className='router-list-table router-table-fit-page'
         pagination={false}
         rowKey='id'
         dataSource={tokens
           .slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE)
           .filter((token) => !token?.deleted)}
-        scroll={{ x: 1200 }}
         locale={{ emptyText: t('common.no_data', '暂无数据') }}
         onRow={(token) => ({
           className: 'router-row-clickable',
@@ -536,6 +536,8 @@ const TokensTable = () => {
             ),
             dataIndex: 'name',
             key: 'name',
+            width: TOKEN_LIST_COLUMN_WIDTHS.name,
+            ellipsis: true,
             render: (value) => value || t('token.table.no_name'),
           },
           {
@@ -551,12 +553,15 @@ const TokensTable = () => {
             ),
             dataIndex: 'status',
             key: 'status',
+            className: 'router-table-col-status-compact',
+            width: TOKEN_LIST_COLUMN_WIDTHS.status,
             render: (value) => renderStatus(value, t),
           },
           {
             title: t('token.table.token'),
             dataIndex: 'key',
             key: 'token',
+            width: TOKEN_LIST_COLUMN_WIDTHS.token,
             render: (value, token) => (
               <span
                 className='router-action-group'
@@ -626,6 +631,7 @@ const TokensTable = () => {
             ),
             dataIndex: 'yycUsed',
             key: 'usedAmount',
+            width: TOKEN_LIST_COLUMN_WIDTHS.usedAmount,
             render: (value) =>
               formatDisplayAmountFromYYC(value, displayUnit, currencyIndex),
           },
@@ -656,6 +662,7 @@ const TokensTable = () => {
             ),
             dataIndex: 'yycRemaining',
             key: 'remainingAmount',
+            width: TOKEN_LIST_COLUMN_WIDTHS.remainingAmount,
             render: (value, token) =>
               token.hasUnlimitedYYCLimit
                 ? t('token.table.unlimited')
@@ -674,6 +681,8 @@ const TokensTable = () => {
             ),
             dataIndex: 'createdTime',
             key: 'createdTime',
+            className: 'router-table-col-datetime',
+            width: TOKEN_LIST_COLUMN_WIDTHS.createdTime,
             render: (value) => renderTimestamp(value),
           },
           {
@@ -689,12 +698,16 @@ const TokensTable = () => {
             ),
             dataIndex: 'expiredTime',
             key: 'expiredTime',
+            className: 'router-table-col-datetime',
+            width: TOKEN_LIST_COLUMN_WIDTHS.expiredTime,
             render: (value) =>
               value === -1 ? t('token.table.never_expire') : renderTimestamp(value),
           },
           {
             title: t('token.table.actions'),
             key: 'actions',
+            className: 'router-table-col-actions-wide',
+            width: TOKEN_LIST_COLUMN_WIDTHS.actions,
             render: (_, token) => {
               const realIdx = tokens.findIndex((item) => item?.id === token?.id);
               const openLinkOptionsWithHandlers = OPEN_LINK_OPTIONS.map((option) => ({
@@ -706,7 +719,7 @@ const TokensTable = () => {
 
               return (
                 <div
-                  className='router-action-group'
+                  className='router-action-group router-table-actions-wide'
                   onClick={(event) => stopRowClick(event)}
                 >
                   <div className='router-action-group-tight'>

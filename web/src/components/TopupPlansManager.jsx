@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API, showError, showSuccess } from '../helpers';
+import { TOPUP_PLAN_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
 import {
   AppButton,
   AppField,
@@ -280,7 +281,7 @@ const TopupPlansManager = () => {
 
       <div className='router-table-scroll-x'>
         <AppTable
-          className='router-table router-list-table router-topup-plan-table'
+          className='router-table router-list-table router-table-fit-page router-topup-plan-table'
           dataSource={plans}
           rowKey={(row) =>
             row?.id ||
@@ -292,7 +293,6 @@ const TopupPlansManager = () => {
             ].join('-')
           }
           pagination={false}
-          scroll={{ x: 920 }}
           locale={{ emptyText: t('common.no_data', '暂无数据') }}
           columns={[
             {
@@ -300,12 +300,16 @@ const TopupPlansManager = () => {
               dataIndex: 'name',
               key: 'name',
               className: 'router-topup-plan-name-cell',
+              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.name,
+              ellipsis: true,
               render: (value) => value || '-',
             },
             {
               title: t('topup.manage.columns.group'),
               dataIndex: 'group_name',
               key: 'group',
+              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.group,
+              ellipsis: true,
               render: (_, row) => row.group_name || row.group_id || '-',
             },
             {
@@ -313,6 +317,7 @@ const TopupPlansManager = () => {
               dataIndex: 'amount',
               key: 'amount',
               className: 'router-topup-plan-amount-cell',
+              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.payAmount,
               render: (_, row) => `${row.amount} ${row.amount_currency}`,
             },
             {
@@ -320,20 +325,23 @@ const TopupPlansManager = () => {
               dataIndex: 'quota_amount',
               key: 'quota_amount',
               className: 'router-topup-plan-quota-cell',
+              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.creditedAmount,
               render: (_, row) => `${row.quota_amount} ${row.quota_currency}`,
             },
             {
               title: t('package_manage.form.sort_order'),
               dataIndex: 'sort_order',
               key: 'sort_order',
-              className: 'router-topup-plan-status-cell',
+              className: 'router-table-col-status-narrow',
+              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.sortOrder,
               render: (value) => Number(value || 0),
             },
             {
               title: t('topup.manage.columns.enabled'),
               dataIndex: 'enabled',
               key: 'enabled',
-              className: 'router-topup-plan-status-cell',
+              className: 'router-table-col-status-narrow',
+              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.enabled,
               render: (value) => (
                 <AppSwitch checked={Boolean(value)} disabled size='small' />
               ),
@@ -342,7 +350,8 @@ const TopupPlansManager = () => {
               title: t('topup.manage.columns.public_visible'),
               dataIndex: 'public_visible',
               key: 'public_visible',
-              className: 'router-topup-plan-status-cell',
+              className: 'router-table-col-status-narrow',
+              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.publicVisible,
               render: (_, row) => (
                 <AppSwitch
                   checked={row.public_visible !== false}
@@ -355,7 +364,8 @@ const TopupPlansManager = () => {
               title: t('topup.manage.columns.validity_days'),
               dataIndex: 'validity_days',
               key: 'validity_days',
-              className: 'router-topup-plan-status-cell',
+              className: 'router-table-col-status-narrow',
+              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.validityDays,
               render: (value) =>
                 Number(value || 0) > 0
                   ? `${Number(value || 0)} ${t('common.day')}`
@@ -364,9 +374,10 @@ const TopupPlansManager = () => {
             {
               title: t('common.operation'),
               key: 'action',
-              className: 'router-table-action-cell router-topup-plan-action-cell',
+              className: 'router-table-col-actions-compact router-topup-plan-action-cell',
+              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.actions,
               render: (_, row, index) => (
-                <div className='router-action-group-tight'>
+                <div className='router-action-group-tight router-table-actions-compact'>
                   <AppButton
                     className='router-inline-button'
                     type='button'

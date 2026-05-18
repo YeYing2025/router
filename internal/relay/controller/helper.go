@@ -37,14 +37,9 @@ func getAndValidateTextRequest(c *gin.Context, relayMode int) (*relaymodel.Gener
 			return nil, nil, getErr
 		}
 		rawBody = append([]byte(nil), requestBody...)
-		requestMeta, metaErr := anthropic.ParseMessagesRequestMeta(requestBody)
-		if metaErr != nil {
-			return nil, rawBody, metaErr
-		}
-		textRequest = &relaymodel.GeneralOpenAIRequest{
-			Model:     requestMeta.Model,
-			MaxTokens: requestMeta.MaxTokens,
-			Stream:    requestMeta.Stream,
+		textRequest, err = anthropic.ParseMessagesRequestToRelayRequest(requestBody)
+		if err != nil {
+			return nil, rawBody, err
 		}
 	} else {
 		textRequest = &relaymodel.GeneralOpenAIRequest{}

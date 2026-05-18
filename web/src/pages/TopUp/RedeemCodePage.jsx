@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showError, showInfo, timestamp2string } from '../../helpers';
 import { formatAmountWithUnit } from '../../helpers/render';
+import { TOPUP_RESULT_COLUMN_WIDTHS } from '../../constants/tableWidthPresets';
 import { useTopUpWorkspace } from './shared.jsx';
 import { AppButton, AppInput, AppModal, AppTable } from '../../router-ui';
 
@@ -156,7 +157,7 @@ const RedeemCodePage = ({ open, onClose, onRedeemed }) => {
             </AppButton>
           </div>
           <AppTable
-            className='router-list-table'
+            className='router-list-table router-table-fit-page'
             rowKey='key'
             pagination={false}
             dataSource={recentResultRows}
@@ -164,25 +165,25 @@ const RedeemCodePage = ({ open, onClose, onRedeemed }) => {
               {
                 title: '',
                 dataIndex: 'leftLabel',
-                width: '20%',
+                width: TOPUP_RESULT_COLUMN_WIDTHS.label,
                 render: (value) => <span className='router-text-muted'>{value}</span>,
               },
               {
                 title: '',
                 dataIndex: 'leftValue',
-                width: '30%',
+                width: TOPUP_RESULT_COLUMN_WIDTHS.value,
               },
               {
                 title: '',
                 dataIndex: 'rightLabel',
-                width: '20%',
+                width: TOPUP_RESULT_COLUMN_WIDTHS.label,
                 render: (value) =>
                   value ? <span className='router-text-muted'>{value}</span> : null,
               },
               {
                 title: '',
                 dataIndex: 'rightValue',
-                width: '30%',
+                width: TOPUP_RESULT_COLUMN_WIDTHS.value,
               },
             ]}
           />

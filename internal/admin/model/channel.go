@@ -435,10 +435,6 @@ func DeleteDisabledChannel() (int64, error) {
 	return mustChannelRepo().DeleteDisabledChannel()
 }
 
-func UpdateChannelTestModel(id string, testModel string) error {
-	return mustChannelRepo().UpdateChannelTestModelByID(id, testModel)
-}
-
 func (channel *Channel) selectedModelConfigs() []ChannelModel {
 	configs := channel.GetModelConfigs()
 	if len(configs) == 0 {

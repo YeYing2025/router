@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API, showError, showInfo, showSuccess, timestamp2string } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
+import { PACKAGE_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
 import {
   buildBillingCurrencyIndex,
   buildDisplayUnitOptions,
@@ -579,7 +580,7 @@ const PackagesManager = () => {
 
       <div className='router-table-scroll-x'>
         <AppTable
-          className='router-hover-table router-list-table router-package-list-table'
+          className='router-hover-table router-list-table router-table-fit-page router-package-list-table'
           pagination={false}
           rowKey='id'
           dataSource={rows}
@@ -598,12 +599,16 @@ const PackagesManager = () => {
               dataIndex: 'name',
               key: 'name',
               className: 'router-package-name-cell',
+              width: PACKAGE_LIST_COLUMN_WIDTHS.name,
+              ellipsis: true,
               render: (value) => value || '-',
             },
             {
               title: t('package_manage.table.group'),
               dataIndex: 'group_name',
               key: 'group_name',
+              width: PACKAGE_LIST_COLUMN_WIDTHS.group,
+              ellipsis: true,
               render: (_, row) => row.group_name || row.group_id || '-',
             },
             {
@@ -611,6 +616,7 @@ const PackagesManager = () => {
               dataIndex: 'sale_price',
               key: 'sale_price',
               className: 'router-package-sale-price-cell',
+              width: PACKAGE_LIST_COLUMN_WIDTHS.salePrice,
               render: (_, row) => `${row.sale_currency || 'CNY'} ${row.sale_price ?? 0}`,
             },
             {
@@ -661,37 +667,42 @@ const PackagesManager = () => {
               title: t('package_manage.table.duration_days'),
               dataIndex: 'duration_days',
               key: 'duration_days',
-              className: 'router-package-duration-cell',
+              className: 'router-table-col-status-narrow router-package-duration-cell',
+              width: PACKAGE_LIST_COLUMN_WIDTHS.durationDays,
               render: (value) => Number(value || 0) || '-',
             },
             {
               title: t('package_manage.table.status'),
               dataIndex: 'enabled',
               key: 'enabled',
-              className: 'router-package-status-cell',
+              className: 'router-table-col-status-compact router-package-status-cell',
+              width: PACKAGE_LIST_COLUMN_WIDTHS.status,
               render: (value) => statusLabel(Boolean(value), t),
             },
             {
               title: t('package_manage.table.created_at'),
               dataIndex: 'created_at',
               key: 'created_at',
-              className: 'router-package-created-at-cell',
+              className: 'router-table-col-datetime router-package-created-at-cell',
+              width: PACKAGE_LIST_COLUMN_WIDTHS.createdAt,
               render: (value) => (value ? timestamp2string(value) : '-'),
             },
             {
               title: t('package_manage.table.updated_at'),
               dataIndex: 'updated_at',
               key: 'updated_at',
-              className: 'router-package-updated-at-cell',
+              className: 'router-table-col-datetime router-package-updated-at-cell',
+              width: PACKAGE_LIST_COLUMN_WIDTHS.updatedAt,
               render: (value) => (value ? timestamp2string(value) : '-'),
             },
             {
               title: t('package_manage.table.actions'),
               key: 'actions',
-              className: 'router-table-action-cell router-package-action-cell',
+              className: 'router-table-col-actions-compact router-package-action-cell',
+              width: PACKAGE_LIST_COLUMN_WIDTHS.actions,
               render: (_, row) => (
                 <div
-                  className='router-action-group-tight router-nowrap'
+                  className='router-action-group-tight router-table-actions-compact router-nowrap'
                   onClick={(e) => {
                     e.stopPropagation();
                   }}

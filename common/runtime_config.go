@@ -14,8 +14,7 @@ import (
 )
 
 var (
-	GinMode              = "release"
-	ChannelTestFrequency = 0
+	GinMode = "release"
 
 	DisableOpenAICompat = false
 	FrontendBaseURL     = ""
@@ -78,7 +77,6 @@ type NodeRuntimeConfig struct {
 type CacheRuntimeConfig struct {
 	MemoryCacheEnabled         bool `yaml:"memory_cache_enabled"`
 	SyncFrequencySeconds       int  `yaml:"sync_frequency_seconds"`
-	ChannelTestFrequency       int  `yaml:"channel_test_frequency"`
 	BatchUpdateEnabled         bool `yaml:"batch_update_enabled"`
 	BatchUpdateIntervalSeconds int  `yaml:"batch_update_interval_seconds"`
 }
@@ -196,7 +194,6 @@ func defaultRuntimeConfig() RuntimeConfig {
 		Cache: CacheRuntimeConfig{
 			MemoryCacheEnabled:         false,
 			SyncFrequencySeconds:       10 * 60,
-			ChannelTestFrequency:       0,
 			BatchUpdateEnabled:         false,
 			BatchUpdateIntervalSeconds: 5,
 		},
@@ -321,11 +318,6 @@ func ApplyRuntimeConfig(cfg *RuntimeConfig, portFlagSet bool, logDirFlagSet bool
 	if serverAddress := strings.TrimSpace(cfg.Server.Address); serverAddress != "" {
 		config.ServerAddress = serverAddress
 	}
-	ChannelTestFrequency = cfg.Cache.ChannelTestFrequency
-	if ChannelTestFrequency < 0 {
-		return fmt.Errorf("invalid cache.channel_test_frequency: %d", ChannelTestFrequency)
-	}
-
 	DisableOpenAICompat = cfg.Feature.DisableOpenAICompat
 	FrontendBaseURL = strings.TrimSpace(cfg.Feature.FrontendBaseURL)
 	config.TopUpMode = strings.TrimSpace(cfg.Operation.TopUpMode)
@@ -624,7 +616,6 @@ func setCompatibilityEnvs() {
 	_ = os.Setenv("POLLING_INTERVAL", strconv.Itoa(int(config.RequestInterval.Seconds())))
 	_ = os.Setenv("SYNC_FREQUENCY", strconv.Itoa(config.SyncFrequency))
 	_ = os.Setenv("MEMORY_CACHE_ENABLED", strconv.FormatBool(config.MemoryCacheEnabled))
-	_ = os.Setenv("CHANNEL_TEST_FREQUENCY", strconv.Itoa(ChannelTestFrequency))
 	_ = os.Setenv("BATCH_UPDATE_ENABLED", strconv.FormatBool(config.BatchUpdateEnabled))
 	_ = os.Setenv("BATCH_UPDATE_INTERVAL", strconv.Itoa(config.BatchUpdateInterval))
 	_ = os.Setenv("DISABLE_OPENAI_COMPAT", strconv.FormatBool(DisableOpenAICompat))

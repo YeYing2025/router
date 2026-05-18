@@ -41,6 +41,7 @@ import {
   AppSpin,
   AppTabs,
 } from '../../router-ui';
+import { CHANNEL_DETAIL_MODEL_COLUMN_WIDTHS } from '../../constants/tableWidthPresets';
 
 const normalizeModelId = (model) => {
   if (typeof model === 'string') return model;
@@ -88,33 +89,24 @@ const resolveEffectiveAPIBaseURL = (inputs, config) =>
 
 const CHANNEL_IDENTIFIER_PATTERN = /^[a-z0-9-]+$/;
 const CHANNEL_IDENTIFIER_MAX_LENGTH = 64;
-const CHANNEL_DETAIL_MODEL_COLUMN_WIDTHS = [
-  '8%',
-  '23%',
-  '8%',
-  '21%',
-  '12%',
-  '10%',
-  '10%',
-  '8%',
-];
 const CHANNEL_ENDPOINT_COLUMN_WIDTHS = [
-  '18%',
-  '16%',
-  '22%',
-  '8%',
-  '12%',
   '14%',
-  '10%',
+  '14%',
+  '18%',
+  '8%',
+  '20%',
+  '14%',
+  '12%',
+  '8%',
 ];
 const CHANNEL_MODEL_TEST_GROUP_COLUMN_WIDTHS = [
   '4%',
+  '15%',
+  '23%',
+  '8%',
   '16%',
-  '24%',
-  '10%',
-  '16%',
-  '14%',
-  '10%',
+  '12%',
+  '18%',
 ];
 
 const supportsModelTestStream = (row) =>
@@ -423,6 +415,10 @@ const normalizeChannelEndpointRows = (items) => {
       base_url: normalizeBaseURL(item.base_url),
       enabled: item.enabled === true,
       updated_at: Number(item.updated_at || 0),
+      last_test_status: (item.last_test_status || '').toString().trim(),
+      last_tested_at: Number(item.last_tested_at || 0),
+      last_test_error: (item.last_test_error || '').toString().trim(),
+      enable_block_reason: (item.enable_block_reason || '').toString().trim(),
     });
   });
   rows.sort((left, right) => {
@@ -684,7 +680,7 @@ const mergePriceComponentOverrides = (baseComponents, overrideComponents) => {
   );
 };
 
-const buildProviderCatalogIndex = (items) => {
+const buildProviderIndex = (items) => {
   const providerOptions = [];
   const modelOwners = {};
   const providerModelDetails = {};
@@ -980,6 +976,9 @@ const normalizeChannelModelConfigRow = (row, protocol) => {
     price_unit: normalizePriceUnitValue(row.price_unit),
     currency: normalizeCurrencyValue(row.currency),
     price_components: normalizeComplexPriceComponents(row.price_components),
+    sync_status: (row.sync_status || 'unknown').toString().trim(),
+    last_synced_at: Number(row.last_synced_at || 0),
+    enable_block_reason: (row.enable_block_reason || '').toString().trim(),
   };
 
 };
@@ -1082,6 +1081,31 @@ const buildNextInputsWithModelConfigs = (previousInputs, modelConfigs, protocol)
     models: selectedModels,
     test_model: nextTestModel,
   };
+};
+
+const getBlockedSelectedChannelModels = (rows, protocol) => {
+  return normalizeChannelModelConfigs(rows, protocol).filter((row) => {
+    if (row.inactive === true || row.selected !== true) {
+      return false;
+    }
+    return ((row.enable_block_reason || '').toString().trim()) !== '';
+  });
+};
+
+const buildBlockedSelectedModelsMessage = (rows, protocol, t) => {
+  const blockedRows = getBlockedSelectedChannelModels(rows, protocol);
+  if (blockedRows.length === 0) {
+    return '';
+  }
+  const labels = blockedRows.map((row) => {
+    const modelName =
+      (row.upstream_model || row.model || '').toString().trim() || '-';
+    const reason = (row.enable_block_reason || '').toString().trim();
+    return reason ? `${modelName}（${reason}）` : modelName;
+  });
+  return t('channel.edit.messages.blocked_selected_models', {
+    models: labels.join('；'),
+  });
 };
 
 const extractChannelModelListItems = (payload) => {
@@ -1528,6 +1552,16 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     [isDetailMode, location.pathname, location.search, location.state, navigate],
   );
   const [inputs, setInputs] = useState(CHANNEL_ORIGIN_INPUTS);
+  const detailChannelLabel = useMemo(() => {
+    const currentName = (inputs.name || '').toString().trim();
+    if (currentName !== '') {
+      return currentName;
+    }
+    if (returnChannelLabel !== '') {
+      return returnChannelLabel;
+    }
+    return '';
+  }, [inputs.name, returnChannelLabel]);
   const [channelProtocolOptions, setChannelProtocolOptions] = useState(() =>
     getChannelProtocolOptions(),
   );
@@ -1611,8 +1645,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const [providerModelDetailsIndex, setProviderModelDetailsIndex] = useState(
     {},
   );
-  const [providerCatalogLoading, setProviderCatalogLoading] = useState(false);
-  const [providerCatalogLoaded, setProviderCatalogLoaded] = useState(false);
+  const [providerDataLoading, setProviderDataLoading] = useState(false);
+  const [providerDataLoaded, setProviderDataLoaded] = useState(false);
   const [appendProviderModalOpen, setAppendProviderModalOpen] = useState(false);
   const [appendingProviderModel, setAppendingProviderModel] = useState(false);
   const [complexPricingModalOpen, setComplexPricingModalOpen] = useState(false);
@@ -2140,7 +2174,10 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     [getProviderOwnersForModel],
   );
   const canSelectChannelModel = useCallback(
-    (row) => row?.inactive !== true && hasProviderConfiguredForModel(row),
+    (row) =>
+      row?.inactive !== true &&
+      hasProviderConfiguredForModel(row) &&
+      !((row?.enable_block_reason || '').toString().trim()),
     [hasProviderConfiguredForModel],
   );
   const activeModelConfigs = useMemo(
@@ -2171,6 +2208,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       return detailFilteredModelConfigs;
     }
     return detailFilteredModelConfigs.filter((row) => {
+      const syncStatus = (row?.sync_status || 'unknown').toString().trim();
       const providerOwners = getProviderOwnersForModel(row).join(' ');
       const selectedProviderText = getSelectedProviderDisplayItems(row)
         .map((item) => item.text || item.value || '')
@@ -2179,6 +2217,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         row?.upstream_model,
         row?.model,
         row?.type,
+        syncStatus,
+        t(`channel.edit.model_selector.upstream_return_status.${syncStatus}`),
         providerOwners,
         selectedProviderText,
       ].map(normalizeSearchKeyword);
@@ -2189,6 +2229,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     detailFilteredModelConfigs,
     getProviderOwnersForModel,
     getSelectedProviderDisplayItems,
+    t,
   ]);
   const detailModelTotalPages = useMemo(() => {
     return Math.max(
@@ -2364,6 +2405,15 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       if (targetChannelID === '') {
         return false;
       }
+      const blockedMessage = buildBlockedSelectedModelsMessage(
+        nextModelConfigs,
+        inputs.protocol,
+        t,
+      );
+      if (blockedMessage !== '') {
+        showError(blockedMessage);
+        return false;
+      }
       const nextInputs = buildNextInputsWithModelConfigs(
         inputs,
         nextModelConfigs,
@@ -2425,6 +2475,15 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
           showInfo(t('channel.edit.messages.key_required'));
           return false;
         }
+      }
+      const blockedMessage = buildBlockedSelectedModelsMessage(
+        inputs.model_configs,
+        inputs.protocol,
+        t,
+      );
+      if (blockedMessage !== '') {
+        showError(blockedMessage);
+        return false;
       }
       if (typeof loadingSetter === 'function') {
         loadingSetter(true);
@@ -2866,19 +2925,19 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     }
   }, []);
 
-  const loadProviderCatalogIndex = useCallback(
+  const loadProviderIndex = useCallback(
     async ({ silent = true, force = false } = {}) => {
-      if (providerCatalogLoading) {
+      if (providerDataLoading) {
         return null;
       }
-      if (providerCatalogLoaded && !force && providerOptions.length > 0) {
+      if (providerDataLoaded && !force && providerOptions.length > 0) {
         return {
           providerOptions,
           modelOwners: providerModelOwners,
           providerModelDetails: providerModelDetailsIndex,
         };
       }
-      setProviderCatalogLoading(true);
+      setProviderDataLoading(true);
       try {
         const items = [];
         let page = 0;
@@ -2912,12 +2971,12 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
           }
           page += 1;
         }
-        const nextCatalog = buildProviderCatalogIndex(items);
-        setProviderOptions(nextCatalog.providerOptions);
-        setProviderModelOwners(nextCatalog.modelOwners);
-        setProviderModelDetailsIndex(nextCatalog.providerModelDetails);
-        setProviderCatalogLoaded(true);
-        return nextCatalog;
+        const nextProviderIndex = buildProviderIndex(items);
+        setProviderOptions(nextProviderIndex.providerOptions);
+        setProviderModelOwners(nextProviderIndex.modelOwners);
+        setProviderModelDetailsIndex(nextProviderIndex.providerModelDetails);
+        setProviderDataLoaded(true);
+        return nextProviderIndex;
       } catch (error) {
         if (!silent) {
           showError(
@@ -2927,13 +2986,13 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         }
         return null;
       } finally {
-        setProviderCatalogLoading(false);
+        setProviderDataLoading(false);
       }
     },
     [
-      providerCatalogLoaded,
+      providerDataLoaded,
       providerModelDetailsIndex,
-      providerCatalogLoading,
+      providerDataLoading,
       providerModelOwners,
       providerOptions,
       t,
@@ -2955,18 +3014,18 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       }
       if (
         providerOptions.length === 0 &&
-        !providerCatalogLoaded &&
-        !providerCatalogLoading
+        !providerDataLoaded &&
+        !providerDataLoading
       ) {
-        loadProviderCatalogIndex({ silent: true }).then();
+        loadProviderIndex({ silent: true }).then();
       }
       setDetailEditingModelKey(targetModel);
       setDetailEditingModelSnapshot({ ...currentRow });
     },
     [
-      loadProviderCatalogIndex,
-      providerCatalogLoaded,
-      providerCatalogLoading,
+      loadProviderIndex,
+      providerDataLoaded,
+      providerDataLoading,
       providerOptions.length,
       visibleModelConfigs,
     ],
@@ -2974,28 +3033,28 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
 
   const openAppendProviderModal = useCallback(
     async (row) => {
-      const catalog = await loadProviderCatalogIndex({
+      const providerIndex = await loadProviderIndex({
         silent: false,
         force: true,
       });
-      if (!catalog) {
+      if (!providerIndex) {
         return;
       }
-      if (catalog.providerOptions.length === 0) {
+      if (providerIndex.providerOptions.length === 0) {
         showInfo(t('channel.edit.model_selector.provider_no_options'));
         return;
       }
       setAppendProviderForm({
         provider: inferAssignableProviderForRowWithOptions(
           row,
-          catalog.providerOptions,
+          providerIndex.providerOptions,
         ),
         model: (row?.upstream_model || row?.model || '').toString().trim(),
         type: normalizeChannelModelType(row?.type),
       });
       setAppendProviderModalOpen(true);
     },
-    [loadProviderCatalogIndex, t],
+    [loadProviderIndex, t],
   );
 
   const closeAppendProviderModal = useCallback(() => {
@@ -3033,7 +3092,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         );
         return;
       }
-      await loadProviderCatalogIndex({ silent: true, force: true });
+      await loadProviderIndex({ silent: true, force: true });
       showSuccess(t('channel.edit.model_selector.provider_append_success'));
       closeAppendProviderModal();
     } catch (error) {
@@ -3047,7 +3106,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   }, [
     appendProviderForm,
     closeAppendProviderModal,
-    loadProviderCatalogIndex,
+    loadProviderIndex,
     t,
   ]);
 
@@ -3595,6 +3654,55 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     ],
   );
 
+  const handleDeleteDetailModel = useCallback(
+    async (row) => {
+      if (!isDetailMode || detailModelMutating || detailModelsEditing) {
+        return;
+      }
+      const targetChannelId = (channelId || '').toString().trim();
+      const modelName = (row?.model || '').toString().trim();
+      const upstreamModel = (row?.upstream_model || '').toString().trim();
+      if (targetChannelId === '' || (modelName === '' && upstreamModel === '')) {
+        return;
+      }
+      setDetailModelMutating(true);
+      try {
+        const res = await API.delete(
+          `/api/v1/admin/channel/${targetChannelId}/models`,
+          {
+            params: {
+              model: modelName,
+              upstream_model: upstreamModel,
+            },
+          },
+        );
+        const { success, message } = res.data || {};
+        if (!success) {
+          showError(message || t('channel.edit.model_selector.delete_failed'));
+          return;
+        }
+        await refreshChannelRuntimeState(targetChannelId);
+        setDetailEditingModelKey('');
+        setDetailEditingModelSnapshot(null);
+        showSuccess(t('channel.edit.model_selector.delete_success'));
+      } catch (error) {
+        showError(
+          error?.message || t('channel.edit.model_selector.delete_failed'),
+        );
+      } finally {
+        setDetailModelMutating(false);
+      }
+    },
+    [
+      channelId,
+      detailModelMutating,
+      detailModelsEditing,
+      isDetailMode,
+      refreshChannelRuntimeState,
+      t,
+    ],
+  );
+
   const updateModelConfigField = useCallback(
     (upstreamModel, field, value) => {
       const targetModel = (upstreamModel || '').toString().trim();
@@ -3936,8 +4044,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     ) {
       return;
     }
-    loadProviderCatalogIndex({ silent: true }).then();
-  }, [loadProviderCatalogIndex, showDetailTestsTab, showStepTwo]);
+    loadProviderIndex({ silent: true }).then();
+  }, [loadProviderIndex, showDetailTestsTab, showStepTwo]);
 
   useEffect(() => {
     if (detailModelPage <= detailModelTotalPages) {
@@ -4327,7 +4435,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         detailEditingModelRow={detailEditingModelRow}
         normalizeChannelModelType={normalizeChannelModelType}
         updateModelConfigField={updateModelConfigField}
-        providerCatalogLoading={providerCatalogLoading}
+        providerDataLoading={providerDataLoading}
         getProviderSelectOptionsForModel={getProviderSelectOptionsForModel}
         resolvePreferredProviderForModel={resolvePreferredProviderForModel}
         openAppendProviderModal={openAppendProviderModal}
@@ -4419,7 +4527,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             },
             {
               key: 'channel-current',
-              label: inputs.name || returnChannelLabel || channelId || '-',
+              label: detailChannelLabel || t('channel.edit.title_detail'),
               active: true,
             },
           ]}
@@ -4516,7 +4624,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                     }
                     openComplexPricingModal={openComplexPricingModal}
                     detailModelsEditLocked={detailModelsEditLocked}
-                    providerCatalogLoading={providerCatalogLoading}
+                    providerDataLoading={providerDataLoading}
                     toggleModelSelection={toggleModelSelection}
                     canSelectChannelModel={canSelectChannelModel}
                     detailCurrentPageAllSelected={
@@ -4533,6 +4641,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                     }
                     normalizeChannelModelType={normalizeChannelModelType}
                     startDetailModelEdit={startDetailModelEdit}
+                    handleDeleteDetailModel={handleDeleteDetailModel}
                     detailModelTotalPages={detailModelTotalPages}
                     detailModelPage={detailModelPage}
                     setDetailModelPage={setDetailModelPage}

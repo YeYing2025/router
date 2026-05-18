@@ -56,6 +56,7 @@
     },
     "records": {
       "title": "充值订单",
+      "package_title": "套餐订单",
       "refresh": "刷新",
       "order_title": "订单记录",
       "order_empty": "暂无订单记录",
@@ -415,7 +416,12 @@
       "balance_update_failed": "渠道 {{name}} 余额刷新失败。",
       "balance_update_submit_failed": "提交余额刷新任务失败。",
       "all_balance_updated": "已更新完毕所有已启用渠道余额！",
-      "operation_success": "操作成功完成！"
+      "operation_success": "操作成功完成！",
+      "disable_blocked_title": "该渠道暂时不能禁用",
+      "disable_blocked_description": "该渠道仍被以下分组使用。请先处理对应分组中的渠道绑定或模型映射，再执行禁用。",
+      "disable_blocked_channel": "渠道：{{channel}}",
+      "disable_blocked_group": "分组 {{group}} 正在使用该渠道。",
+      "disable_blocked_group_with_models": "分组 {{group}} 正在使用该渠道，关联模型：{{models}}。"
     },
     "model_types": {
       "text": "文本",
@@ -538,7 +544,7 @@
         "model_in_use": "该模型仍在被使用，无法删除",
         "model_usage_channels": "渠道",
         "model_usage_group_models": "分组模型",
-        "model_usage_group_model_routes": "分组路由",
+        "model_usage_group_model_channels": "分组模型渠道",
         "model_details_invalid": "模型明细 JSON 格式不合法，请检查后重试",
         "fetch_provider_required": "请先选择供应商",
         "fetch_key_required": "请先填写 API Key，或在供应商配置中保存 Key",
@@ -599,6 +605,7 @@
           "enabled": "启用",
           "latest_test": "最近测试",
           "test_status": "测试状态",
+          "enable_block_reason": "不能启用原因",
           "updated_at": "更新时间"
         }
       },
@@ -692,9 +699,13 @@
           "alias": "别名",
           "type": "类型",
           "providers": "供应商",
+          "status": "状态",
           "price_unit": "计价单位",
+          "price": "输入｜输出价",
           "input_price": "输入价",
           "output_price": "输出价",
+          "upstream_return": "最近一次上游返回",
+          "enable_block_reason": "不能启用原因",
           "actions": "操作"
         },
         "filters": {
@@ -715,6 +726,9 @@
         "provider_append_invalid": "请选择供应商并填写模型名称",
         "provider_append_success": "模型已添加到供应商目录",
         "provider_append_failed": "添加供应商模型失败",
+        "delete_confirm": "确认删除该模型吗？",
+        "delete_success": "模型已删除",
+        "delete_failed": "删除模型失败",
         "selection_disabled_unassigned": "该模型未录入供应商模型目录，不能启用。",
         "selection_skipped_unassigned": "已跳过当前页 {{count}} 个未录入供应商模型目录的模型。",
         "realtime_enabled": "已启用实时模型同步：修改地址或密钥后会自动刷新模型列表，但不会默认全选。",
@@ -754,8 +768,15 @@
           "status_title": "模型状态",
           "pricing_title": "计费信息",
           "status_hint": "关闭后，该模型不会参与当前渠道的可用模型集合。",
+          "upstream_return_title": "最近一次上游返回",
+          "enable_block_reason_title": "不能启用原因",
           "provider_placeholder": "请选择供应商",
           "provider_empty": "该模型未录入供应商模型目录"
+        },
+        "upstream_return_status": {
+          "returned": "已返回",
+          "not_returned": "未返回",
+          "unknown": "未知"
         },
         "pricing_detail_table": {
           "component": "计费项",
@@ -808,6 +829,8 @@
         "status": {
           "pending": "排队中",
           "running": "运行中",
+          "failed": "失败",
+          "success": "成功",
           "untested": "未测试",
           "stale": "待重测",
           "supported": "支持",
@@ -838,6 +861,7 @@
         "fetch_models_failed": "获取模型失败",
         "models_empty": "未返回可用模型",
         "model_config_invalid": "模型配置无效，请检查模型别名是否为空或重复，价格覆盖是否为非负数。",
+        "blocked_selected_models": "当前保存会校验整条渠道。以下已启用模型当前不可保存：{{models}}。请先停用这些模型，或先重新同步并确认上游返回。",
         "update_success": "渠道更新成功！",
         "create_success": "渠道创建成功！"
       },
@@ -912,7 +936,7 @@
       "daily_quota_limit": "每日限额",
       "daily_quota_limit_placeholder": "0 表示不限额",
       "sort_order": "排序值",
-      "channels": "绑定渠道",
+      "channels": "分组渠道",
       "channels_placeholder": "选择该分组可用的渠道"
     },
     "buttons": {
@@ -934,9 +958,11 @@
     "modal": {
       "create_title": "新增分组",
       "edit_title": "编辑分组",
+      "add_model_title": "新增模型",
       "add_channel_title": "增加渠道",
       "delete_title": "确认删除分组",
       "delete_confirm": "确定删除分组 {{id}} 吗？",
+      "model_delete_confirm": "确定删除模型 {{model}} 吗？",
       "bind_channels_title": "配置分组 {{id}} 的渠道"
     },
     "detail_tabs": {
@@ -953,45 +979,50 @@
       "channel_count": "渠道数",
       "model_channels": "渠道",
       "model_search_placeholder": "搜索模型或渠道",
-      "supported_models": "支持模型",
+      "supported_models": "模型",
+      "no_mapping": "暂无渠道映射",
+      "enabled_requires_mapping": "当前还没有渠道映射，需先补充分组模型映射后才能启用。",
       "empty_models": "暂无支持模型",
       "empty_model_channels": "当前没有可配置的渠道",
       "edit_model_title": "编辑模型 {{model}}",
-      "bound_channels": "关联渠道",
-      "empty_channels": "暂无关联渠道"
+      "bound_channels": "渠道",
+      "empty_channels": "暂无渠道",
+      "channels_hint": "这里维护分组渠道人工配置，包括该分组接入哪些渠道以及渠道优先级。",
+      "models_hint": "这里维护分组模型人工配置和渠道承载关系。分组层不会因为渠道临时异常、测试结果或上游波动自动改写这里的配置。"
     },
     "edit": {
-      "model_configs": "分组模型映射",
-      "model": "分组模型",
+      "models": "模型",
+      "model": "模型",
       "channel": "渠道",
       "upstream_model": "渠道模型",
       "model_placeholder": "输入分组对外展示的模型名",
       "channel_placeholder": "选择承载该模型的渠道",
       "upstream_model_placeholder": "选择该渠道实际调用的模型",
-      "model_search_placeholder": "搜索分组模型、渠道或上游模型",
-      "empty_model_configs": "暂无分组模型配置"
+      "model_search_placeholder": "搜索模型、渠道或上游模型",
+      "empty_models": "暂无模型"
     },
     "messages": {
       "loading": "加载中...",
       "empty": "暂无分组",
       "id_required": "分组标识不能为空",
       "channel_required": "请选择渠道",
+      "model_required": "请选择模型",
+      "model_add_empty": "当前已绑定渠道没有可新增的模型",
       "billing_ratio_invalid": "业务倍率必须大于或等于 0",
       "daily_quota_limit_invalid": "每日限额必须大于或等于 0",
       "load_failed": "加载分组失败",
       "bind_load_failed": "加载分组渠道失败",
       "model_load_failed": "加载分组模型失败",
-      "model_config_load_failed": "加载分组模型配置失败",
-      "model_config_incomplete": "请先完善分组模型配置后再提交",
-      "model_config_duplicate": "同一分组模型下的渠道不能重复",
+      "model_incomplete": "请先完善分组模型后再提交",
+      "model_duplicate": "同一分组模型下的渠道不能重复",
       "model_channel_empty": "当前模型没有可用的关联渠道",
       "model_channel_required": "请至少选择一个渠道",
       "create_success": "分组创建成功",
       "create_failed": "分组创建失败",
       "update_success": "分组更新成功",
       "update_failed": "分组更新失败",
-      "bind_update_success": "分组渠道配置已保存",
-      "bind_update_failed": "分组渠道配置保存失败",
+      "bind_update_success": "分组渠道已保存",
+      "bind_update_failed": "分组渠道保存失败",
       "delete_success": "分组删除成功",
       "delete_failed": "分组删除失败"
     }
@@ -1496,6 +1527,7 @@
       "package_timezone": "重置时区",
       "package_started_at": "生效时间",
       "package_expires_at": "到期时间",
+      "quota_reset_timezone": "重置时区",
       "balance_lots": {
         "title": "余额批次",
         "empty": "暂无符合条件的余额批次",
@@ -1577,6 +1609,8 @@
       "title": "创建新用户账户"
     },
     "messages": {
+      "load_failed": "加载失败",
+      "update_failed": "更新失败",
       "update_success": "用户信息更新成功！",
       "create_success": "用户账户创建成功！",
       "operation_success": "操作成功完成！",
@@ -1894,6 +1928,7 @@
     }
   },
   "setting": {
+    "empty_admin": "暂无可配置项",
     "title": "系统设置",
     "tabs": {
       "personal": "个人设置",
@@ -1983,6 +2018,7 @@
       "buttons": {
         "save": "保存"
       },
+      "saved": "已保存",
       "login": {
         "title": "登录设置",
         "password_login": "允许通过密码进行登录",
@@ -2402,6 +2438,7 @@
       "password_reset": "重置邮件发送成功，请检查邮箱！"
     },
     "error": {
+      "empty_email": "请输入邮箱地址",
       "login_expired": "未登录或登录已过期，请重新登录！",
       "password_length": "密码长度不得小于 8 位！",
       "password_length_range": "密码长度需在 8-20 位",

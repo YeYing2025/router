@@ -96,10 +96,15 @@ const AdminSidebar = ({ compact = false }) => {
       className='router-admin-nav-menu'
       mode='inline'
       inlineCollapsed={compact}
+      triggerSubMenuAction={compact ? 'click' : 'hover'}
       items={items}
       selectedKeys={selectedKeys}
-      openKeys={compact ? [] : openKeys}
-      onOpenChange={(nextKeys) => setOpenKeys(nextKeys)}
+      {...(!compact
+        ? {
+            openKeys,
+            onOpenChange: (nextKeys) => setOpenKeys(nextKeys),
+          }
+        : {})}
       onClick={({ key }) => {
         if (typeof key === 'string' && key.startsWith('/')) {
           navigate(key);

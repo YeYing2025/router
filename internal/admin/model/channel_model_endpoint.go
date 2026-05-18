@@ -155,6 +155,25 @@ func MergeChannelModelEndpointListRows(snapshotRows []ChannelModelEndpoint, expl
 		seen[key] = struct{}{}
 		items = append(items, normalized)
 	}
+	for _, row := range explicitRows {
+		normalized := ChannelModelEndpoint{
+			ChannelId: strings.TrimSpace(row.ChannelId),
+			Model:     strings.TrimSpace(row.Model),
+			Endpoint:  NormalizeRequestedChannelModelEndpoint(row.Endpoint),
+			BaseURL:   normalizeConfiguredBaseURL(row.BaseURL),
+			Enabled:   row.Enabled,
+			UpdatedAt: row.UpdatedAt,
+		}
+		if normalized.ChannelId == "" || normalized.Model == "" || normalized.Endpoint == "" {
+			continue
+		}
+		key := normalized.ChannelId + "::" + normalized.Model + "::" + normalized.Endpoint
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		items = append(items, normalized)
+	}
 	return items
 }
 

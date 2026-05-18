@@ -8,6 +8,8 @@ import {
   AppSelect,
   AppSwitch,
   AppTable,
+  AppTag,
+  AppTooltip,
 } from '../../../router-ui';
 
 const resolveLatestStatusKey = (latestResult) =>
@@ -126,7 +128,7 @@ const ChannelDetailEndpointsTab = ({
         <AppTable
           className='router-detail-table router-channel-endpoint-capability-table'
           pagination={false}
-          scroll={{ x: 1100 }}
+          scroll={{ x: 980 }}
           locale={{
             emptyText: channelEndpointsLoading
               ? t('channel.edit.endpoint_capabilities.loading')
@@ -208,10 +210,16 @@ const ChannelDetailEndpointsTab = ({
               render: (_, row) => {
                 const endpointKey = buildChannelEndpointKey(row.model, row.endpoint);
                 const isMutating = endpointMutatingKey === endpointKey;
+                const blockedReason = (row.enable_block_reason || '').trim();
+                const disabled =
+                  endpointCapabilityReadonly ||
+                  isMutating ||
+                  (!!blockedReason && row.enabled !== true);
                 return (
                   <AppSwitch
                     checked={row.enabled === true}
-                    disabled={endpointCapabilityReadonly || isMutating}
+                    disabled={disabled}
+                    title={blockedReason || undefined}
                     onChange={(_, { checked }) =>
                       updateChannelEndpointCapability(row, {
                         enabled: checked === true,
@@ -226,16 +234,25 @@ const ChannelDetailEndpointsTab = ({
               key: 'test_status',
               width: columnWidths[4],
               render: (_, row) => {
-                const endpointKey = buildChannelEndpointKey(row.model, row.endpoint);
-                const latestResult = modelTestResultsByKey.get(endpointKey) || null;
-                const latestStatusKey = resolveLatestStatusKey(latestResult);
-                return (
-                  <span
-                    className='router-cell-truncate'
-                    title={t(`channel.edit.model_tester.status.${latestStatusKey}`)}
-                  >
+                const latestStatusKey =
+                  (row.last_test_status || '').trim() || 'untested';
+                const lastTestError = (row.last_test_error || '').trim();
+                const statusTag = (
+                  <AppTag color={latestStatusKey === 'supported' ? 'green' : 'grey'}>
                     {t(`channel.edit.model_tester.status.${latestStatusKey}`)}
-                  </span>
+                  </AppTag>
+                );
+                if (!lastTestError) {
+                  return statusTag;
+                }
+                return (
+                  <AppTooltip
+                    title={lastTestError}
+                  >
+                    <span>
+                      {statusTag}
+                    </span>
+                  </AppTooltip>
                 );
               },
             },

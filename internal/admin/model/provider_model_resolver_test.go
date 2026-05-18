@@ -21,22 +21,22 @@ func TestNormalizeProviderLookupCandidates(t *testing.T) {
 	}
 }
 
-func TestResolveProviderFromCatalogMap(t *testing.T) {
-	catalog := map[string]string{
+func TestResolveProviderFromModelMap(t *testing.T) {
+	providerByModel := map[string]string{
 		"gpt-5.4":      "openai",
 		"claude-4.1":   "anthropic",
 		"legacy-model": "custom",
 	}
-	if got := ResolveProviderFromCatalogMap(catalog, "openai/gpt-5.4"); got != "openai" {
-		t.Fatalf("ResolveProviderFromCatalogMap(openai/gpt-5.4)=%q, want openai", got)
+	if got := ResolveProviderFromModelMap(providerByModel, "openai/gpt-5.4"); got != "openai" {
+		t.Fatalf("ResolveProviderFromModelMap(openai/gpt-5.4)=%q, want openai", got)
 	}
-	if got := ResolveProviderFromCatalogMap(catalog, "claude-4.1"); got != "anthropic" {
-		t.Fatalf("ResolveProviderFromCatalogMap(claude-4.1)=%q, want anthropic", got)
+	if got := ResolveProviderFromModelMap(providerByModel, "claude-4.1"); got != "anthropic" {
+		t.Fatalf("ResolveProviderFromModelMap(claude-4.1)=%q, want anthropic", got)
 	}
-	if got := ResolveProviderFromCatalogMap(catalog, "unknown-model"); got != "" {
-		t.Fatalf("ResolveProviderFromCatalogMap(unknown-model)=%q, want empty", got)
+	if got := ResolveProviderFromModelMap(providerByModel, "unknown-model"); got != "" {
+		t.Fatalf("ResolveProviderFromModelMap(unknown-model)=%q, want empty", got)
 	}
-	if got := ResolveProviderFromCatalogMap(catalog, "legacy-model"); got != "" {
-		t.Fatalf("ResolveProviderFromCatalogMap(legacy-model)=%q, want empty", got)
+	if got := ResolveProviderFromModelMap(providerByModel, "legacy-model"); got != "" {
+		t.Fatalf("ResolveProviderFromModelMap(legacy-model)=%q, want empty", got)
 	}
 }

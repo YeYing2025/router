@@ -87,11 +87,11 @@ func InitDB() {
 	if err = SyncModelPricingCatalogWithDB(DB); err != nil {
 		logger.SysError("failed to sync model pricing catalog: " + err.Error())
 	}
-	rowsAffected, cleanupErr := CleanupDanglingGroupModelRoutes()
+	rowsAffected, cleanupErr := CleanupDanglingGroupModelChannels()
 	if cleanupErr != nil {
-		logger.SysError("failed to cleanup dangling group model routes: " + cleanupErr.Error())
+		logger.SysError("failed to cleanup dangling group model channels: " + cleanupErr.Error())
 	} else if rowsAffected > 0 {
-		logger.SysLogf("cleaned dangling group model routes: %d", rowsAffected)
+		logger.SysLogf("cleaned dangling group model channels: %d", rowsAffected)
 	}
 }
 

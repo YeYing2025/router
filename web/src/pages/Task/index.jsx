@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API, showError, showSuccess, timestamp2string } from '../../helpers';
+import { TASK_LIST_COLUMN_WIDTHS } from '../../constants/tableWidthPresets';
 import {
   AppButton,
   AppFilterHeader,
@@ -1039,7 +1040,7 @@ const Task = () => {
       />
 
       <AppTable
-            className='router-list-table'
+            className='router-list-table router-table-fit-page'
             pagination={false}
             rowKey={(item) => getTaskId(item)}
             dataSource={items}
@@ -1066,6 +1067,8 @@ const Task = () => {
                 title: t('task.table.type'),
                 dataIndex: 'type',
                 key: 'type',
+                className: 'router-table-col-status-compact',
+                width: TASK_LIST_COLUMN_WIDTHS.type,
                 render: (value) => t(`task.types.${value || 'video'}`),
               },
               ...(isAdminUserTaskPage
@@ -1073,6 +1076,8 @@ const Task = () => {
                     title: t('task.table.user'),
                     dataIndex: 'user_name',
                     key: 'user_name',
+                    width: TASK_LIST_COLUMN_WIDTHS.user,
+                    ellipsis: true,
                     render: (_, item) => item.user_name || item.user_id || '-',
                   }]
                 : []),
@@ -1080,18 +1085,24 @@ const Task = () => {
                 title: t('task.table.channel'),
                 dataIndex: 'channel_name',
                 key: 'channel_name',
+                width: TASK_LIST_COLUMN_WIDTHS.channel,
+                ellipsis: true,
                 render: (_, item) => item.channel_name || item.channel_id || '-',
               },
               {
                 title: t('task.table.model'),
                 dataIndex: 'model',
                 key: 'model',
+                width: TASK_LIST_COLUMN_WIDTHS.model,
+                ellipsis: true,
                 render: (value) => value || '-',
               },
               {
                 title: t('task.table.status'),
                 dataIndex: 'status',
                 key: 'status',
+                className: 'router-table-col-status-compact',
+                width: TASK_LIST_COLUMN_WIDTHS.status,
                 render: (value) => {
                   const rawStatus = (value || '').toString().trim().toLowerCase();
                   const status = normalizeTaskStatus(rawStatus);
@@ -1106,6 +1117,8 @@ const Task = () => {
                 title: t('task.table.created_at'),
                 dataIndex: 'created_at',
                 key: 'created_at',
+                className: 'router-table-col-datetime',
+                width: TASK_LIST_COLUMN_WIDTHS.createdAt,
                 render: (value) => (value ? timestamp2string(value) : '-'),
               },
               {
@@ -1113,6 +1126,8 @@ const Task = () => {
                   ? t('task.table.updated_at')
                   : t('task.table.finished_at'),
                 key: 'updated_or_finished_at',
+                className: 'router-table-col-datetime',
+                width: TASK_LIST_COLUMN_WIDTHS.updatedAt,
                 render: (_, item) =>
                   isUserTaskPage
                     ? item.updated_at
@@ -1125,6 +1140,12 @@ const Task = () => {
               {
                 title: t('task.table.actions'),
                 key: 'actions',
+                className: isUserTaskPage
+                  ? 'router-table-col-actions-compact'
+                  : 'router-table-col-actions-token',
+                width: isUserTaskPage
+                  ? TASK_LIST_COLUMN_WIDTHS.actionsCompact
+                  : TASK_LIST_COLUMN_WIDTHS.actionsWide,
                 render: (_, item) => {
                   const taskId = getTaskId(item);
                   const rawStatus = (item?.status || '')
@@ -1165,7 +1186,7 @@ const Task = () => {
                     </AppButton>
                   ) : (
                     <div
-                      className='router-inline-actions'
+                      className='router-inline-actions router-table-actions-wide'
                       onClick={(e) => {
                         e.stopPropagation();
                       }}

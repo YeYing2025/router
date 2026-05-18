@@ -55,8 +55,6 @@ cache:
   memory_cache_enabled: false
   # 缓存同步周期（秒）。
   sync_frequency_seconds: 600
-  # 自动测试渠道频率（秒），0 表示关闭。
-  channel_test_frequency: 0
   # 是否启用批量更新。
   batch_update_enabled: false
   # 批量更新间隔（秒）。

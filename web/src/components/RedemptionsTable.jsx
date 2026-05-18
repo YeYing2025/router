@@ -11,6 +11,7 @@ import {
 } from '../helpers';
 
 import { ITEMS_PER_PAGE } from '../constants';
+import { REDEMPTION_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
 import {
   buildBillingCurrencyIndex,
   buildDisplayUnitOptions,
@@ -355,7 +356,7 @@ const RedemptionsTable = () => {
       />
 
       <AppTable
-        className='router-hover-table router-list-table'
+        className='router-hover-table router-list-table router-table-fit-page'
         pagination={false}
         rowKey={(redemption) => redemption.id}
         dataSource={redemptions
@@ -388,6 +389,8 @@ const RedemptionsTable = () => {
             ),
             dataIndex: 'name',
             key: 'name',
+            width: REDEMPTION_LIST_COLUMN_WIDTHS.name,
+            ellipsis: true,
             render: (value) => value || t('redemption.table.no_name'),
           },
           {
@@ -403,6 +406,8 @@ const RedemptionsTable = () => {
             ),
             dataIndex: 'groupLabel',
             key: 'groupLabel',
+            width: REDEMPTION_LIST_COLUMN_WIDTHS.group,
+            ellipsis: true,
             render: (value) => value || '-',
           },
           {
@@ -418,6 +423,8 @@ const RedemptionsTable = () => {
             ),
             dataIndex: 'status',
             key: 'status',
+            className: 'router-table-col-status-compact',
+            width: REDEMPTION_LIST_COLUMN_WIDTHS.status,
             render: (value) => renderStatus(value, t),
           },
           {
@@ -446,6 +453,7 @@ const RedemptionsTable = () => {
               </div>
             ),
             key: 'face_value',
+            width: REDEMPTION_LIST_COLUMN_WIDTHS.faceValue,
             render: (_, redemption) =>
               renderDisplayFaceValue(redemption, displayUnit, currencyIndex),
           },
@@ -461,6 +469,8 @@ const RedemptionsTable = () => {
               </span>
             ),
             key: 'created_time',
+            className: 'router-table-col-datetime',
+            width: REDEMPTION_LIST_COLUMN_WIDTHS.createdTime,
             render: (_, redemption) =>
               renderTimestamp(redemption.createdTime || redemption.created_time),
           },
@@ -477,6 +487,8 @@ const RedemptionsTable = () => {
             ),
             dataIndex: 'code_expires_at',
             key: 'code_expires_at',
+            className: 'router-table-col-datetime',
+            width: REDEMPTION_LIST_COLUMN_WIDTHS.codeExpiresAt,
             render: (value) => renderExpiryTime(value, t),
           },
           {
@@ -491,6 +503,8 @@ const RedemptionsTable = () => {
               </span>
             ),
             key: 'redeemed_time',
+            className: 'router-table-col-datetime',
+            width: REDEMPTION_LIST_COLUMN_WIDTHS.redeemedTime,
             render: (_, redemption) =>
               redemption.redeemedTime
                 ? renderTimestamp(redemption.redeemedTime)
@@ -499,10 +513,11 @@ const RedemptionsTable = () => {
           {
             title: t('redemption.table.actions'),
             key: 'actions',
-            className: 'router-table-action-cell router-redemption-action-cell',
+            className: 'router-table-col-actions-wide',
+            width: REDEMPTION_LIST_COLUMN_WIDTHS.actions,
             render: (_, redemption, idx) => (
               <div
-                className='router-action-group-tight'
+                className='router-action-group-tight router-table-actions-wide'
                 onClick={(e) => {
                   e.stopPropagation();
                 }}

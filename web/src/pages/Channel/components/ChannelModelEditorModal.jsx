@@ -31,7 +31,7 @@ const ChannelModelEditorModal = ({
   detailEditingModelRow,
   normalizeChannelModelType,
   updateModelConfigField,
-  providerCatalogLoading,
+  providerDataLoading,
   getProviderSelectOptionsForModel,
   resolvePreferredProviderForModel,
   openAppendProviderModal,
@@ -161,7 +161,7 @@ const ChannelModelEditorModal = ({
                     detailEditingModelRow,
                   )}
                   disabled={
-                    providerCatalogLoading ||
+                    providerDataLoading ||
                     getProviderSelectOptionsForModel(detailEditingModelRow)
                       .length === 0
                   }
@@ -197,6 +197,43 @@ const ChannelModelEditorModal = ({
             <div className='router-channel-model-editor-section-title'>
               {t('channel.edit.model_selector.editor.status_title')}
             </div>
+            <AppFormRow>
+              <AppField
+                label={t('channel.edit.model_selector.editor.upstream_return_title')}
+                readOnly
+              >
+                <AppInput
+                  className='router-modal-input'
+                  value={[
+                    t(
+                      `channel.edit.model_selector.upstream_return_status.${
+                        detailEditingModelRow.sync_status || 'unknown'
+                      }`,
+                    ),
+                    Number(detailEditingModelRow.last_synced_at || 0) > 0
+                      ? new Date(
+                          detailEditingModelRow.last_synced_at * 1000,
+                        ).toLocaleString()
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                  readOnly
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField
+                label={t('channel.edit.model_selector.editor.enable_block_reason_title')}
+                readOnly
+              >
+                <AppInput
+                  className='router-modal-input'
+                  value={detailEditingModelRow.enable_block_reason || '-'}
+                  readOnly
+                />
+              </AppField>
+            </AppFormRow>
             <div className='router-channel-model-editor-toggle-row'>
               <div className='router-channel-model-editor-toggle-copy'>
                 <div className='router-channel-model-editor-toggle-label'>
@@ -210,7 +247,7 @@ const ChannelModelEditorModal = ({
                 checked={!!detailEditingModelRow.selected}
                 disabled={
                   detailModelMutating ||
-                  providerCatalogLoading ||
+                  providerDataLoading ||
                   (!canSelectChannelModel(detailEditingModelRow) &&
                     !detailEditingModelRow.selected)
                 }

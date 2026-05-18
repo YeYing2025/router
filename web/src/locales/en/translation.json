@@ -56,6 +56,7 @@
     },
     "records": {
       "title": "Top-up Orders",
+      "package_title": "Package Orders",
       "refresh": "Refresh",
       "order_title": "Order Records",
       "order_empty": "No order records yet",
@@ -415,7 +416,12 @@
       "balance_update_failed": "Failed to refresh balance for channel {{name}}.",
       "balance_update_submit_failed": "Failed to submit balance refresh task.",
       "all_balance_updated": "All enabled channel balances have been updated!",
-      "operation_success": "Operation completed successfully!"
+      "operation_success": "Operation completed successfully!",
+      "disable_blocked_title": "This channel cannot be disabled yet",
+      "disable_blocked_description": "This channel is still used by the following groups. Remove the related group channel bindings or model mappings first, then disable it.",
+      "disable_blocked_channel": "Channel: {{channel}}",
+      "disable_blocked_group": "Group {{group}} is still using this channel.",
+      "disable_blocked_group_with_models": "Group {{group}} is still using this channel. Related models: {{models}}."
     },
     "model_types": {
       "text": "Text",
@@ -424,7 +430,7 @@
       "video": "Video"
     },
     "providers": {
-      "title": "Provider Catalog",
+      "title": "Providers",
       "search": "Search provider, name, model...",
       "fetch": {
         "provider": "Provider",
@@ -435,11 +441,11 @@
       },
       "buttons": {
         "fetch_from_api": "Fetch Models from Provider API",
-        "reload": "Reload Saved Catalog",
+        "reload": "Reload Saved Providers",
         "load_defaults": "Load Built-in Default Models",
         "add_provider": "Add Provider",
         "refresh": "Refresh",
-        "save": "Save Catalog"
+        "save": "Save Providers"
       },
       "table": {
         "provider": "Provider ID",
@@ -453,7 +459,7 @@
         "created_at": "Created At",
         "updated_at": "Updated At",
         "actions": "Actions",
-        "empty": "No provider catalog",
+        "empty": "No provider list",
         "model_count": "{{count}} models"
       },
       "model_detail_table": {
@@ -528,17 +534,17 @@
         "confirm": "Confirm"
       },
       "messages": {
-        "load_failed": "Failed to load provider catalog",
+        "load_failed": "Failed to load provider list",
         "load_defaults_failed": "Failed to load default model list",
         "defaults_loaded": "Built-in default model list loaded",
         "provider_required": "Provider id is required",
         "provider_exists": "This provider already exists, please edit it directly",
-        "save_failed": "Failed to save provider catalog",
+        "save_failed": "Failed to save provider list",
         "save_success": "Provider catalog saved",
         "model_in_use": "This model is still in use and cannot be deleted",
         "model_usage_channels": "Channels",
         "model_usage_group_models": "Group Models",
-        "model_usage_group_model_routes": "Group Routes",
+        "model_usage_group_model_channels": "Group Model Channels",
         "model_details_invalid": "Invalid model_details JSON format",
         "fetch_provider_required": "Please choose a provider first",
         "fetch_key_required": "Please provide API key first, or save one in provider config",
@@ -599,6 +605,7 @@
           "enabled": "Enabled",
           "latest_test": "Latest Test",
           "test_status": "Test Status",
+          "enable_block_reason": "Blocked Reason",
           "updated_at": "Updated At"
         }
       },
@@ -692,9 +699,13 @@
           "alias": "Alias",
           "type": "Type",
           "providers": "Provider",
+          "status": "Status",
           "price_unit": "Price Unit",
+          "price": "Input|Output Price",
           "input_price": "Input Price",
           "output_price": "Output Price",
+          "upstream_return": "Latest Upstream Return",
+          "enable_block_reason": "Blocked Reason",
           "actions": "Actions"
         },
         "filters": {
@@ -702,7 +713,7 @@
           "enabled": "Enabled",
           "disabled": "Disabled"
         },
-        "enable_hint": "Only models already in the provider model catalog can be enabled. Models not in the catalog stay unselectable until you add them there and sync again.",
+        "enable_hint": "Only models already in the provider model list can be enabled. Models not in that list stay unselectable until you add them and sync again.",
         "auto_assign": "Auto Import",
         "auto_assign_empty": "No models can be auto-imported right now",
         "auto_assign_success": "Imported {{success}} models, failed {{failed}}",
@@ -713,10 +724,13 @@
         "provider_no_options": "Please create a provider first",
         "provider_load_failed": "Failed to load provider list",
         "provider_append_invalid": "Please select a provider and enter a model name",
-        "provider_append_success": "Model added to provider catalog",
-        "provider_append_failed": "Failed to add model to provider catalog",
-        "selection_disabled_unassigned": "This model is not in the provider model catalog and cannot be enabled.",
-        "selection_skipped_unassigned": "Skipped {{count}} models on this page that are not in the provider model catalog.",
+        "provider_append_success": "Model added to provider list",
+        "provider_append_failed": "Failed to add model to provider list",
+        "delete_confirm": "Are you sure you want to delete this model?",
+        "delete_success": "Model deleted",
+        "delete_failed": "Failed to delete model",
+        "selection_disabled_unassigned": "This model is not in the provider model list and cannot be enabled.",
+        "selection_skipped_unassigned": "Skipped {{count}} models on this page that are not in the provider model list.",
         "realtime_enabled": "Realtime model sync is enabled: changing address or key refreshes the model list, but does not select all by default.",
         "realtime_hint": "After address and key are filled, supported models will be fetched automatically.",
         "flow_title": "Create Channel Flow",
@@ -754,8 +768,15 @@
           "status_title": "Model Status",
           "pricing_title": "Pricing",
           "status_hint": "When disabled, this model will not participate in the current channel's available model set.",
+          "upstream_return_title": "Latest Upstream Return",
+          "enable_block_reason_title": "Blocked Reason",
           "provider_placeholder": "Select a provider",
-          "provider_empty": "This model is not in the provider model catalog"
+          "provider_empty": "This model is not in the provider model list"
+        },
+        "upstream_return_status": {
+          "returned": "Returned",
+          "not_returned": "Not Returned",
+          "unknown": "Unknown"
         },
         "pricing_detail_table": {
           "component": "Component",
@@ -808,6 +829,8 @@
         "status": {
           "pending": "Pending",
           "running": "Running",
+          "failed": "Failed",
+          "success": "Success",
           "untested": "Untested",
           "stale": "Retest Needed",
           "supported": "Supported",
@@ -838,6 +861,7 @@
         "fetch_models_failed": "Failed to fetch models",
         "models_empty": "No available models were returned",
         "model_config_invalid": "Invalid model configuration. Check alias emptiness or duplicates, and ensure price overrides are non-negative.",
+        "blocked_selected_models": "Saving validates the whole channel. These enabled models currently block the save: {{models}}. Disable them first, or sync models again and confirm the latest upstream return.",
         "update_success": "Channel updated successfully!",
         "create_success": "Channel created successfully!"
       },
@@ -934,9 +958,11 @@
     "modal": {
       "create_title": "Create Group",
       "edit_title": "Edit Group",
+      "add_model_title": "Add Model",
       "add_channel_title": "Add Channel",
       "delete_title": "Confirm Delete Group",
       "delete_confirm": "Are you sure you want to delete group {{id}}?",
+      "model_delete_confirm": "Are you sure you want to delete model {{model}}?",
       "bind_channels_title": "Configure Channels for Group {{id}}"
     },
     "detail_tabs": {
@@ -953,45 +979,50 @@
       "channel_count": "Channel Count",
       "model_channels": "Channels",
       "model_search_placeholder": "Search model or channel",
-      "supported_models": "Supported Models",
+      "supported_models": "Models",
+      "no_mapping": "No Channel Mapping",
+      "enabled_requires_mapping": "This model does not have any channel mapping yet. Add a group model mapping before enabling it.",
       "empty_models": "No supported models",
       "empty_model_channels": "No configurable channels for this model",
       "edit_model_title": "Edit Model {{model}}",
-      "bound_channels": "Related Channels",
-      "empty_channels": "No related channels"
+      "bound_channels": "Channels",
+      "empty_channels": "No channels",
+      "channels_hint": "This section maintains the group channel configuration: which channels are attached to the group and their priorities.",
+      "models_hint": "This section maintains the group model configuration and channel assignments. The group layer does not rewrite this configuration because of temporary channel failures, test results, or upstream fluctuations."
     },
     "edit": {
-      "model_configs": "Group Model Mappings",
-      "model": "Visible Model",
+      "models": "Models",
+      "model": "Model",
       "channel": "Channel",
       "upstream_model": "Channel Model",
       "model_placeholder": "Enter the model name exposed to clients",
       "channel_placeholder": "Select the channel for this model",
       "upstream_model_placeholder": "Select the actual upstream model used by the channel",
-      "model_search_placeholder": "Search visible model, channel, or upstream model",
-      "empty_model_configs": "No group model configs"
+      "model_search_placeholder": "Search model, channel, or upstream model",
+      "empty_models": "No models"
     },
     "messages": {
       "loading": "Loading...",
       "empty": "No groups",
       "id_required": "Group ID is required",
       "channel_required": "Please select a channel",
+      "model_required": "Please select a model",
+      "model_add_empty": "There are no addable models on the currently bound channels",
       "billing_ratio_invalid": "Billing ratio must be greater than or equal to 0",
       "daily_quota_limit_invalid": "Daily limit must be greater than or equal to 0",
       "load_failed": "Failed to load groups",
       "bind_load_failed": "Failed to load group channels",
       "model_load_failed": "Failed to load group models",
-      "model_config_load_failed": "Failed to load group model configs",
-      "model_config_incomplete": "Please complete the group model config before submitting",
-      "model_config_duplicate": "The same visible model cannot use the same channel twice",
+      "model_incomplete": "Please complete the group models before submitting",
+      "model_duplicate": "The same visible model cannot use the same channel twice",
       "model_channel_empty": "This model has no available related channels",
       "model_channel_required": "Please select at least one channel",
       "create_success": "Group created successfully",
       "create_failed": "Failed to create group",
       "update_success": "Group updated successfully",
       "update_failed": "Failed to update group",
-      "bind_update_success": "Group channel bindings saved",
-      "bind_update_failed": "Failed to save group channel bindings",
+      "bind_update_success": "Group channels saved",
+      "bind_update_failed": "Failed to save group channels",
       "delete_success": "Group deleted successfully",
       "delete_failed": "Failed to delete group"
     }
@@ -1496,6 +1527,7 @@
       "package_timezone": "Reset Timezone",
       "package_started_at": "Started At",
       "package_expires_at": "Expires At",
+      "quota_reset_timezone": "Reset Timezone",
       "balance_lots": {
         "title": "Balance Lots",
         "empty": "No balance lots match current filters",
@@ -1577,6 +1609,8 @@
       "title": "Create New User Account"
     },
     "messages": {
+      "load_failed": "Failed to load",
+      "update_failed": "Failed to update",
       "update_success": "User information updated successfully!",
       "create_success": "User account created successfully!",
       "operation_success": "Operation completed successfully!",
@@ -1894,6 +1928,7 @@
     }
   },
   "setting": {
+    "empty_admin": "No configurable items",
     "title": "System Settings",
     "tabs": {
       "personal": "Personal Settings",
@@ -1983,6 +2018,7 @@
       "buttons": {
         "save": "Save"
       },
+      "saved": "Saved",
       "login": {
         "title": "Login Settings",
         "password_login": "Allow Password Login",
@@ -2286,6 +2322,7 @@
         },
         "about": {
           "title": "About System",
+          "placeholder": "Enter new about content here, supports Markdown and HTML. If a link is entered, it will be used as the iframe src so any webpage can be used as the about page.",
           "description": "You can set about content in settings page, supports HTML & Markdown",
           "repository": "Project Repository:",
           "loading_failed": "Failed to load about content..."
@@ -2406,6 +2443,7 @@
       "password_reset": "Reset email sent, please check your inbox!"
     },
     "error": {
+      "empty_email": "Please enter your email address",
       "login_expired": "Not logged in or session expired, please login again!",
       "password_length": "Password must be at least 8 characters!",
       "password_length_range": "Password must be 8–20 characters",

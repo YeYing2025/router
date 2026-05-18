@@ -22,14 +22,14 @@ func runMainBaselineMigrationWithDB(tx *gorm.DB) error {
 		&UserTask{},
 		&Token{},
 		&Redemption{},
-		&GroupModelRoute{},
+		&GroupModelChannel{},
 		&Option{},
 		&Provider{},
 		&ProviderModel{},
 		&ProviderModelPriceComponent{},
 		&ChannelProtocolCatalog{},
 		&GroupCatalog{},
-		&GroupChannelBinding{},
+		&GroupChannel{},
 		&GroupModel{},
 		&ServicePackage{},
 		&UserPackageSubscription{},
@@ -43,7 +43,7 @@ func runMainBaselineMigrationWithDB(tx *gorm.DB) error {
 	if err := ensureChannelProtocolCatalogSeededWithDB(tx); err != nil {
 		return err
 	}
-	if err := syncDefaultProviderCatalogWithDB(tx); err != nil {
+	if err := syncDefaultProvidersWithDB(tx); err != nil {
 		return err
 	}
 	if err := tx.Exec(

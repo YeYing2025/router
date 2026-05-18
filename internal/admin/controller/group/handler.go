@@ -14,19 +14,19 @@ import (
 )
 
 type upsertGroupRequest struct {
-	Id           string                       `json:"id"`
-	Name         string                       `json:"name"`
-	Description  string                       `json:"description"`
-	BillingRatio *float64                     `json:"billing_ratio"`
-	Enabled      *bool                        `json:"enabled"`
-	SortOrder    int                          `json:"sort_order"`
-	ChannelIDs   []string                     `json:"channel_ids"`
-	ModelConfigs []model.GroupModelConfigItem `json:"model_configs"`
+	Id           string                        `json:"id"`
+	Name         string                        `json:"name"`
+	Description  string                        `json:"description"`
+	BillingRatio *float64                      `json:"billing_ratio"`
+	Enabled      *bool                         `json:"enabled"`
+	SortOrder    int                           `json:"sort_order"`
+	ChannelIDs   []string                      `json:"channel_ids"`
+	Models       []model.GroupModelBindingItem `json:"models"`
 }
 
 type updateGroupChannelsRequest struct {
-	ChannelIDs []string                        `json:"channel_ids"`
-	Channels   []model.GroupChannelBindingItem `json:"channels"`
+	ChannelIDs []string                 `json:"channel_ids"`
+	Channels   []model.GroupChannelItem `json:"channels"`
 }
 
 const maxGroupListPageSize = 100
@@ -216,10 +216,10 @@ func CreateGroup(c *gin.Context) {
 		BillingRatio: billingRatio,
 	}
 	row := model.GroupCatalog{}
-	if req.ModelConfigs != nil {
-		row, err = groupsvc.CreateWithConfig(createItem, req.ChannelIDs, req.ModelConfigs)
+	if req.Models != nil {
+		row, err = groupsvc.CreateWithModels(createItem, req.ChannelIDs, req.Models)
 	} else {
-		row, err = groupsvc.CreateWithChannelBindings(createItem, req.ChannelIDs)
+		row, err = groupsvc.CreateWithChannels(createItem, req.ChannelIDs)
 	}
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -284,10 +284,10 @@ func UpdateGroup(c *gin.Context) {
 		SortOrder:    req.SortOrder,
 	}
 	row := model.GroupCatalog{}
-	if req.ModelConfigs != nil {
-		row, err = groupsvc.UpdateWithConfig(item, req.ChannelIDs, req.ModelConfigs, req.ChannelIDs != nil, true)
+	if req.Models != nil {
+		row, err = groupsvc.UpdateWithModels(item, req.ChannelIDs, req.Models, req.ChannelIDs != nil, true)
 	} else if req.ChannelIDs != nil {
-		row, err = groupsvc.UpdateWithChannelBindings(item, req.ChannelIDs)
+		row, err = groupsvc.UpdateWithChannels(item, req.ChannelIDs)
 	} else {
 		row, err = groupsvc.Update(item)
 	}
@@ -357,7 +357,7 @@ func resolveUpdateBillingRatio(value *float64, fallback float64) (float64, error
 }
 
 // GetGroupChannels godoc
-// @Summary List group channel bindings (admin)
+// @Summary List group channels (admin)
 // @Tags admin
 // @Security BearerAuth
 // @Produce json
@@ -374,7 +374,7 @@ func GetGroupChannels(c *gin.Context) {
 		})
 		return
 	}
-	rows, err := groupsvc.ListChannelBindings(id)
+	rows, err := groupsvc.ListChannels(id)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -390,7 +390,7 @@ func GetGroupChannels(c *gin.Context) {
 }
 
 // GetGroupModels godoc
-// @Summary List group model summaries (admin)
+// @Summary List group models payload (admin)
 // @Tags admin
 // @Security BearerAuth
 // @Produce json
@@ -407,40 +407,7 @@ func GetGroupModels(c *gin.Context) {
 		})
 		return
 	}
-	rows, err := groupsvc.ListModelSummaries(id)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "",
-		"data":    rows,
-	})
-}
-
-// GetGroupModelConfigs godoc
-// @Summary List group model configs (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Group ID"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/group/{id}/model-configs [get]
-func GetGroupModelConfigs(c *gin.Context) {
-	id := strings.TrimSpace(c.Param("id"))
-	if id == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "分组 ID 不能为空",
-		})
-		return
-	}
-	payload, err := groupsvc.GetModelConfigPayload(id)
+	payload, err := groupsvc.ListModels(id)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -455,17 +422,17 @@ func GetGroupModelConfigs(c *gin.Context) {
 	})
 }
 
-type updateGroupModelConfigsRequest struct {
-	ChannelIDs   []string                     `json:"channel_ids"`
-	ModelConfigs []model.GroupModelConfigItem `json:"model_configs"`
+type updateGroupModelsRequest struct {
+	ChannelIDs []string                      `json:"channel_ids"`
+	Models     []model.GroupModelBindingItem `json:"models"`
 }
 
-type updateSingleGroupModelConfigsRequest struct {
-	ModelConfigs []model.GroupModelConfigItem `json:"model_configs"`
+type updateSingleGroupModelRequest struct {
+	Models []model.GroupModelBindingItem `json:"models"`
 }
 
-// UpdateGroupModelConfigs godoc
-// @Summary Update group model configs (admin)
+// UpdateGroupModels godoc
+// @Summary Update group models (admin)
 // @Tags admin
 // @Security BearerAuth
 // @Accept json
@@ -473,8 +440,8 @@ type updateSingleGroupModelConfigsRequest struct {
 // @Param id path string true "Group ID"
 // @Success 200 {object} docs.StandardResponse
 // @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/group/{id}/model-configs [put]
-func UpdateGroupModelConfigs(c *gin.Context) {
+// @Router /api/v1/admin/group/{id}/models [put]
+func UpdateGroupModels(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
 		c.JSON(http.StatusOK, gin.H{
@@ -484,7 +451,7 @@ func UpdateGroupModelConfigs(c *gin.Context) {
 		return
 	}
 
-	req := updateGroupModelConfigsRequest{}
+	req := updateGroupModelsRequest{}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -492,7 +459,7 @@ func UpdateGroupModelConfigs(c *gin.Context) {
 		})
 		return
 	}
-	if err := groupsvc.ReplaceModelConfigs(id, req.ChannelIDs, req.ModelConfigs, req.ChannelIDs != nil); err != nil {
+	if err := groupsvc.ReplaceModels(id, req.ChannelIDs, req.Models, req.ChannelIDs != nil); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": err.Error(),
@@ -505,8 +472,8 @@ func UpdateGroupModelConfigs(c *gin.Context) {
 	})
 }
 
-// UpdateSingleGroupModelConfigs godoc
-// @Summary Update one group model config set (admin)
+// UpdateSingleGroupModel godoc
+// @Summary Update one group model (admin)
 // @Tags admin
 // @Security BearerAuth
 // @Accept json
@@ -515,8 +482,8 @@ func UpdateGroupModelConfigs(c *gin.Context) {
 // @Param model path string true "Model ID"
 // @Success 200 {object} docs.StandardResponse
 // @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/group/{id}/model-configs/{model} [put]
-func UpdateSingleGroupModelConfigs(c *gin.Context) {
+// @Router /api/v1/admin/group/{id}/models/{model} [put]
+func UpdateSingleGroupModel(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
 		c.JSON(http.StatusOK, gin.H{
@@ -534,7 +501,7 @@ func UpdateSingleGroupModelConfigs(c *gin.Context) {
 		return
 	}
 
-	req := updateSingleGroupModelConfigsRequest{}
+	req := updateSingleGroupModelRequest{}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -542,7 +509,54 @@ func UpdateSingleGroupModelConfigs(c *gin.Context) {
 		})
 		return
 	}
-	if err := groupsvc.ReplaceSingleModelConfig(id, modelName, req.ModelConfigs); err != nil {
+	if len(req.Models) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "分组模型至少需要一个渠道映射",
+		})
+		return
+	}
+	if err := groupsvc.ReplaceSingleModel(id, modelName, req.Models); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+	})
+}
+
+// DeleteSingleGroupModel godoc
+// @Summary Delete one group model (admin)
+// @Tags admin
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Group ID"
+// @Param model path string true "Model ID"
+// @Success 200 {object} docs.StandardResponse
+// @Failure 401 {object} docs.ErrorResponse
+// @Router /api/v1/admin/group/{id}/models/{model} [delete]
+func DeleteSingleGroupModel(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "分组 ID 不能为空",
+		})
+		return
+	}
+	modelName := strings.TrimSpace(c.Param("model"))
+	if modelName == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "模型不能为空",
+		})
+		return
+	}
+	if err := groupsvc.DeleteSingleModel(id, modelName); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": err.Error(),
@@ -556,7 +570,7 @@ func UpdateSingleGroupModelConfigs(c *gin.Context) {
 }
 
 // UpdateGroupChannels godoc
-// @Summary Update group channel bindings (admin)
+// @Summary Update group channels (admin)
 // @Tags admin
 // @Security BearerAuth
 // @Accept json
@@ -584,14 +598,14 @@ func UpdateGroupChannels(c *gin.Context) {
 		return
 	}
 	if len(req.Channels) > 0 {
-		if err := groupsvc.ReplaceChannelBindingsWithItems(id, req.Channels); err != nil {
+		if err := groupsvc.ReplaceChannelsWithItems(id, req.Channels); err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
 				"message": err.Error(),
 			})
 			return
 		}
-	} else if err := groupsvc.ReplaceChannelBindings(id, req.ChannelIDs); err != nil {
+	} else if err := groupsvc.ReplaceChannels(id, req.ChannelIDs); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": err.Error(),

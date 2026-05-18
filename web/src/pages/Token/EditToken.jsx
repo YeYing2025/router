@@ -398,7 +398,7 @@ const EditToken = () => {
   const renderModelTable = (readonly = false) => (
     <div className='router-token-model-table-wrap'>
       <AppTable
-        className='router-list-table router-token-model-table'
+        className='router-list-table router-table-fit-page router-token-model-table'
         pagination={false}
         rowKey='value'
         dataSource={filteredModelOptions}

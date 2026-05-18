@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { API, copy, isRoot, showError, showInfo, showSuccess } from '../../helpers';
+import { BALANCE_LOT_COLUMN_WIDTHS } from '../../constants/tableWidthPresets';
 import {
   buildBillingCurrencyIndex,
   buildBillingUnitOptions,
@@ -1575,7 +1576,7 @@ const UserDetail = () => {
                 ) : (
                   <div className='router-table-scroll-x'>
                     <AppTable
-                      className='router-table router-list-table'
+                      className='router-table router-list-table router-table-fit-page'
                       pagination={false}
                       rowKey={(lot) => lot.id || `${lot.source_type}-${lot.source_id}`}
                       dataSource={balanceLots}
@@ -1583,41 +1584,51 @@ const UserDetail = () => {
                         {
                           title: t('user.detail.balance_lots.columns.source'),
                           key: 'source',
+                          width: BALANCE_LOT_COLUMN_WIDTHS.source,
                           render: (_, lot) => formatBalanceLotSource(lot.source_type, t),
                         },
                         {
                           title: t('user.detail.balance_lots.columns.source_id'),
                           dataIndex: 'source_id',
                           key: 'source_id',
+                          width: '18%',
                           render: (value) => readOnlyValue(value),
                         },
                         {
                           title: t('user.detail.balance_lots.columns.remaining'),
                           key: 'remaining_yyc',
+                          width: BALANCE_LOT_COLUMN_WIDTHS.remaining,
                           render: (_, lot) =>
                             formatAmountBySelectedUnit(lot.remaining_yyc || 0),
                         },
                         {
                           title: t('user.detail.balance_lots.columns.total'),
                           key: 'total_yyc',
+                          width: BALANCE_LOT_COLUMN_WIDTHS.total,
                           render: (_, lot) =>
                             formatAmountBySelectedUnit(lot.total_yyc || 0),
                         },
                         {
                           title: t('user.detail.balance_lots.columns.status'),
                           key: 'status',
+                          className: 'router-table-col-status-compact',
+                          width: BALANCE_LOT_COLUMN_WIDTHS.status,
                           render: (_, lot) => renderBalanceLotStatusLabel(lot.status, t),
                         },
                         {
                           title: t('user.detail.balance_lots.columns.granted_at'),
                           dataIndex: 'granted_at',
                           key: 'granted_at',
+                          className: 'router-table-col-datetime',
+                          width: BALANCE_LOT_COLUMN_WIDTHS.grantedAt,
                           render: (value) => formatDateTime(value),
                         },
                         {
                           title: t('user.detail.balance_lots.columns.expires_at'),
                           dataIndex: 'expires_at',
                           key: 'expires_at',
+                          className: 'router-table-col-datetime',
+                          width: BALANCE_LOT_COLUMN_WIDTHS.expiresAt,
                           render: (value) =>
                             Number(value || 0) > 0
                               ? formatDateTime(value)

@@ -10,6 +10,7 @@ import {
 } from '../helpers';
 
 import { ITEMS_PER_PAGE } from '../constants';
+import { CHANNEL_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
 import {
   getChannelProtocolOptions,
   loadChannelProtocolOptions,
@@ -21,6 +22,8 @@ import {
   AppIcon,
   AppInput,
   AppInputNumber,
+  AppFormActions,
+  AppModal,
   AppPagination,
   AppTable,
   AppTooltip,
@@ -159,6 +162,7 @@ const ChannelsTable = () => {
   const [batchDeleting, setBatchDeleting] = useState(false);
   const [batchDisabling, setBatchDisabling] = useState(false);
   const [selectedChannelIds, setSelectedChannelIds] = useState([]);
+  const [disableBlockedImpact, setDisableBlockedImpact] = useState(null);
   const currentPagePath = `${location.pathname}${location.search}${location.hash}`;
   const [balanceRefreshTasks, setBalanceRefreshTasks] = useState({});
   const [protocolMap, setProtocolMap] = useState(() =>
@@ -364,6 +368,9 @@ const ChannelsTable = () => {
       setLoading(true);
       await loadChannels({ page: activePage, keyword: searchKeyword });
     } else {
+      if (res?.data?.data?.code === 'channel_disable_blocked') {
+        setDisableBlockedImpact(res?.data?.data?.impact || null);
+      }
       showError(message);
     }
   };
@@ -435,7 +442,9 @@ const ChannelsTable = () => {
 
   const updateChannelBalance = async (id, name, idx) => {
     try {
-      const res = await API.get(`/api/v1/admin/channel/update_balance/${id}/`);
+      const res = await API.post(`/api/v1/admin/channel/${id}/refresh`, {
+        action: 'balance',
+      });
       const { success, message, data, meta } = res.data || {};
       if (!success) {
         showError(message);
@@ -537,6 +546,7 @@ const ChannelsTable = () => {
     navigate(`/channel/detail/${channel.id}`, {
       state: {
         from: currentPagePath,
+        channelLabel: getChannelDisplayName(channel),
       },
     });
   };
@@ -654,18 +664,24 @@ const ChannelsTable = () => {
           id: target.id,
           success: !!success,
           message: message || '',
+          errorCode: res?.data?.data?.code || '',
+          impact: res?.data?.data?.impact || null,
         };
       })
     );
 
     const succeededIds = [];
     let firstFailedMessage = '';
+    let firstBlockedImpact = null;
     results.forEach((result) => {
       if (result.status === 'fulfilled' && result.value.success) {
         succeededIds.push(result.value.id);
       } else if (!firstFailedMessage) {
         if (result.status === 'fulfilled') {
           firstFailedMessage = result.value.message || 'Disable failed';
+          if (result.value.errorCode === 'channel_disable_blocked') {
+            firstBlockedImpact = result.value.impact || null;
+          }
         } else {
           firstFailedMessage = result.reason?.message || `${result.reason}`;
         }
@@ -689,6 +705,9 @@ const ChannelsTable = () => {
       })
     );
     if (firstFailedMessage) {
+      if (firstBlockedImpact) {
+        setDisableBlockedImpact(firstBlockedImpact);
+      }
       showError(firstFailedMessage);
     }
     setLoading(true);
@@ -741,7 +760,7 @@ const ChannelsTable = () => {
         }
       />
       <AppTable
-        className='router-hover-table router-list-table'
+        className='router-hover-table router-list-table router-table-fit-page'
         pagination={false}
         rowKey={(channel) => channel.id}
         dataSource={visibleChannels}
@@ -765,6 +784,8 @@ const ChannelsTable = () => {
             ),
             dataIndex: 'name',
             key: 'name',
+            width: CHANNEL_LIST_COLUMN_WIDTHS.name,
+            ellipsis: true,
             render: (_, channel) => renderChannelName(channel, t),
           },
           {
@@ -780,6 +801,8 @@ const ChannelsTable = () => {
             ),
             dataIndex: 'protocol',
             key: 'protocol',
+            className: 'router-table-col-type-narrow',
+            width: CHANNEL_LIST_COLUMN_WIDTHS.type,
             render: (value) => renderProtocol(value, protocolMap),
           },
           {
@@ -795,6 +818,8 @@ const ChannelsTable = () => {
             ),
             dataIndex: 'status',
             key: 'status',
+            className: 'router-table-col-status-compact',
+            width: CHANNEL_LIST_COLUMN_WIDTHS.status,
             render: (value) => renderStatus(value, t),
           },
           {
@@ -810,6 +835,8 @@ const ChannelsTable = () => {
             ),
             dataIndex: 'created_time',
             key: 'created_time',
+            className: 'router-table-col-datetime',
+            width: CHANNEL_LIST_COLUMN_WIDTHS.createdAt,
             render: (value) => (value ? renderTimestamp(value) : '-'),
           },
           {
@@ -825,6 +852,8 @@ const ChannelsTable = () => {
             ),
             dataIndex: 'updated_at',
             key: 'updated_at',
+            className: 'router-table-col-datetime',
+            width: CHANNEL_LIST_COLUMN_WIDTHS.updatedAt,
             render: (value) => (value ? renderTimestamp(value) : '-'),
           },
           {
@@ -840,6 +869,8 @@ const ChannelsTable = () => {
             ),
             dataIndex: 'capabilities',
             key: 'capabilities',
+            width: CHANNEL_LIST_COLUMN_WIDTHS.capabilities,
+            ellipsis: true,
             render: (value) => renderCapabilities(value, t),
           },
           {
@@ -855,6 +886,7 @@ const ChannelsTable = () => {
             ),
             dataIndex: 'balance',
             key: 'balance',
+            width: CHANNEL_LIST_COLUMN_WIDTHS.balance,
             render: (_, channel, idx) => (
               <div onClick={stopRowClick}>
                 <AppTooltip title={t('channel.table.click_to_update')}>
@@ -897,6 +929,8 @@ const ChannelsTable = () => {
             ),
             dataIndex: 'priority',
             key: 'priority',
+            className: 'router-table-col-status-compact',
+            width: CHANNEL_LIST_COLUMN_WIDTHS.priority,
             render: (value, channel, idx) => (
               <div onClick={stopRowClick}>
                 <AppTooltip title={t('channel.table.priority_tip')}>
@@ -919,10 +953,11 @@ const ChannelsTable = () => {
           {
             title: t('channel.table.actions'),
             key: 'actions',
-            className: 'router-table-action-cell router-channel-action-cell',
+            className: 'router-table-col-actions-wide',
+            width: CHANNEL_LIST_COLUMN_WIDTHS.actions,
             render: (_, channel, idx) => (
               <div
-                className='router-action-group-tight'
+                className='router-action-group-tight router-table-actions-wide'
                 onClick={stopRowClick}
               >
                 <AppButton
@@ -960,6 +995,51 @@ const ChannelsTable = () => {
           },
         ]}
       />
+      <AppModal
+        size='small'
+        open={!!disableBlockedImpact}
+        onClose={() => setDisableBlockedImpact(null)}
+        title={t('channel.messages.disable_blocked_title')}
+        footer={
+          <AppFormActions>
+            <AppButton type='button' onClick={() => setDisableBlockedImpact(null)}>
+              {t('channel.buttons.confirm')}
+            </AppButton>
+          </AppFormActions>
+        }
+      >
+        <div className='router-block-gap-sm'>
+          <div>{t('channel.messages.disable_blocked_description')}</div>
+          {disableBlockedImpact?.channel_id ? (
+            <div className='router-text-meta'>
+              {t('channel.messages.disable_blocked_channel', {
+                channel: disableBlockedImpact.channel_id,
+              })}
+            </div>
+          ) : null}
+          <div className='router-block-gap-xs'>
+            {(Array.isArray(disableBlockedImpact?.groups)
+              ? disableBlockedImpact.groups
+              : []
+            ).map((item, index) => {
+              const groupID = (item?.group || '').toString().trim() || '-';
+              const models = Array.isArray(item?.models) ? item.models : [];
+              return (
+                <div key={`${groupID}-${index}`} className='router-text-wrap'>
+                  {models.length > 0
+                    ? t('channel.messages.disable_blocked_group_with_models', {
+                        group: groupID,
+                        models: models.join(', '),
+                      })
+                    : t('channel.messages.disable_blocked_group', {
+                        group: groupID,
+                      })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </AppModal>
       <div className='router-pagination-wrap'>
         <AppPagination
           className='router-page-pagination'

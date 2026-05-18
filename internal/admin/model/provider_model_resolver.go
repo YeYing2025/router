@@ -98,7 +98,7 @@ func NormalizeProviderLookupCandidates(values ...string) []string {
 	return result
 }
 
-func ResolveProviderFromCatalogMap(providerByModel map[string]string, values ...string) string {
+func ResolveProviderFromModelMap(providerByModel map[string]string, values ...string) string {
 	if len(providerByModel) == 0 || len(values) == 0 {
 		return ""
 	}

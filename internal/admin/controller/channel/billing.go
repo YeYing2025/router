@@ -438,15 +438,8 @@ func updateChannelBalance(channel *model.Channel) (float64, error) {
 	return balance, nil
 }
 
-// UpdateChannelBalance godoc
-// @Summary Update channel balance (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Channel ID"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/channel/update_balance/{id} [get]
+// UpdateChannelBalance submits a single-channel balance refresh task.
+// The admin HTTP route is unified under POST /api/v1/admin/channel/{id}/refresh with action=balance.
 func UpdateChannelBalance(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -515,7 +508,7 @@ func updateAllChannelsBalance() error {
 // @Produce json
 // @Success 200 {object} docs.StandardResponse
 // @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/channel/update_balance [get]
+// @Router /api/v1/admin/channel/update_balance [post]
 func UpdateAllChannelsBalance(c *gin.Context) {
 	//err := updateAllChannelsBalance()
 	//if err != nil {

@@ -176,8 +176,8 @@ func InitChannelCache() {
 	if err := HydrateChannelsWithModels(DB, channels); err != nil {
 		logger.SysError("failed to hydrate channel models for cache: " + err.Error())
 	}
-	var routeRows []*GroupModelRoute
-	DB.Where("enabled = ?", true).Find(&routeRows)
+	var rows []*GroupModelChannel
+	DB.Find(&rows)
 	endpointRows := make([]ChannelModelEndpoint, 0)
 	if err := DB.Find(&endpointRows).Error; err != nil {
 		logger.SysError("failed to load channel model endpoint cache: " + err.Error())
@@ -187,8 +187,8 @@ func InitChannelCache() {
 		logger.SysError("failed to load channel model endpoint policy cache: " + err.Error())
 	}
 	groups := make(map[string]bool)
-	for _, route := range routeRows {
-		groupName := strings.TrimSpace(route.Group)
+	for _, row := range rows {
+		groupName := strings.TrimSpace(row.Group)
 		if groupName == "" {
 			continue
 		}
@@ -215,13 +215,13 @@ func InitChannelCache() {
 		}
 		channelByID[channelID] = channel
 	}
-	for _, route := range routeRows {
-		if route == nil {
+	for _, row := range rows {
+		if row == nil {
 			continue
 		}
-		groupName := strings.TrimSpace(route.Group)
-		modelName := strings.TrimSpace(route.Model)
-		channelID := strings.TrimSpace(route.ChannelId)
+		groupName := strings.TrimSpace(row.Group)
+		modelName := strings.TrimSpace(row.Model)
+		channelID := strings.TrimSpace(row.ChannelId)
 		if groupName == "" || modelName == "" || channelID == "" {
 			continue
 		}
@@ -237,9 +237,9 @@ func InitChannelCache() {
 		}
 		newGroup2model2channels[groupName][modelName] = append(
 			newGroup2model2channels[groupName][modelName],
-			CloneChannelWithPriority(channel, route.GetPriority()),
+			CloneChannelWithPriority(channel, row.GetPriority()),
 		)
-		newGroup2model2channel2upstream[groupName][modelName][channelID] = NormalizeGroupModelRouteUpstreamModel(modelName, route.UpstreamModel)
+		newGroup2model2channel2upstream[groupName][modelName][channelID] = NormalizeGroupModelChannelUpstreamModel(modelName, row.UpstreamModel)
 	}
 
 	// sort by priority
@@ -282,12 +282,29 @@ func CacheListSatisfiedChannels(group string, model string) ([]*Channel, error) 
 	return result, nil
 }
 
-func CacheListSatisfiedChannelsForRequest(group string, model string, requestPath string) ([]*Channel, error) {
+type ChannelCandidateStats struct {
+	ListedCount           int
+	EndpointFilteredCount int
+}
+
+func CacheListSatisfiedChannelsForRequestWithStats(group string, model string, requestPath string) ([]*Channel, ChannelCandidateStats, error) {
 	channels, err := CacheListSatisfiedChannels(group, model)
 	if err != nil {
-		return nil, err
+		return nil, ChannelCandidateStats{}, err
 	}
-	return cacheFilterChannelsByRequestEndpoint(channels, model, requestPath)
+	filtered, err := cacheFilterChannelsByRequestEndpoint(channels, model, requestPath)
+	if err != nil {
+		return nil, ChannelCandidateStats{}, err
+	}
+	return filtered, ChannelCandidateStats{
+		ListedCount:           len(channels),
+		EndpointFilteredCount: len(filtered),
+	}, nil
+}
+
+func CacheListSatisfiedChannelsForRequest(group string, model string, requestPath string) ([]*Channel, error) {
+	channels, _, err := CacheListSatisfiedChannelsForRequestWithStats(group, model, requestPath)
+	return channels, err
 }
 
 func CacheGetChannelModelEndpointSupport(channelID string, modelCandidates ...string) map[string]bool {
@@ -449,9 +466,9 @@ func CacheGetGroupModelMapping(group string, modelName string, channelID string)
 		channelSyncLock.RUnlock()
 	} else {
 		groupCol := `"group"`
-		record := GroupModelRoute{}
+		record := GroupModelChannel{}
 		if err := DB.Where(groupCol+" = ? AND model = ? AND channel_id = ?", group, modelName, channelID).Take(&record).Error; err == nil {
-			upstreamModel = NormalizeGroupModelRouteUpstreamModel(modelName, record.UpstreamModel)
+			upstreamModel = NormalizeGroupModelChannelUpstreamModel(modelName, record.UpstreamModel)
 		}
 	}
 
@@ -464,7 +481,7 @@ func CacheGetGroupModelMapping(group string, modelName string, channelID string)
 	}
 }
 
-func RefreshGroupModelRouteCachesForGroups(groupIDs ...string) {
+func RefreshGroupModelChannelCachesForGroups(groupIDs ...string) {
 	if !common.RedisEnabled || common.RDB == nil {
 		if config.MemoryCacheEnabled {
 			InitChannelCache()

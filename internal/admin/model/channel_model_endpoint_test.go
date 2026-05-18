@@ -49,7 +49,7 @@ func TestOpenAITextProviderModelEndpointCandidatesBackfillsChat(t *testing.T) {
 	}
 }
 
-func TestBuildChannelModelEndpointRowsUsesProviderCatalogCandidates(t *testing.T) {
+func TestBuildChannelModelEndpointRowsUsesProviderModelCandidates(t *testing.T) {
 	rows := []ChannelModel{
 		{
 			ChannelId:     "channel-1",
@@ -184,8 +184,11 @@ func TestMergeChannelModelEndpointListRowsKeepsExplicitOnlyRows(t *testing.T) {
 	}
 
 	got := MergeChannelModelEndpointListRows(nil, explicitRows)
-	if len(got) != 0 {
-		t.Fatalf("len(got) = %d, want 0 for explicit-only orphan rows", len(got))
+	if len(got) != 1 {
+		t.Fatalf("len(got) = %d, want 1 for explicit-only row", len(got))
+	}
+	if got[0].Endpoint != ChannelModelEndpointChat || got[0].Enabled {
+		t.Fatalf("explicit-only row = (%q, %t), want (%q, false)", got[0].Endpoint, got[0].Enabled, ChannelModelEndpointChat)
 	}
 }
 
@@ -205,7 +208,7 @@ func TestBuildChannelModelEndpointRowsDoesNotFallbackToChannelModelEndpoint(t *t
 
 	got := BuildChannelModelEndpointRowsWithProviderEndpoints(nil, rows, nil)
 	if len(got) != 0 {
-		t.Fatalf("len(got)=%d, want 0 without provider catalog endpoint candidates", len(got))
+		t.Fatalf("len(got)=%d, want 0 without provider model endpoint candidates", len(got))
 	}
 }
 

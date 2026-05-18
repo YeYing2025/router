@@ -614,7 +614,7 @@ const ChannelDetailTestsTab = ({
               render: (_, row) => {
                 const activeTask = activeChannelTasksByModel.get(row.model) || null;
                 return (
-                  <div className='router-inline-actions'>
+                  <div className='router-inline-actions router-table-actions-compact'>
                     <AppButton
                       type='button'
                       className='router-inline-button'

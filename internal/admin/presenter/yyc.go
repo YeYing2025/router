@@ -105,7 +105,7 @@ type Group struct {
 	SortOrder    int                             `json:"sort_order"`
 	CreatedAt    int64                           `json:"created_at"`
 	UpdatedAt    int64                           `json:"updated_at"`
-	Channels     []model.GroupChannelBindingItem `json:"channels,omitempty"`
+	Channels     []model.GroupChannelItem `json:"channels,omitempty"`
 }
 
 func NewGroup(group *model.GroupCatalog) *Group {

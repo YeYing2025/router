@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/yeying-community/router/common/helper"
@@ -79,6 +80,113 @@ func BuildDefaultChannelModelConfigsWithProtocol(modelIDs []string, channelProto
 		rows = append(rows, row)
 	}
 	return rows
+}
+
+type ChannelModelUsageReference struct {
+	Group string `json:"group"`
+	Model string `json:"model"`
+}
+
+func ListChannelModelUsageReferencesWithDB(db *gorm.DB, channelID string, modelName string, upstreamModel string) ([]ChannelModelUsageReference, error) {
+	if db == nil {
+		return nil, fmt.Errorf("database handle is nil")
+	}
+	normalizedChannelID := strings.TrimSpace(channelID)
+	modelCandidates := NormalizeProviderLookupCandidates(modelName, upstreamModel)
+	if normalizedChannelID == "" || len(modelCandidates) == 0 {
+		return []ChannelModelUsageReference{}, nil
+	}
+	groupCol := `"group"`
+	rows := make([]GroupModelChannel, 0)
+	if err := db.
+		Where("channel_id = ? AND (model IN ? OR upstream_model IN ?)", normalizedChannelID, modelCandidates, modelCandidates).
+		Order(groupCol + " asc, model asc").
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	result := make([]ChannelModelUsageReference, 0, len(rows))
+	seen := make(map[string]struct{}, len(rows))
+	for _, row := range rows {
+		groupID := strings.TrimSpace(row.Group)
+		groupModel := strings.TrimSpace(row.Model)
+		if groupID == "" || groupModel == "" {
+			continue
+		}
+		key := groupID + "::" + groupModel
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, ChannelModelUsageReference{
+			Group: groupID,
+			Model: groupModel,
+		})
+	}
+	return result, nil
+}
+
+func FormatChannelModelUsageReferences(usages []ChannelModelUsageReference) string {
+	if len(usages) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(usages))
+	for _, usage := range usages {
+		groupID := strings.TrimSpace(usage.Group)
+		modelName := strings.TrimSpace(usage.Model)
+		if groupID == "" || modelName == "" {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s/%s", groupID, modelName))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ", ")
+}
+
+func DeleteChannelModelWithDB(db *gorm.DB, channelID string, modelName string, upstreamModel string) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	normalizedChannelID := strings.TrimSpace(channelID)
+	modelCandidates := NormalizeProviderLookupCandidates(modelName, upstreamModel)
+	if normalizedChannelID == "" || len(modelCandidates) == 0 {
+		return fmt.Errorf("渠道模型无效")
+	}
+	targetRow := ChannelModel{}
+	if err := db.
+		Where("channel_id = ? AND (model IN ? OR upstream_model IN ?)", normalizedChannelID, modelCandidates, modelCandidates).
+		Order("sort_order asc, model asc").
+		First(&targetRow).Error; err != nil {
+		return err
+	}
+	usages, err := ListChannelModelUsageReferencesWithDB(db, normalizedChannelID, targetRow.Model, targetRow.UpstreamModel)
+	if err != nil {
+		return err
+	}
+	if len(usages) > 0 {
+		return fmt.Errorf("该模型仍被分组使用，无法删除：%s", FormatChannelModelUsageReferences(usages))
+	}
+	deleteCandidates := NormalizeProviderLookupCandidates(targetRow.Model, targetRow.UpstreamModel)
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := lockChannelRowForUpdateWithDB(tx, normalizedChannelID); err != nil {
+			return err
+		}
+		if err := tx.Where("channel_id = ? AND model = ?", normalizedChannelID, strings.TrimSpace(targetRow.Model)).Delete(&ChannelModelEndpointPolicy{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("channel_id = ? AND model = ?", normalizedChannelID, strings.TrimSpace(targetRow.Model)).Delete(&ChannelModelEndpoint{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("channel_id = ? AND (model IN ? OR upstream_model IN ?)", normalizedChannelID, deleteCandidates, deleteCandidates).Delete(&ChannelTest{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("channel_id = ? AND (model IN ? OR upstream_model IN ?)", normalizedChannelID, deleteCandidates, deleteCandidates).Delete(&ChannelModelSyncResult{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("channel_id = ? AND model = ?", normalizedChannelID, strings.TrimSpace(targetRow.Model)).Delete(&ChannelModelPriceComponent{}).Error; err != nil {
+			return err
+		}
+		return tx.Where("channel_id = ? AND model = ?", normalizedChannelID, strings.TrimSpace(targetRow.Model)).Delete(&ChannelModel{}).Error
+	})
 }
 
 func ParseChannelModelCSV(models string) []string {
@@ -313,7 +421,7 @@ func DisableChannelModelCapability(channelID string, modelName string) (bool, er
 	if err != nil {
 		return true, err
 	}
-	return true, channel.UpdateGroupModelRoutes()
+	return true, channel.UpdateGroupModelChannels()
 }
 
 func DeleteChannelModelsByChannelIDWithDB(db *gorm.DB, channelID string) error {
@@ -687,7 +795,7 @@ func replaceChannelModelRowsWithDB(db *gorm.DB, channelID string, rows []Channel
 		normalizeChannelModelRow(&row)
 		completeChannelModelRowDefaults(&row, channelProtocol)
 		if strings.TrimSpace(row.Provider) == "" {
-			row.Provider = ResolveProviderFromCatalogMap(providerByModel, row.UpstreamModel, row.Model)
+			row.Provider = ResolveProviderFromModelMap(providerByModel, row.UpstreamModel, row.Model)
 		}
 		for componentIdx, component := range NormalizeProviderModelPriceComponents(row.PriceComponents) {
 			componentUpdatedAt := component.UpdatedAt

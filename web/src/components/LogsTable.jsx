@@ -25,6 +25,7 @@ import {
   resolvePreferredDisplayCurrency,
   YYC_DISPLAY_CODE,
 } from '../helpers/billing';
+import { LOG_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
 import {
   AppButton,
   AppFilterHeader,
@@ -919,7 +920,7 @@ const LogsTable = () => {
         endClassName='router-log-query-wrap'
       />
       <AppTable
-        className='router-list-table router-log-table'
+        className='router-list-table router-table-fit-page router-log-table'
         pagination={false}
         rowKey={(log) =>
           log.id ||
@@ -951,6 +952,8 @@ const LogsTable = () => {
             ),
             dataIndex: 'created_at',
             key: 'created_at',
+            className: 'router-table-col-datetime',
+            width: LOG_LIST_COLUMN_WIDTHS.time,
             render: (value, log) => renderTimestamp(value, log.trace_id),
           },
           ...(isAdminScope
@@ -967,6 +970,8 @@ const LogsTable = () => {
                     </span>
                   ),
                   key: 'channel',
+                  width: LOG_LIST_COLUMN_WIDTHS.channel,
+                  ellipsis: true,
                   render: (_, log) =>
                     log.channel ? (
                       <Link
@@ -994,6 +999,8 @@ const LogsTable = () => {
                     </span>
                   ),
                   key: 'group_id',
+                  width: LOG_LIST_COLUMN_WIDTHS.group,
+                  ellipsis: true,
                   render: (_, log) =>
                     log.group_id ? (
                       <Link
@@ -1024,6 +1031,8 @@ const LogsTable = () => {
             ),
             dataIndex: 'type',
             key: 'type',
+            className: 'router-table-col-type-narrow',
+            width: LOG_LIST_COLUMN_WIDTHS.type,
             render: (value) => renderType(value),
           },
           {
@@ -1039,6 +1048,8 @@ const LogsTable = () => {
             ),
             dataIndex: 'model_name',
             key: 'model_name',
+            width: LOG_LIST_COLUMN_WIDTHS.model,
+            ellipsis: true,
             render: (value) => (value ? renderColorLabel(value) : ''),
           },
           ...(showAmountColumns()
@@ -1053,11 +1064,13 @@ const LogsTable = () => {
                               sortLog('username');
                             }}
                           >
-                            {t('log.table.username')}
-                          </span>
-                        ),
-                        key: 'username',
-                        render: (_, log) =>
+                          {t('log.table.username')}
+                        </span>
+                      ),
+                      key: 'username',
+                      width: LOG_LIST_COLUMN_WIDTHS.username,
+                      ellipsis: true,
+                      render: (_, log) =>
                           log.username ? (
                             <Link
                               to={`/user/detail/${log.user_id}`}
@@ -1081,11 +1094,13 @@ const LogsTable = () => {
                     >
                       {t('log.table.token_name')}
                     </span>
-                  ),
-                  dataIndex: 'token_name',
-                  key: 'token_name',
-                  render: (value) => (value ? renderColorLabel(value) : ''),
-                },
+                    ),
+                    dataIndex: 'token_name',
+                    key: 'token_name',
+                    width: LOG_LIST_COLUMN_WIDTHS.tokenName,
+                    ellipsis: true,
+                    render: (value) => (value ? renderColorLabel(value) : ''),
+                  },
                 {
                   title: (
                     <span
@@ -1096,11 +1111,13 @@ const LogsTable = () => {
                     >
                       {t('log.table.prompt_tokens')}
                     </span>
-                  ),
-                  dataIndex: 'prompt_tokens',
-                  key: 'prompt_tokens',
-                  render: (value) => value || '',
-                },
+                    ),
+                    dataIndex: 'prompt_tokens',
+                    key: 'prompt_tokens',
+                    className: 'router-table-col-status-narrow',
+                    width: LOG_LIST_COLUMN_WIDTHS.promptTokens,
+                    render: (value) => value || '',
+                  },
                 {
                   title: (
                     <span
@@ -1111,11 +1128,13 @@ const LogsTable = () => {
                     >
                       {t('log.table.completion_tokens')}
                     </span>
-                  ),
-                  dataIndex: 'completion_tokens',
-                  key: 'completion_tokens',
-                  render: (value) => value || '',
-                },
+                    ),
+                    dataIndex: 'completion_tokens',
+                    key: 'completion_tokens',
+                    className: 'router-table-col-status-narrow',
+                    width: LOG_LIST_COLUMN_WIDTHS.completionTokens,
+                    render: (value) => value || '',
+                  },
                 {
                   title: isAdminScope ? (
                     <div className='router-table-header-with-control'>
@@ -1152,6 +1171,7 @@ const LogsTable = () => {
                   ),
                   dataIndex: 'yycAmount',
                   key: 'yycAmount',
+                  width: LOG_LIST_COLUMN_WIDTHS.quota,
                   render: (value) =>
                     isAdminScope
                       ? formatDisplayAmountFromYYC(value, displayUnit, currencyIndex)

@@ -13,16 +13,16 @@ import (
 )
 
 type GroupCatalog struct {
-	Id           string                    `json:"id" gorm:"primaryKey;type:char(36)"`
-	Name         string                    `json:"name" gorm:"type:varchar(64);not null;uniqueIndex"`
-	Description  string                    `json:"description" gorm:"type:varchar(255);default:''"`
-	Source       string                    `json:"source" gorm:"type:varchar(32);default:'system'"`
-	BillingRatio float64                   `json:"billing_ratio" gorm:"type:numeric(12,6);not null;default:1"`
-	Enabled      bool                      `json:"enabled" gorm:"default:true;index"`
-	SortOrder    int                       `json:"sort_order" gorm:"default:0;index"`
-	CreatedAt    int64                     `json:"created_at" gorm:"bigint;index"`
-	UpdatedAt    int64                     `json:"updated_at" gorm:"bigint;index"`
-	Channels     []GroupChannelBindingItem `json:"channels,omitempty" gorm:"-"`
+	Id           string             `json:"id" gorm:"primaryKey;type:char(36)"`
+	Name         string             `json:"name" gorm:"type:varchar(64);not null;uniqueIndex"`
+	Description  string             `json:"description" gorm:"type:varchar(255);default:''"`
+	Source       string             `json:"source" gorm:"type:varchar(32);default:'system'"`
+	BillingRatio float64            `json:"billing_ratio" gorm:"type:numeric(12,6);not null;default:1"`
+	Enabled      bool               `json:"enabled" gorm:"default:true;index"`
+	SortOrder    int                `json:"sort_order" gorm:"default:0;index"`
+	CreatedAt    int64              `json:"created_at" gorm:"bigint;index"`
+	UpdatedAt    int64              `json:"updated_at" gorm:"bigint;index"`
+	Channels     []GroupChannelItem `json:"channels,omitempty" gorm:"-"`
 }
 
 func (GroupCatalog) TableName() string {
@@ -93,14 +93,14 @@ func CreateGroupCatalog(item GroupCatalog) (GroupCatalog, error) {
 	return row, nil
 }
 
-func CreateGroupCatalogWithChannelBindings(item GroupCatalog, channelIDs []string) (GroupCatalog, error) {
+func CreateGroupCatalogWithChannels(item GroupCatalog, channelIDs []string) (GroupCatalog, error) {
 	row := GroupCatalog{}
 	if err := DB.Transaction(func(tx *gorm.DB) error {
 		created, err := createGroupCatalogWithDB(tx, item)
 		if err != nil {
 			return err
 		}
-		if err := replaceGroupChannelBindingsWithDB(tx, created.Id, channelIDs); err != nil {
+		if err := replaceGroupChannelsWithDB(tx, created.Id, channelIDs); err != nil {
 			return err
 		}
 		row = created
@@ -111,7 +111,7 @@ func CreateGroupCatalogWithChannelBindings(item GroupCatalog, channelIDs []strin
 	if err := syncGroupRuntimeCachesWithDB(DB); err != nil {
 		return GroupCatalog{}, err
 	}
-	RefreshGroupModelRouteCachesForGroups(row.Id)
+	RefreshGroupModelChannelCachesForGroups(row.Id)
 	return row, nil
 }
 
@@ -126,14 +126,14 @@ func UpdateGroupCatalog(item GroupCatalog) (GroupCatalog, error) {
 	return row, nil
 }
 
-func UpdateGroupCatalogWithChannelBindings(item GroupCatalog, channelIDs []string) (GroupCatalog, error) {
+func UpdateGroupCatalogWithChannels(item GroupCatalog, channelIDs []string) (GroupCatalog, error) {
 	row := GroupCatalog{}
 	if err := DB.Transaction(func(tx *gorm.DB) error {
 		updated, err := updateGroupCatalogWithDB(tx, item)
 		if err != nil {
 			return err
 		}
-		if err := replaceGroupChannelBindingsWithDB(tx, updated.Id, channelIDs); err != nil {
+		if err := replaceGroupChannelsWithDB(tx, updated.Id, channelIDs); err != nil {
 			return err
 		}
 		row = updated
@@ -144,7 +144,7 @@ func UpdateGroupCatalogWithChannelBindings(item GroupCatalog, channelIDs []strin
 	if err := syncGroupRuntimeCachesWithDB(DB); err != nil {
 		return GroupCatalog{}, err
 	}
-	RefreshGroupModelRouteCachesForGroups(row.Id)
+	RefreshGroupModelChannelCachesForGroups(row.Id)
 	return row, nil
 }
 
@@ -153,11 +153,11 @@ func DeleteGroupCatalog(id string) error {
 	if err != nil {
 		return err
 	}
-	RefreshGroupModelRouteCachesForGroups(groupRefValues...)
+	RefreshGroupModelChannelCachesForGroups(groupRefValues...)
 	return syncGroupRuntimeCachesWithDB(DB)
 }
 
-func CreateGroupCatalogWithConfig(item GroupCatalog, channelIDs []string, modelConfigs []GroupModelConfigItem) (GroupCatalog, error) {
+func CreateGroupCatalogWithModels(item GroupCatalog, channelIDs []string, models []GroupModelBindingItem) (GroupCatalog, error) {
 	row := GroupCatalog{}
 	if err := DB.Transaction(func(tx *gorm.DB) error {
 		created, err := createGroupCatalogWithDB(tx, item)
@@ -166,12 +166,12 @@ func CreateGroupCatalogWithConfig(item GroupCatalog, channelIDs []string, modelC
 		}
 		row = created
 		explicitChannels := channelIDs != nil
-		explicitModels := modelConfigs != nil
+		explicitModels := models != nil
 		switch {
 		case explicitModels:
-			return replaceGroupModelConfigsWithDB(tx, created.Id, channelIDs, modelConfigs, explicitChannels)
+			return replaceGroupModelsWithDB(tx, created.Id, channelIDs, models, explicitChannels)
 		case explicitChannels:
-			return replaceGroupChannelBindingsWithDB(tx, created.Id, channelIDs)
+			return replaceGroupChannelsWithDB(tx, created.Id, channelIDs)
 		default:
 			return nil
 		}
@@ -181,11 +181,11 @@ func CreateGroupCatalogWithConfig(item GroupCatalog, channelIDs []string, modelC
 	if err := syncGroupRuntimeCachesWithDB(DB); err != nil {
 		return GroupCatalog{}, err
 	}
-	RefreshGroupModelRouteCachesForGroups(row.Id)
+	RefreshGroupModelChannelCachesForGroups(row.Id)
 	return row, nil
 }
 
-func UpdateGroupCatalogWithConfig(item GroupCatalog, channelIDs []string, modelConfigs []GroupModelConfigItem, updateChannels bool, updateModels bool) (GroupCatalog, error) {
+func UpdateGroupCatalogWithModels(item GroupCatalog, channelIDs []string, models []GroupModelBindingItem, updateChannels bool, updateModels bool) (GroupCatalog, error) {
 	row := GroupCatalog{}
 	if err := DB.Transaction(func(tx *gorm.DB) error {
 		updated, err := updateGroupCatalogWithDB(tx, item)
@@ -195,9 +195,9 @@ func UpdateGroupCatalogWithConfig(item GroupCatalog, channelIDs []string, modelC
 		row = updated
 		switch {
 		case updateModels:
-			return replaceGroupModelConfigsWithDB(tx, updated.Id, channelIDs, modelConfigs, updateChannels)
+			return replaceGroupModelsWithDB(tx, updated.Id, channelIDs, models, updateChannels)
 		case updateChannels:
-			return replaceGroupChannelBindingsWithDB(tx, updated.Id, channelIDs)
+			return replaceGroupChannelsWithDB(tx, updated.Id, channelIDs)
 		default:
 			return nil
 		}
@@ -207,7 +207,7 @@ func UpdateGroupCatalogWithConfig(item GroupCatalog, channelIDs []string, modelC
 	if err := syncGroupRuntimeCachesWithDB(DB); err != nil {
 		return GroupCatalog{}, err
 	}
-	RefreshGroupModelRouteCachesForGroups(row.Id)
+	RefreshGroupModelChannelCachesForGroups(row.Id)
 	return row, nil
 }
 
@@ -285,20 +285,20 @@ func hydrateGroupCatalogChannelsWithDB(db *gorm.DB, rows []GroupCatalog) error {
 		ChannelId string `gorm:"column:channel_id"`
 	}
 
-	bindingRows := make([]bindingRow, 0)
+	channelRows := make([]bindingRow, 0)
 	groupCol := `"group"`
-	if err := db.Model(&GroupChannelBinding{}).
+	if err := db.Model(&GroupChannel{}).
 		Select(groupCol+" as \"group\", channel_id").
 		Where(groupCol+" IN ?", groupIDs).
 		Where("enabled = ?", true).
 		Where("channel_id <> ''").
-		Find(&bindingRows).Error; err != nil {
+		Find(&channelRows).Error; err != nil {
 		return err
 	}
 
 	groupChannelIDs := make(map[string][]string, len(groupIDs))
 	channelIDSet := make(map[string]struct{})
-	for _, item := range bindingRows {
+	for _, item := range channelRows {
 		groupID := strings.TrimSpace(item.Group)
 		channelID := strings.TrimSpace(item.ChannelId)
 		if groupID == "" || channelID == "" {
@@ -326,14 +326,14 @@ func hydrateGroupCatalogChannelsWithDB(db *gorm.DB, rows []GroupCatalog) error {
 		return err
 	}
 
-	channelsByID := make(map[string]GroupChannelBindingItem, len(channels))
+	channelsByID := make(map[string]GroupChannelItem, len(channels))
 	for _, channel := range channels {
 		channel.NormalizeIdentity()
 		channelID := strings.TrimSpace(channel.Id)
 		if channelID == "" {
 			continue
 		}
-		channelsByID[channelID] = GroupChannelBindingItem{
+		channelsByID[channelID] = GroupChannelItem{
 			Id:       channelID,
 			Name:     channel.DisplayName(),
 			Protocol: channel.GetProtocol(),
@@ -346,7 +346,7 @@ func hydrateGroupCatalogChannelsWithDB(db *gorm.DB, rows []GroupCatalog) error {
 	for index := range rows {
 		groupID := strings.TrimSpace(rows[index].Id)
 		channelIDs := normalizeChannelIDList(groupChannelIDs[groupID])
-		items := make([]GroupChannelBindingItem, 0, len(channelIDs))
+		items := make([]GroupChannelItem, 0, len(channelIDs))
 		for _, channelID := range channelIDs {
 			item, ok := channelsByID[channelID]
 			if !ok {
@@ -535,13 +535,13 @@ func deleteGroupCatalogWithDB(db *gorm.DB, id string) ([]string, error) {
 	}
 	groupCol := `"group"`
 	if err := db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where(groupCol+" IN ?", groupRefValues).Delete(&GroupModelRoute{}).Error; err != nil {
+		if err := tx.Where(groupCol+" IN ?", groupRefValues).Delete(&GroupModelChannel{}).Error; err != nil {
 			return err
 		}
 		if err := tx.Where(groupCol+" IN ?", groupRefValues).Delete(&GroupModel{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where(groupCol+" IN ?", groupRefValues).Delete(&GroupChannelBinding{}).Error; err != nil {
+		if err := tx.Where(groupCol+" IN ?", groupRefValues).Delete(&GroupChannel{}).Error; err != nil {
 			return err
 		}
 		return tx.Where("id = ?", row.Id).Delete(&GroupCatalog{}).Error

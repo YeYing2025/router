@@ -72,11 +72,6 @@ OpenAI 兼容调用（`/api/v1/public/*`）使用 `TokenAuth + Distribute`，与
 
 新增/改动 API 时，请同步更新文档：
 - `docs/接口文档.md`（统一 API 文档）
-- `docs/swagger/openapi.json`（Swagger/OpenAPI 产物，执行 `scripts/gen-openapi.sh` 生成）
-
-Swagger 注释要求：
-- 为 `/api/v1/public` 与 `/api/v1/admin` handler 补充 swag 注释（不要写旧 `/api` 或 `/v1`）
-- 生成 OpenAPI：`scripts/gen-openapi.sh`
 
 ## 7) 迁移与禁用开关（供运维/发布）
 本仓库支持环境变量：

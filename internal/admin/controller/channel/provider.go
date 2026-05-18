@@ -19,7 +19,7 @@ const (
 	maxProviderPageSize     = 100
 )
 
-type providerCatalogItem struct {
+type providerItem struct {
 	ID           string                      `json:"id"`
 	Provider     string                      `json:"provider,omitempty"`
 	Name         string                      `json:"name,omitempty"`
@@ -33,11 +33,11 @@ type providerCatalogItem struct {
 	UpdatedAt    int64                       `json:"updated_at,omitempty"`
 }
 
-type providerCatalogListData struct {
-	Items    []providerCatalogItem `json:"items"`
-	Total    int64                 `json:"total"`
-	Page     int                   `json:"page"`
-	PageSize int                   `json:"page_size"`
+type providerListData struct {
+	Items    []providerItem `json:"items"`
+	Total    int64          `json:"total"`
+	Page     int            `json:"page"`
+	PageSize int            `json:"page_size"`
 }
 
 type publicProviderModelDetail struct {
@@ -48,7 +48,7 @@ type publicProviderModelDetail struct {
 	SupportedEndpoints []string `json:"supported_endpoints,omitempty"`
 }
 
-type publicProviderModelCatalogItem struct {
+type publicProviderModelItem struct {
 	ID        string                      `json:"id"`
 	Name      string                      `json:"name,omitempty"`
 	Models    []publicProviderModelDetail `json:"models"`
@@ -157,13 +157,13 @@ func mergeMissingProviderDetailsAsDeleted(current []model.ProviderModelDetail, e
 }
 
 type providerModelUsageSummary struct {
-	ChannelModels    []string
-	GroupModels      []string
-	GroupModelRoutes []string
+	ChannelModels      []string
+	GroupModels        []string
+	GroupModelChannels []string
 }
 
 func (summary providerModelUsageSummary) InUse() bool {
-	return len(summary.ChannelModels) > 0 || len(summary.GroupModels) > 0 || len(summary.GroupModelRoutes) > 0
+	return len(summary.ChannelModels) > 0 || len(summary.GroupModels) > 0 || len(summary.GroupModelChannels) > 0
 }
 
 func (summary providerModelUsageSummary) Error(provider string, modelName string) error {
@@ -174,8 +174,8 @@ func (summary providerModelUsageSummary) Error(provider string, modelName string
 	if len(summary.GroupModels) > 0 {
 		parts = append(parts, fmt.Sprintf("group_models=%s", strings.Join(summary.GroupModels, ",")))
 	}
-	if len(summary.GroupModelRoutes) > 0 {
-		parts = append(parts, fmt.Sprintf("group_model_routes=%s", strings.Join(summary.GroupModelRoutes, ",")))
+	if len(summary.GroupModelChannels) > 0 {
+		parts = append(parts, fmt.Sprintf("group_model_channels=%s", strings.Join(summary.GroupModelChannels, ",")))
 	}
 	return fmt.Errorf("provider model %s/%s is still in use: %s", provider, modelName, strings.Join(parts, "; "))
 }
@@ -219,18 +219,18 @@ func collectProviderModelUsageWithDB(db *gorm.DB, provider string, modelName str
 		Group string `gorm:"column:group"`
 	}
 	routeRefs := make([]routeRef, 0)
-	if err := db.Model(&model.GroupModelRoute{}).
+	if err := db.Model(&model.GroupModelChannel{}).
 		Select("DISTINCT "+groupCol).
-		Where("provider = ? AND enabled = ? AND (model = ? OR upstream_model = ?)", normalizedProvider, true, normalizedModel, normalizedModel).
+		Where("provider = ? AND (model = ? OR upstream_model = ?)", normalizedProvider, normalizedModel, normalizedModel).
 		Order(groupCol + " asc").
 		Find(&routeRefs).Error; err != nil {
 		return providerModelUsageSummary{}, err
 	}
 
 	summary := providerModelUsageSummary{
-		ChannelModels:    make([]string, 0, len(channelRefs)),
-		GroupModels:      make([]string, 0, len(groupRefs)),
-		GroupModelRoutes: make([]string, 0, len(routeRefs)),
+		ChannelModels:      make([]string, 0, len(channelRefs)),
+		GroupModels:        make([]string, 0, len(groupRefs)),
+		GroupModelChannels: make([]string, 0, len(routeRefs)),
 	}
 	for _, item := range channelRefs {
 		channelID := strings.TrimSpace(item.ChannelID)
@@ -247,7 +247,7 @@ func collectProviderModelUsageWithDB(db *gorm.DB, provider string, modelName str
 	for _, item := range routeRefs {
 		groupID := strings.TrimSpace(item.Group)
 		if groupID != "" {
-			summary.GroupModelRoutes = append(summary.GroupModelRoutes, groupID)
+			summary.GroupModelChannels = append(summary.GroupModelChannels, groupID)
 		}
 	}
 	return summary, nil
@@ -284,7 +284,7 @@ func ensureProviderModelsCanSoftDeleteWithDB(db *gorm.DB, provider string, curre
 	return nil
 }
 
-func normalizeProviderCatalogID(item providerCatalogItem) string {
+func normalizeProviderID(item providerItem) string {
 	id := commonutils.NormalizeProvider(item.ID)
 	if id == "" {
 		id = commonutils.NormalizeProvider(item.Provider)
@@ -295,7 +295,7 @@ func normalizeProviderCatalogID(item providerCatalogItem) string {
 	return id
 }
 
-func normalizeCatalogSortOrder(sortOrder int) int {
+func normalizeProviderSortOrder(sortOrder int) int {
 	if sortOrder > 0 {
 		return sortOrder
 	}
@@ -321,9 +321,9 @@ func parseProviderPageParams(c *gin.Context) (page int, pageSize int) {
 	return page, pageSize
 }
 
-func buildProviderCatalogItems(rows []model.Provider) ([]providerCatalogItem, error) {
+func buildProviderItems(rows []model.Provider) ([]providerItem, error) {
 	if len(rows) == 0 {
-		return []providerCatalogItem{}, nil
+		return []providerItem{}, nil
 	}
 	providers := make([]string, 0, len(rows))
 	for _, row := range rows {
@@ -337,21 +337,21 @@ func buildProviderCatalogItems(rows []model.Provider) ([]providerCatalogItem, er
 	if err != nil {
 		return nil, err
 	}
-	items := make([]providerCatalogItem, 0, len(rows))
+	items := make([]providerItem, 0, len(rows))
 	for _, row := range rows {
 		provider := commonutils.NormalizeProvider(row.Id)
 		if provider == "" {
 			continue
 		}
 		details := model.FilterActiveProviderModelDetails(detailsByProvider[provider])
-		items = append(items, providerCatalogItem{
+		items = append(items, providerItem{
 			ID:           provider,
 			Name:         strings.TrimSpace(row.Name),
 			Models:       providerModelNames(details),
 			ModelDetails: details,
 			BaseURL:      strings.TrimSpace(row.BaseURL),
 			OfficialURL:  strings.TrimSpace(row.OfficialURL),
-			SortOrder:    normalizeCatalogSortOrder(row.SortOrder),
+			SortOrder:    normalizeProviderSortOrder(row.SortOrder),
 			Source:       strings.TrimSpace(strings.ToLower(row.Source)),
 			CreatedAt:    row.CreatedAt,
 			UpdatedAt:    row.UpdatedAt,
@@ -378,13 +378,13 @@ func buildProviderListQuery(keyword string) *gorm.DB {
 	)
 }
 
-func listProviderCatalog(page int, pageSize int, keyword string) (providerCatalogListData, error) {
+func listProvidersPage(page int, pageSize int, keyword string) (providerListData, error) {
 	if page < 1 {
 		page = 1
 	}
 	total := int64(0)
 	if err := buildProviderListQuery(keyword).Count(&total).Error; err != nil {
-		return providerCatalogListData{}, err
+		return providerListData{}, err
 	}
 	rows := make([]model.Provider, 0)
 	if err := buildProviderListQuery(keyword).
@@ -392,13 +392,13 @@ func listProviderCatalog(page int, pageSize int, keyword string) (providerCatalo
 		Limit(pageSize).
 		Offset((page - 1) * pageSize).
 		Find(&rows).Error; err != nil {
-		return providerCatalogListData{}, err
+		return providerListData{}, err
 	}
-	items, err := buildProviderCatalogItems(rows)
+	items, err := buildProviderItems(rows)
 	if err != nil {
-		return providerCatalogListData{}, err
+		return providerListData{}, err
 	}
-	return providerCatalogListData{
+	return providerListData{
 		Items:    items,
 		Total:    total,
 		Page:     page,
@@ -406,18 +406,18 @@ func listProviderCatalog(page int, pageSize int, keyword string) (providerCatalo
 	}, nil
 }
 
-func listPublicProviderModelCatalog() ([]publicProviderModelCatalogItem, error) {
+func listPublicProviderModels() ([]publicProviderModelItem, error) {
 	rows := make([]model.Provider, 0)
 	if err := model.DB.Model(&model.Provider{}).
 		Order("sort_order asc, id asc").
 		Find(&rows).Error; err != nil {
 		return nil, err
 	}
-	items, err := buildProviderCatalogItems(rows)
+	items, err := buildProviderItems(rows)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]publicProviderModelCatalogItem, 0, len(items))
+	result := make([]publicProviderModelItem, 0, len(items))
 	for _, item := range items {
 		details := make([]publicProviderModelDetail, 0, len(item.ModelDetails))
 		for _, detail := range item.ModelDetails {
@@ -429,7 +429,7 @@ func listPublicProviderModelCatalog() ([]publicProviderModelCatalogItem, error) 
 				SupportedEndpoints: detail.SupportedEndpoints,
 			})
 		}
-		result = append(result, publicProviderModelCatalogItem{
+		result = append(result, publicProviderModelItem{
 			ID:        item.ID,
 			Name:      item.Name,
 			Models:    details,
@@ -440,21 +440,21 @@ func listPublicProviderModelCatalog() ([]publicProviderModelCatalogItem, error) 
 	return result, nil
 }
 
-func getProviderCatalogItemByID(id string) (providerCatalogItem, error) {
+func getProviderItemByID(id string) (providerItem, error) {
 	provider := commonutils.NormalizeProvider(id)
 	if provider == "" {
-		return providerCatalogItem{}, gorm.ErrRecordNotFound
+		return providerItem{}, gorm.ErrRecordNotFound
 	}
 	row := model.Provider{}
 	if err := model.DB.First(&row, "id = ?", provider).Error; err != nil {
-		return providerCatalogItem{}, err
+		return providerItem{}, err
 	}
-	items, err := buildProviderCatalogItems([]model.Provider{row})
+	items, err := buildProviderItems([]model.Provider{row})
 	if err != nil {
-		return providerCatalogItem{}, err
+		return providerItem{}, err
 	}
 	if len(items) == 0 {
-		return providerCatalogItem{}, gorm.ErrRecordNotFound
+		return providerItem{}, gorm.ErrRecordNotFound
 	}
 	return items[0], nil
 }
@@ -470,17 +470,17 @@ func nextProviderSortOrder(tx *gorm.DB) (int, error) {
 	return nextOrder, nil
 }
 
-func normalizeProviderUpsertItem(db *gorm.DB, providerID string, item providerCatalogItem, existing *providerCatalogItem, defaultSortOrder int) (providerCatalogItem, error) {
+func normalizeProviderUpsertItem(db *gorm.DB, providerID string, item providerItem, existing *providerItem, defaultSortOrder int) (providerItem, error) {
 	provider := commonutils.NormalizeProvider(providerID)
-	bodyProvider := normalizeProviderCatalogID(item)
+	bodyProvider := normalizeProviderID(item)
 	if provider == "" {
 		provider = bodyProvider
 	}
 	if provider == "" {
-		return providerCatalogItem{}, errors.New("供应商标识不能为空")
+		return providerItem{}, errors.New("供应商标识不能为空")
 	}
 	if bodyProvider != "" && bodyProvider != provider {
-		return providerCatalogItem{}, errors.New("供应商标识不匹配")
+		return providerItem{}, errors.New("供应商标识不匹配")
 	}
 
 	now := helper.GetTimestamp()
@@ -523,7 +523,7 @@ func normalizeProviderUpsertItem(db *gorm.DB, providerID string, item providerCa
 	}
 	if existing != nil {
 		if err := ensureProviderModelsCanSoftDeleteWithDB(db, provider, details, existing.ModelDetails); err != nil {
-			return providerCatalogItem{}, err
+			return providerItem{}, err
 		}
 	}
 	if existing != nil {
@@ -531,18 +531,18 @@ func normalizeProviderUpsertItem(db *gorm.DB, providerID string, item providerCa
 	}
 	details = applyProviderModelEndpointDefaults(provider, details)
 
-	sortOrder := normalizeCatalogSortOrder(item.SortOrder)
+	sortOrder := normalizeProviderSortOrder(item.SortOrder)
 	if sortOrder <= 0 && existing != nil {
-		sortOrder = normalizeCatalogSortOrder(existing.SortOrder)
+		sortOrder = normalizeProviderSortOrder(existing.SortOrder)
 	}
 	if sortOrder <= 0 {
-		sortOrder = normalizeCatalogSortOrder(defaultSortOrder)
+		sortOrder = normalizeProviderSortOrder(defaultSortOrder)
 	}
 	if sortOrder <= 0 {
 		sortOrder = 10
 	}
 
-	return providerCatalogItem{
+	return providerItem{
 		ID:           provider,
 		Name:         name,
 		Models:       providerModelNames(details),
@@ -561,23 +561,23 @@ func normalizeProviderUpsertItem(db *gorm.DB, providerID string, item providerCa
 	}, nil
 }
 
-func saveProviderCatalogItem(item providerCatalogItem, create bool) (providerCatalogItem, error) {
-	resolvedID := normalizeProviderCatalogID(item)
-	existing, err := getProviderCatalogItemByID(resolvedID)
+func saveProviderItem(item providerItem, create bool) (providerItem, error) {
+	resolvedID := normalizeProviderID(item)
+	existing, err := getProviderItemByID(resolvedID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return providerCatalogItem{}, err
+		return providerItem{}, err
 	}
 	existingFound := err == nil
 	if create && existingFound {
-		return providerCatalogItem{}, errors.New("该供应商已存在，请直接编辑")
+		return providerItem{}, errors.New("该供应商已存在，请直接编辑")
 	}
 	if !create && !existingFound {
-		return providerCatalogItem{}, gorm.ErrRecordNotFound
+		return providerItem{}, gorm.ErrRecordNotFound
 	}
 
 	tx := model.DB.Begin()
 	if tx.Error != nil {
-		return providerCatalogItem{}, tx.Error
+		return providerItem{}, tx.Error
 	}
 
 	defaultSortOrder := 0
@@ -585,11 +585,11 @@ func saveProviderCatalogItem(item providerCatalogItem, create bool) (providerCat
 		defaultSortOrder, err = nextProviderSortOrder(tx)
 		if err != nil {
 			_ = tx.Rollback()
-			return providerCatalogItem{}, err
+			return providerItem{}, err
 		}
 	}
 
-	var existingPtr *providerCatalogItem
+	var existingPtr *providerItem
 	if existingFound {
 		existingCopy := existing
 		existingPtr = &existingCopy
@@ -597,7 +597,7 @@ func saveProviderCatalogItem(item providerCatalogItem, create bool) (providerCat
 	normalized, err := normalizeProviderUpsertItem(tx, resolvedID, item, existingPtr, defaultSortOrder)
 	if err != nil {
 		_ = tx.Rollback()
-		return providerCatalogItem{}, err
+		return providerItem{}, err
 	}
 
 	providerRow := model.Provider{
@@ -613,7 +613,7 @@ func saveProviderCatalogItem(item providerCatalogItem, create bool) (providerCat
 	if create {
 		if err := tx.Create(&providerRow).Error; err != nil {
 			_ = tx.Rollback()
-			return providerCatalogItem{}, err
+			return providerItem{}, err
 		}
 	} else {
 		result := tx.Model(&model.Provider{}).
@@ -628,45 +628,45 @@ func saveProviderCatalogItem(item providerCatalogItem, create bool) (providerCat
 			})
 		if result.Error != nil {
 			_ = tx.Rollback()
-			return providerCatalogItem{}, result.Error
+			return providerItem{}, result.Error
 		}
 		if result.RowsAffected == 0 {
 			_ = tx.Rollback()
-			return providerCatalogItem{}, gorm.ErrRecordNotFound
+			return providerItem{}, gorm.ErrRecordNotFound
 		}
 	}
 
 	if err := tx.Where("provider = ?", normalized.ID).Delete(&model.ProviderModelPriceComponent{}).Error; err != nil {
 		_ = tx.Rollback()
-		return providerCatalogItem{}, err
+		return providerItem{}, err
 	}
 	if err := tx.Where("provider = ?", normalized.ID).Delete(&model.ProviderModel{}).Error; err != nil {
 		_ = tx.Rollback()
-		return providerCatalogItem{}, err
+		return providerItem{}, err
 	}
 	storeRows := model.BuildProviderModelStoreRows(normalized.ID, normalized.ModelDetails, normalized.UpdatedAt)
 	if len(storeRows.Models) > 0 {
 		if err := tx.Create(&storeRows.Models).Error; err != nil {
 			_ = tx.Rollback()
-			return providerCatalogItem{}, err
+			return providerItem{}, err
 		}
 	}
 	if len(storeRows.PriceComponents) > 0 {
 		if err := tx.Create(&storeRows.PriceComponents).Error; err != nil {
 			_ = tx.Rollback()
-			return providerCatalogItem{}, err
+			return providerItem{}, err
 		}
 	}
 	if err := tx.Commit().Error; err != nil {
-		return providerCatalogItem{}, err
+		return providerItem{}, err
 	}
 	if err := model.SyncModelPricingCatalogWithDB(model.DB); err != nil {
-		return providerCatalogItem{}, err
+		return providerItem{}, err
 	}
-	return getProviderCatalogItemByID(normalized.ID)
+	return getProviderItemByID(normalized.ID)
 }
 
-func deleteProviderCatalogItem(id string) error {
+func deleteProviderItem(id string) error {
 	provider := commonutils.NormalizeProvider(id)
 	if provider == "" {
 		return errors.New("供应商标识不能为空")
@@ -698,10 +698,10 @@ func deleteProviderCatalogItem(id string) error {
 	return model.SyncModelPricingCatalogWithDB(model.DB)
 }
 
-func appendModelToProviderItem(id string, req appendProviderModelRequest) (providerCatalogItem, error) {
-	existing, err := getProviderCatalogItemByID(id)
+func appendModelToProviderItem(id string, req appendProviderModelRequest) (providerItem, error) {
+	existing, err := getProviderItemByID(id)
 	if err != nil {
-		return providerCatalogItem{}, err
+		return providerItem{}, err
 	}
 
 	now := helper.GetTimestamp()
@@ -720,7 +720,7 @@ func appendModelToProviderItem(id string, req appendProviderModelRequest) (provi
 		UpdatedAt:          now,
 	}
 	if detail.Model == "" {
-		return providerCatalogItem{}, errors.New("模型名称不能为空")
+		return providerItem{}, errors.New("模型名称不能为空")
 	}
 	if detail.Source == "" {
 		detail.Source = "manual"
@@ -728,11 +728,11 @@ func appendModelToProviderItem(id string, req appendProviderModelRequest) (provi
 
 	existing.ModelDetails = mergeProviderDetailInputs(append(existing.ModelDetails, detail), nil, now)
 	existing.UpdatedAt = now
-	return saveProviderCatalogItem(existing, false)
+	return saveProviderItem(existing, false)
 }
 
 // GetPublicProviderModels godoc
-// @Summary Get provider model catalog for clients
+// @Summary Get provider model list for clients
 // @Tags public
 // @Security BearerAuth
 // @Produce json
@@ -740,7 +740,7 @@ func appendModelToProviderItem(id string, req appendProviderModelRequest) (provi
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/public/providers/models [get]
 func GetPublicProviderModels(c *gin.Context) {
-	items, err := listPublicProviderModelCatalog()
+	items, err := listPublicProviderModels()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -756,7 +756,7 @@ func GetPublicProviderModels(c *gin.Context) {
 }
 
 // GetProviders godoc
-// @Summary Get paged provider catalog (admin)
+// @Summary Get paged provider list (admin)
 // @Tags admin
 // @Security BearerAuth
 // @Produce json
@@ -768,7 +768,7 @@ func GetPublicProviderModels(c *gin.Context) {
 // @Router /api/v1/admin/providers [get]
 func GetProviders(c *gin.Context) {
 	page, pageSize := parseProviderPageParams(c)
-	data, err := listProviderCatalog(page, pageSize, c.Query("keyword"))
+	data, err := listProvidersPage(page, pageSize, c.Query("keyword"))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -793,7 +793,7 @@ func GetProviders(c *gin.Context) {
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/admin/providers/{id} [get]
 func GetProvider(c *gin.Context) {
-	item, err := getProviderCatalogItemByID(c.Param("id"))
+	item, err := getProviderItemByID(c.Param("id"))
 	if err != nil {
 		message := "加载供应商详情失败: " + err.Error()
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -822,7 +822,7 @@ func GetProvider(c *gin.Context) {
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/admin/providers [post]
 func CreateProvider(c *gin.Context) {
-	req := providerCatalogItem{}
+	req := providerItem{}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -830,7 +830,7 @@ func CreateProvider(c *gin.Context) {
 		})
 		return
 	}
-	saved, err := saveProviderCatalogItem(req, true)
+	saved, err := saveProviderItem(req, true)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -856,7 +856,7 @@ func CreateProvider(c *gin.Context) {
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/admin/providers/{id} [put]
 func UpdateProvider(c *gin.Context) {
-	req := providerCatalogItem{}
+	req := providerItem{}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -865,7 +865,7 @@ func UpdateProvider(c *gin.Context) {
 		return
 	}
 	req.ID = strings.TrimSpace(c.Param("id"))
-	saved, err := saveProviderCatalogItem(req, false)
+	saved, err := saveProviderItem(req, false)
 	if err != nil {
 		message := "保存供应商失败: " + err.Error()
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -885,7 +885,7 @@ func UpdateProvider(c *gin.Context) {
 }
 
 // AppendProviderModel godoc
-// @Summary Append one model detail into provider catalog (admin)
+// @Summary Append one model detail into provider list (admin)
 // @Tags admin
 // @Security BearerAuth
 // @Accept json
@@ -934,7 +934,7 @@ func AppendProviderModel(c *gin.Context) {
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/admin/providers/{id} [delete]
 func DeleteProvider(c *gin.Context) {
-	if err := deleteProviderCatalogItem(c.Param("id")); err != nil {
+	if err := deleteProviderItem(c.Param("id")); err != nil {
 		message := "删除供应商失败: " + err.Error()
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			message = "供应商不存在"

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API, showError, timestamp2string } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
+import { BUSINESS_FLOW_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
 import UnitDropdown from './UnitDropdown';
 import { buildBillingCurrencyIndex, buildDisplayUnitOptions, formatDisplayAmountFromYYC } from '../helpers/billing';
 import { formatAmountWithUnit, renderText } from '../helpers/render';
@@ -136,6 +137,8 @@ const BusinessFlowTable = ({ kind }) => {
     const commonUserColumn = {
       key: 'username',
       label: t('user.table.username'),
+      width: BUSINESS_FLOW_COLUMN_WIDTHS.user,
+      cellClassName: '',
       render: (row) => {
         const userId = readOnlyText(row.user_id || row.redeemed_by_user_id);
         return (
@@ -161,6 +164,7 @@ const BusinessFlowTable = ({ kind }) => {
     const compactUserColumn = {
       key: 'username',
       label: t('user.table.username'),
+      width: BUSINESS_FLOW_COLUMN_WIDTHS.userCompact,
       render: (row) => {
         const userId = readOnlyText(row.user_id || row.redeemed_by_user_id);
         return (
@@ -212,11 +216,14 @@ const BusinessFlowTable = ({ kind }) => {
           {
             key: 'status',
             label: t('topup.external_topup_orders.columns.status'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.status,
+            cellClassName: 'router-table-col-status-compact',
             render: (row) => renderTopupStatus(row.status, t),
           },
           {
             key: 'source',
             label: t('flow.topup.columns.source'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.source,
             render: (row) => (
               <div>
                 <div>{readOnlyText(row.provider_name || row.source)}</div>
@@ -227,6 +234,7 @@ const BusinessFlowTable = ({ kind }) => {
           {
             key: 'amount',
             label: t('topup.external_topup_orders.columns.amount'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.amount,
             render: (row) => {
               const amountValue = Number(
                 row?.amount ?? row?.face_value_amount ?? 0,
@@ -260,6 +268,7 @@ const BusinessFlowTable = ({ kind }) => {
                 />
               </div>
             ),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.quota,
             render: (row) =>
               formatDisplayAmountFromYYC(
                 row?.yyc_value || 0,
@@ -271,11 +280,15 @@ const BusinessFlowTable = ({ kind }) => {
           {
             key: 'created_at',
             label: t('user.table.created_at'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.datetime,
+            cellClassName: 'router-table-col-datetime',
             render: (row) => formatDateTime(row.created_at),
           },
           {
             key: 'updated_at',
             label: t('user.table.updated_at'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.datetime,
+            cellClassName: 'router-table-col-datetime',
             render: (row) => formatDateTime(row.updated_at),
           },
         ],
@@ -310,21 +323,28 @@ const BusinessFlowTable = ({ kind }) => {
           {
             key: 'stage',
             label: t('flow.topup_reconcile.columns.stage'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.status,
+            cellClassName: 'router-table-col-status-compact',
             render: (row) => renderReconcileStage(row, t),
           },
           {
             key: 'status',
             label: t('topup.external_topup_orders.columns.status'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.status,
+            cellClassName: 'router-table-col-status-compact',
             render: (row) => renderTopupStatus(row.status, t),
           },
           {
             key: 'business_type',
             label: t('topup.external_topup_orders.columns.business_type'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.type,
+            cellClassName: 'router-table-col-type-narrow',
             render: (row) => formatTopupBusinessType(row.business_type, t),
           },
           {
             key: 'amount',
             label: t('topup.external_topup_orders.columns.amount'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.amount,
             render: (row) =>
               Number(row.amount || 0) > 0
                 ? `${row.currency || 'CNY'} ${Number(row.amount || 0).toFixed(2)}`
@@ -333,6 +353,7 @@ const BusinessFlowTable = ({ kind }) => {
           {
             key: 'order',
             label: t('flow.topup_reconcile.columns.order'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.order,
             render: (row) => (
               <div>{renderText(readOnlyText(row.title || formatTopupBusinessType(row.business_type, t)), 28)}</div>
             ),
@@ -340,6 +361,7 @@ const BusinessFlowTable = ({ kind }) => {
           {
             key: 'message',
             label: t('flow.topup_reconcile.columns.message'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.message,
             headerClassName: 'router-topup-reconcile-message-cell',
             cellClassName: 'router-topup-reconcile-message-cell',
             render: (row) => {
@@ -365,12 +387,16 @@ const BusinessFlowTable = ({ kind }) => {
           {
             key: 'updated_at',
             label: t('user.table.updated_at'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.datetime,
+            cellClassName: 'router-table-col-datetime',
             render: (row) => formatDateTime(row.updated_at),
           },
           {
             key: 'actions',
             label: t('redemption.table.actions'),
             collapsing: true,
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.actions,
+            cellClassName: 'router-table-col-actions-icon',
             render: (row) => (
               <AppButton
                 type='button'
@@ -418,16 +444,19 @@ const BusinessFlowTable = ({ kind }) => {
           {
             key: 'package_name',
             label: t('user.detail.package_name'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.packageName,
             render: (row) => readOnlyText(row.package_name),
           },
           {
             key: 'group',
             label: t('user.detail.package_group'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.group,
             render: (row) => readOnlyText(row.group_name || row.group_id),
           },
           {
             key: 'amount',
             label: t('flow.package.columns.amount'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.amount,
             render: (row) => {
               const amount = Number(row?.amount || 0);
               const currency = readOnlyText(row?.currency);
@@ -455,6 +484,7 @@ const BusinessFlowTable = ({ kind }) => {
                 />
               </div>
             ),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.quota,
             render: (row) => (
               Number(row.daily_quota_limit || 0) > 0
                 ? formatDisplayAmountFromYYC(
@@ -485,6 +515,7 @@ const BusinessFlowTable = ({ kind }) => {
                 />
               </div>
             ),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.quota,
             render: (row) => formatDisplayAmountFromYYC(
               row.package_emergency_quota_limit || 0,
               displayUnit,
@@ -495,16 +526,22 @@ const BusinessFlowTable = ({ kind }) => {
           {
             key: 'status',
             label: t('user.detail.package_status'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.status,
+            cellClassName: 'router-table-col-status-compact',
             render: (row) => renderPackageStatus(row.status, t),
           },
           {
             key: 'started_at',
             label: t('user.detail.package_started_at'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.datetime,
+            cellClassName: 'router-table-col-datetime',
             render: (row) => formatDateTime(row.started_at),
           },
           {
             key: 'expires_at',
             label: t('user.detail.package_expires_at'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.datetime,
+            cellClassName: 'router-table-col-datetime',
             render: (row) => (
               Number(row.expires_at || 0) > 0 ? formatDateTime(row.expires_at) : t('common.unlimited')
             ),
@@ -512,6 +549,8 @@ const BusinessFlowTable = ({ kind }) => {
           {
             key: 'updated_at',
             label: t('user.table.updated_at'),
+            width: BUSINESS_FLOW_COLUMN_WIDTHS.datetime,
+            cellClassName: 'router-table-col-datetime',
             render: (row) => formatDateTime(row.updated_at),
           },
         ],
@@ -537,16 +576,19 @@ const BusinessFlowTable = ({ kind }) => {
         {
           key: 'name',
           label: t('redemption.table.name'),
+          width: BUSINESS_FLOW_COLUMN_WIDTHS.packageName,
           render: (row) => readOnlyText(row.name),
         },
         {
           key: 'group',
           label: t('redemption.table.group'),
+          width: BUSINESS_FLOW_COLUMN_WIDTHS.group,
           render: (row) => readOnlyText(row.group_name || row.group_id),
         },
         {
           key: 'face_value',
           label: t('redemption.table.face_value'),
+          width: BUSINESS_FLOW_COLUMN_WIDTHS.amount,
           render: (row) => formatAmountWithUnit(row.face_value_amount, row.face_value_unit, 6),
         },
         {
@@ -568,6 +610,7 @@ const BusinessFlowTable = ({ kind }) => {
               />
             </div>
           ),
+          width: BUSINESS_FLOW_COLUMN_WIDTHS.quota,
           render: (row) => {
             const unit = (displayUnit || 'USD').toString().trim().toUpperCase();
             const amountText = formatDisplayAmountFromYYC(
@@ -582,11 +625,15 @@ const BusinessFlowTable = ({ kind }) => {
         {
           key: 'redeemed_time',
           label: t('redemption.table.redeemed_time'),
+          width: BUSINESS_FLOW_COLUMN_WIDTHS.datetime,
+          cellClassName: 'router-table-col-datetime',
           render: (row) => formatDateTime(row.redeemed_time),
         },
         {
           key: 'created_time',
           label: t('redemption.table.created_time'),
+          width: BUSINESS_FLOW_COLUMN_WIDTHS.datetime,
+          cellClassName: 'router-table-col-datetime',
           render: (row) => formatDateTime(row.created_time),
         },
       ],
@@ -776,7 +823,7 @@ const BusinessFlowTable = ({ kind }) => {
 
       <div className={`router-table-scroll-x ${config.tableWrapperClassName || ''}`.trim()}>
         <AppTable
-          className='router-hover-table router-list-table'
+          className='router-hover-table router-list-table router-table-fit-page'
           pagination={false}
           rowKey={(row) => row.id || row.transaction_id || row.package_id}
           dataSource={items}
@@ -795,6 +842,7 @@ const BusinessFlowTable = ({ kind }) => {
             title: column.label,
             key: column.key,
             className: column.cellClassName || '',
+            width: column.width,
             onHeaderCell: () => ({
               className: column.headerClassName || '',
             }),

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { timestamp2string } from '../../helpers';
+import { BALANCE_LOT_COLUMN_WIDTHS } from '../../constants/tableWidthPresets';
 import RedeemCodePage from './RedeemCodePage';
 import {
   renderTopupIntegerAmountWithExactPopup,
@@ -73,12 +74,14 @@ const BalanceStatusPage = () => {
         title: t('topup.balance_lots.columns.source'),
         dataIndex: 'source_type',
         key: 'source_type',
+        width: BALANCE_LOT_COLUMN_WIDTHS.source,
         render: (value) => formatLotSource(value, t),
       },
       {
         title: t('topup.balance_lots.columns.remaining'),
         dataIndex: 'remaining_yyc',
         key: 'remaining_yyc',
+        width: BALANCE_LOT_COLUMN_WIDTHS.remaining,
         render: (_, row) =>
           renderTopupIntegerAmountWithExactPopup({
             yycAmount: row.remaining_yyc,
@@ -90,6 +93,7 @@ const BalanceStatusPage = () => {
         title: t('topup.balance_lots.columns.total'),
         dataIndex: 'total_yyc',
         key: 'total_yyc',
+        width: BALANCE_LOT_COLUMN_WIDTHS.total,
         render: (_, row) =>
           renderTopupIntegerAmountWithExactPopup({
             yycAmount: row.total_yyc,
@@ -101,18 +105,24 @@ const BalanceStatusPage = () => {
         title: t('topup.balance_lots.columns.status'),
         dataIndex: 'status',
         key: 'status',
+        className: 'router-table-col-status-compact',
+        width: BALANCE_LOT_COLUMN_WIDTHS.status,
         render: (value) => renderLotStatus(value, t),
       },
       {
         title: t('topup.balance_lots.columns.granted_at'),
         dataIndex: 'granted_at',
         key: 'granted_at',
+        className: 'router-table-col-datetime',
+        width: BALANCE_LOT_COLUMN_WIDTHS.grantedAt,
         render: (value) => (value ? timestamp2string(value) : '-'),
       },
       {
         title: t('topup.balance_lots.columns.expires_at'),
         dataIndex: 'expires_at',
         key: 'expires_at',
+        className: 'router-table-col-datetime',
+        width: BALANCE_LOT_COLUMN_WIDTHS.expiresAt,
         render: (value) =>
           Number(value || 0) > 0 ? timestamp2string(value) : t('common.never'),
       },
@@ -207,7 +217,7 @@ const BalanceStatusPage = () => {
         ) : (
           <div className='router-table-scroll-x'>
             <AppTable
-              className='router-list-table'
+              className='router-list-table router-table-fit-page'
               rowKey={(row) => row.id || `${row.source_type}-${row.source_id}`}
               pagination={false}
               dataSource={balanceLots}

@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API, showError, showInfo, showSuccess, timestamp2string } from '../helpers';
+import { GROUP_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
 import {
+  AppAlert,
   AppButton,
   AppDetailSection,
   AppField,
@@ -13,11 +15,13 @@ import {
   AppInput,
   AppInputNumber,
   AppModal,
+  AppPopconfirm,
   AppSelect,
   AppSwitch,
   AppTable,
   AppTag,
   AppTabs,
+  AppTooltip,
   AppToolbar,
   AppTextarea,
 } from '../router-ui';
@@ -42,7 +46,7 @@ const createEmptyModelConfig = () => ({
   priority: null,
 });
 
-const sortGroupModelConfigRows = (items) =>
+const sortGroupModelRows = (items) =>
   [...(Array.isArray(items) ? items : [])].sort((a, b) => {
     const modelDiff = (a?.model || '').localeCompare(b?.model || '');
     if (modelDiff !== 0) {
@@ -92,7 +96,7 @@ const toBoundChannelIDs = (items) =>
     .filter((item) => !!item.bound && Number(item?.status || 0) === 1)
     .map((item) => item.id);
 
-const collectChannelIDsFromGroupModelConfigs = (items) => {
+const collectChannelIDsFromGroupModels = (items) => {
   const ids = [];
   const seen = new Set();
   (Array.isArray(items) ? items : []).forEach((item) => {
@@ -108,6 +112,49 @@ const collectChannelIDsFromGroupModelConfigs = (items) => {
 
 const toChannelRows = (items) =>
   Array.isArray(items) ? items : [];
+
+const getChannelModelOptionRows = (channel) =>
+  Array.isArray(channel?.model_options)
+    ? channel.model_options
+    : Array.isArray(channel?.models)
+      ? channel.models
+      : [];
+
+const toDetailModelEntries = (items) =>
+  (Array.isArray(items) ? items : []).map((item) => {
+    const rows = Array.isArray(item?.channels) ? item.channels : [];
+    return {
+      model: item?.model || '',
+      provider: item?.provider || '',
+      rows: rows.map((row) => ({
+        model: item?.model || '',
+        channel_id: row?.channel_id || '',
+        channel_name: row?.channel_name || '',
+        channel_protocol: row?.channel_protocol || '',
+        channel_status: Number(row?.channel_status || 0),
+        upstream_model: row?.upstream_model || '',
+        priority: row?.priority ?? 0,
+        enabled: item?.enabled !== false,
+      })),
+      allEnabled: item?.enabled !== false,
+    };
+  });
+
+const flattenDetailModelEntriesToConfigRows = (items) =>
+  sortGroupModelRows(
+    (Array.isArray(items) ? items : []).flatMap((item) =>
+      (Array.isArray(item?.rows) ? item.rows : []).map((row) => ({
+        model: item?.model || '',
+        channel_id: row?.channel_id || '',
+        upstream_model: row?.upstream_model || '',
+        enabled: item?.allEnabled !== false,
+        priority: row?.priority ?? 0,
+        channel_name: row?.channel_name || '',
+        channel_protocol: row?.channel_protocol || '',
+        channel_status: Number(row?.channel_status || 0),
+      }))
+    )
+  );
 
 const encodeChannelModelOptionValue = (item) =>
   JSON.stringify({
@@ -223,7 +270,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
 
   const [detailChannelRows, setDetailChannelRows] = useState([]);
   const [detailChannelLoading, setDetailChannelLoading] = useState(false);
-  const [detailModelRows, setDetailModelRows] = useState([]);
+  const [detailModels, setDetailModels] = useState([]);
   const [detailModelLoading, setDetailModelLoading] = useState(false);
   const [detailModelSearchKeyword, setDetailModelSearchKeyword] = useState('');
   const [detailEditingSection, setDetailEditingSection] = useState('');
@@ -233,6 +280,9 @@ const GroupsManager = ({ detailGroupId = '' }) => {
   const [detailModelModalOpen, setDetailModelModalOpen] = useState(false);
   const [detailModelEditTarget, setDetailModelEditTarget] = useState('');
   const [detailModelChannelDrafts, setDetailModelChannelDrafts] = useState([]);
+  const [detailAddModelModalOpen, setDetailAddModelModalOpen] = useState(false);
+  const [detailAddModelOptions, setDetailAddModelOptions] = useState([]);
+  const [detailAddModelValue, setDetailAddModelValue] = useState('');
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -363,7 +413,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
   const resetDetailState = () => {
     setDetailChannelRows([]);
     setDetailChannelLoading(false);
-    setDetailModelRows([]);
+    setDetailModels([]);
     setDetailModelLoading(false);
     setDetailModelSearchKeyword('');
     setDetailEditingSection('');
@@ -417,20 +467,19 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     }
   }, [t]);
 
-  const fetchGroupModelConfigPayload = useCallback(async (groupID) => {
+  const fetchGroupModelsPayload = useCallback(async (groupID) => {
     const encodedID = encodeURIComponent(groupID || '');
-    const res = await API.get(`/api/v1/admin/group/${encodedID}/model-configs`);
+    const res = await API.get(`/api/v1/admin/group/${encodedID}/models`);
     const { success, message, data } = res.data || {};
     if (!success) {
-      throw new Error(message || t('group_manage.messages.model_config_load_failed'));
+      throw new Error(message || t('group_manage.messages.model_load_failed'));
     }
     return {
-      channels: Array.isArray(data?.channels) ? data.channels : [],
-      items: sortGroupModelConfigRows(Array.isArray(data?.items) ? data.items : []),
+      items: toDetailModelEntries(data?.items),
     };
   }, [t]);
 
-  const fetchGroupChannelBindings = useCallback(async (groupID) => {
+  const fetchGroupChannels = useCallback(async (groupID) => {
     const encodedID = encodeURIComponent(groupID || '');
     const res = await API.get(`/api/v1/admin/group/${encodedID}/channels`);
     const { success, message, data } = res.data || {};
@@ -441,8 +490,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
   }, [t]);
 
   const applyDetailModelConfigPayload = useCallback((payload) => {
-    const items = sortGroupModelConfigRows(Array.isArray(payload?.items) ? payload.items : []);
-    setDetailModelRows(items);
+    setDetailModels(Array.isArray(payload?.items) ? payload.items : []);
   }, []);
 
   const loadDetailModelConfigState = useCallback(async (groupID) => {
@@ -450,8 +498,8 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     setDetailModelLoading(true);
     try {
       const [payload, channelRows] = await Promise.all([
-        fetchGroupModelConfigPayload(groupID),
-        fetchGroupChannelBindings(groupID),
+        fetchGroupModelsPayload(groupID),
+        fetchGroupChannels(groupID),
       ]);
       setDetailChannelRows(toChannelRows(channelRows));
       applyDetailModelConfigPayload(payload);
@@ -463,32 +511,37 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       setDetailChannelLoading(false);
       setDetailModelLoading(false);
     }
-  }, [applyDetailModelConfigPayload, fetchGroupChannelBindings, fetchGroupModelConfigPayload]);
+  }, [applyDetailModelConfigPayload, fetchGroupChannels, fetchGroupModelsPayload]);
 
-  const refreshDetailChannelBindings = useCallback(async (groupID) => {
+  const refreshDetailChannels = useCallback(async (groupID) => {
     const normalizedGroupID = (groupID || '').toString().trim();
     if (normalizedGroupID === '') {
       setDetailChannelRows([]);
       return [];
     }
-    const rows = await fetchGroupChannelBindings(normalizedGroupID);
+    const rows = await fetchGroupChannels(normalizedGroupID);
     const nextRows = toChannelRows(rows);
     setDetailChannelRows(nextRows);
     return nextRows;
-  }, [fetchGroupChannelBindings]);
+  }, [fetchGroupChannels]);
 
   const loadEditModelConfigs = useCallback(async (groupID) => {
     setFormChannelLoading(true);
     setFormModelLoading(true);
     try {
-      const payload = await fetchGroupModelConfigPayload(groupID);
-      const channels = Array.isArray(payload?.channels) ? payload.channels : [];
-      const items = sortGroupModelConfigRows(Array.isArray(payload?.items) ? payload.items : []);
-      setFormModelChannels(channels);
-      setFormChannelOptions(toChannelOptions(channels));
-      setFormChannelIDs(toBoundChannelIDs(channels));
+      const [payload, channelRows] = await Promise.all([
+        fetchGroupModelsPayload(groupID),
+        fetchGroupChannels(groupID),
+      ]);
+      const items = flattenDetailModelEntriesToConfigRows(payload?.items);
+      setFormModelChannels(channelRows);
+      setFormChannelOptions(toChannelOptions(channelRows));
+      setFormChannelIDs(toBoundChannelIDs(channelRows));
       setFormModelConfigs(items);
-      return payload;
+      return {
+        channels: channelRows,
+        items,
+      };
     } catch (error) {
       showError(error);
       return null;
@@ -496,15 +549,32 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       setFormChannelLoading(false);
       setFormModelLoading(false);
     }
-  }, [fetchGroupModelConfigPayload]);
+  }, [fetchGroupChannels, fetchGroupModelsPayload]);
 
   const applySavedDetailModelState = useCallback((items, channels, selectedChannelIDs) => {
-    const nextItems = sortGroupModelConfigRows(Array.isArray(items) ? items : []);
+    const nextItems = sortGroupModelRows(Array.isArray(items) ? items : []);
     const nextChannels = Array.isArray(channels) ? channels : [];
     const normalizedSelectedChannelIDs = Array.isArray(selectedChannelIDs)
       ? selectedChannelIDs
       : toBoundChannelIDs(nextChannels);
-    setDetailModelRows(nextItems);
+    setDetailModels(toDetailModelEntries(
+      [...new Set(nextItems.map((item) => (item?.model || '').trim()).filter(Boolean))].map((modelName) => ({
+        model: modelName,
+        channels: nextItems
+          .filter((item) => (item?.model || '').trim() === modelName)
+          .map((item) => ({
+            channel_id: item?.channel_id || '',
+            channel_name: item?.channel_name || '',
+            channel_protocol: item?.channel_protocol || '',
+            channel_status: Number(item?.channel_status || 0),
+            upstream_model: item?.upstream_model || '',
+            priority: item?.priority ?? 0,
+          })),
+        enabled: nextItems
+          .filter((item) => (item?.model || '').trim() === modelName)
+          .every((item) => item?.enabled !== false),
+      }))
+    ));
     setFormModelChannels(nextChannels);
     setFormChannelOptions(toChannelOptions(nextChannels));
     setFormChannelIDs(normalizedSelectedChannelIDs);
@@ -618,7 +688,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     [currentPagePath, navigate]
   );
 
-  const normalizeModelConfigsPayload = useCallback((items, selectedChannelIDs) => {
+  const normalizeGroupModelsPayload = useCallback((items, selectedChannelIDs) => {
     const selectedChannelIDSet = new Set(
       Array.isArray(selectedChannelIDs) ? selectedChannelIDs : []
     );
@@ -635,12 +705,12 @@ const GroupsManager = ({ detailGroupId = '' }) => {
         continue;
       }
       if (model === '' || channelID === '' || upstreamModel === '') {
-        showInfo(t('group_manage.messages.model_config_incomplete'));
+        showInfo(t('group_manage.messages.model_incomplete'));
         return null;
       }
       const dedupeKey = `${model}::${channelID}`;
       if (seenModelConfigKeys.has(dedupeKey)) {
-        showInfo(t('group_manage.messages.model_config_duplicate'));
+        showInfo(t('group_manage.messages.model_duplicate'));
         return null;
       }
       seenModelConfigKeys.add(dedupeKey);
@@ -659,9 +729,9 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     return normalizedModelConfigs;
   }, [t]);
 
-  const buildNormalizedModelConfigs = useCallback(() => {
-    return normalizeModelConfigsPayload(formModelConfigs, formChannelIDs);
-  }, [formChannelIDs, formModelConfigs, normalizeModelConfigsPayload]);
+  const buildNormalizedGroupModels = useCallback(() => {
+    return normalizeGroupModelsPayload(formModelConfigs, formChannelIDs);
+  }, [formChannelIDs, formModelConfigs, normalizeGroupModelsPayload]);
 
   const submitCreate = async () => {
     const name = (form.name || '').trim();
@@ -709,8 +779,8 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       showInfo(t('group_manage.messages.billing_ratio_invalid'));
       return;
     }
-    const normalizedModelConfigs = buildNormalizedModelConfigs();
-    if (normalizedModelConfigs === null) {
+    const normalizedModels = buildNormalizedGroupModels();
+    if (normalizedModels === null) {
       return;
     }
     setSubmitting(true);
@@ -722,7 +792,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
         billing_ratio: billingRatio,
         sort_order: Number(form.sort_order || 0),
         channel_ids: formChannelIDs,
-        model_configs: normalizedModelConfigs,
+        models: normalizedModels,
       });
       const { success, message, data } = res.data || {};
       if (!success) {
@@ -786,7 +856,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     setDetailChannelLoading(true);
     let channels = [];
     try {
-      channels = await fetchGroupChannelBindings(activeGroup.id || '');
+      channels = await fetchGroupChannels(activeGroup.id || '');
     } catch (error) {
       showError(error);
       setDetailChannelLoading(false);
@@ -800,7 +870,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       priority: toSafePriorityNumber(firstUnbound?.priority, 0),
     });
     setDetailChannelModalOpen(true);
-  }, [activeGroup, detailChannelsEditLocked, fetchGroupChannelBindings, submitting]);
+  }, [activeGroup, detailChannelsEditLocked, fetchGroupChannels, submitting]);
 
   const loadDetailModelEditorState = useCallback(async () => {
     if (!activeGroup || submitting || detailModelsEditLocked) {
@@ -831,22 +901,22 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     await loadGroupDetail(normalizedGroupID);
   }, [loadCatalog, loadGroupDetail]);
 
-  const saveDetailModelConfigs = useCallback(async (items, selectedChannelIDs, channels = []) => {
+  const saveDetailModels = useCallback(async (items, selectedChannelIDs) => {
     const id = (activeGroup?.id || '').toString().trim();
     if (id === '') {
       return false;
     }
-    const normalizedModelConfigs = normalizeModelConfigsPayload(items, selectedChannelIDs);
-    if (normalizedModelConfigs === null) {
+    const normalizedModels = normalizeGroupModelsPayload(items, selectedChannelIDs);
+    if (normalizedModels === null) {
       return false;
     }
     setSubmitting(true);
     try {
       const res = await API.put(
-        `/api/v1/admin/group/${encodeURIComponent(id)}/model-configs`,
+        `/api/v1/admin/group/${encodeURIComponent(id)}/models`,
         {
           channel_ids: selectedChannelIDs,
-          model_configs: normalizedModelConfigs,
+          models: normalizedModels,
         }
       );
       const { success, message } = res.data || {};
@@ -854,8 +924,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
         showError(message || t('group_manage.messages.update_failed'));
         return false;
       }
-      applySavedDetailModelState(items, channels, selectedChannelIDs);
-      await refreshDetailChannelBindings(id);
+      await loadDetailModelConfigState(id);
       showSuccess(t('group_manage.messages.update_success'));
       return true;
     } catch (error) {
@@ -864,24 +933,24 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     } finally {
       setSubmitting(false);
     }
-  }, [activeGroup, applySavedDetailModelState, normalizeModelConfigsPayload, refreshDetailChannelBindings, t]);
+  }, [activeGroup, loadDetailModelConfigState, normalizeGroupModelsPayload, t]);
 
-  const saveSingleDetailModelConfigs = useCallback(async (modelName, items, channels = []) => {
+  const saveSingleDetailModel = useCallback(async (modelName, items) => {
     const id = (activeGroup?.id || '').toString().trim();
     const normalizedModel = (modelName || '').toString().trim();
     if (id === '' || normalizedModel === '') {
       return false;
     }
-    const normalizedModelConfigs = normalizeModelConfigsPayload(items, collectChannelIDsFromGroupModelConfigs(items));
-    if (normalizedModelConfigs === null) {
+    const normalizedModels = normalizeGroupModelsPayload(items, collectChannelIDsFromGroupModels(items));
+    if (normalizedModels === null) {
       return false;
     }
     setSubmitting(true);
     try {
       const res = await API.put(
-        `/api/v1/admin/group/${encodeURIComponent(id)}/model-configs/${encodeURIComponent(normalizedModel)}`,
+        `/api/v1/admin/group/${encodeURIComponent(id)}/models/${encodeURIComponent(normalizedModel)}`,
         {
-          model_configs: normalizedModelConfigs,
+          models: normalizedModels,
         }
       );
       const { success, message } = res.data || {};
@@ -889,15 +958,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
         showError(message || t('group_manage.messages.update_failed'));
         return false;
       }
-      const preservedRows = (Array.isArray(detailModelRows) ? detailModelRows : []).filter(
-        (item) => (item?.model || '').toString().trim() !== normalizedModel
-      );
-      applySavedDetailModelState(
-        sortGroupModelConfigRows([...preservedRows, ...items]),
-        channels,
-        toBoundChannelIDs(channels),
-      );
-      await refreshDetailChannelBindings(id);
+      await loadDetailModelConfigState(id);
       showSuccess(t('group_manage.messages.update_success'));
       return true;
     } catch (error) {
@@ -906,7 +967,34 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     } finally {
       setSubmitting(false);
     }
-  }, [activeGroup, applySavedDetailModelState, detailModelRows, normalizeModelConfigsPayload, refreshDetailChannelBindings, t]);
+  }, [activeGroup, loadDetailModelConfigState, normalizeGroupModelsPayload, t]);
+
+  const deleteSingleDetailModel = useCallback(async (modelName) => {
+    const id = (activeGroup?.id || '').toString().trim();
+    const normalizedModel = (modelName || '').toString().trim();
+    if (id === '' || normalizedModel === '') {
+      return false;
+    }
+    setSubmitting(true);
+    try {
+      const res = await API.delete(
+        `/api/v1/admin/group/${encodeURIComponent(id)}/models/${encodeURIComponent(normalizedModel)}`
+      );
+      const { success, message } = res.data || {};
+      if (!success) {
+        showError(message || t('group_manage.messages.update_failed'));
+        return false;
+      }
+      await loadDetailModelConfigState(id);
+      showSuccess(t('group_manage.messages.update_success'));
+      return true;
+    } catch (error) {
+      showError(error);
+      return false;
+    } finally {
+      setSubmitting(false);
+    }
+  }, [activeGroup, loadDetailModelConfigState, t]);
 
   const closeDetailModelModal = useCallback(() => {
     if (submitting) {
@@ -915,6 +1003,15 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     setDetailModelModalOpen(false);
     setDetailModelEditTarget('');
     setDetailModelChannelDrafts([]);
+  }, [submitting]);
+
+  const closeDetailAddModelModal = useCallback(() => {
+    if (submitting) {
+      return;
+    }
+    setDetailAddModelModalOpen(false);
+    setDetailAddModelOptions([]);
+    setDetailAddModelValue('');
   }, [submitting]);
 
   const closeDetailChannelModal = useCallback(() => {
@@ -1133,7 +1230,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       />
 
       <AppTable
-        className='router-hover-table router-list-table'
+        className='router-hover-table router-list-table router-table-fit-page'
         rowKey='id'
         pagination={false}
         loading={loading}
@@ -1148,18 +1245,23 @@ const GroupsManager = ({ detailGroupId = '' }) => {
             title: t('group_manage.table.id'),
             dataIndex: 'name',
             key: 'name',
+            width: GROUP_LIST_COLUMN_WIDTHS.name,
+            ellipsis: true,
             render: (value) => value || '-',
           },
           {
             title: t('group_manage.table.description'),
             dataIndex: 'description',
             key: 'description',
+            width: GROUP_LIST_COLUMN_WIDTHS.description,
+            ellipsis: true,
             render: (value) => value || '-',
           },
           {
             title: t('group_manage.table.channels'),
             dataIndex: 'channels',
             key: 'channels',
+            width: GROUP_LIST_COLUMN_WIDTHS.channels,
             render: (channels) => {
               const { visible, hiddenCount } = summarizeGroupChannels(channels, 2);
               if (visible.length === 0) {
@@ -1183,32 +1285,41 @@ const GroupsManager = ({ detailGroupId = '' }) => {
             title: t('group_manage.table.billing_ratio'),
             dataIndex: 'billing_ratio',
             key: 'billing_ratio',
+            className: 'router-table-col-status-narrow',
+            width: GROUP_LIST_COLUMN_WIDTHS.billingRatio,
             render: (value) => Number(value ?? 1).toFixed(2),
           },
           {
             title: t('group_manage.table.status'),
             dataIndex: 'enabled',
             key: 'enabled',
+            className: 'router-table-col-status-compact',
+            width: GROUP_LIST_COLUMN_WIDTHS.status,
             render: (value) => renderGroupStatus(value),
           },
           {
             title: t('group_manage.table.created_at'),
             dataIndex: 'created_at',
             key: 'created_at',
+            className: 'router-table-col-datetime',
+            width: GROUP_LIST_COLUMN_WIDTHS.createdAt,
             render: (value) => (value ? timestamp2string(value) : '-'),
           },
           {
             title: t('group_manage.table.updated_at'),
             dataIndex: 'updated_at',
             key: 'updated_at',
+            className: 'router-table-col-datetime',
+            width: GROUP_LIST_COLUMN_WIDTHS.updatedAt,
             render: (value) => (value ? timestamp2string(value) : '-'),
           },
           {
             title: t('group_manage.table.actions'),
             key: 'actions',
-            className: 'router-table-action-cell router-group-action-cell',
+            className: 'router-table-col-actions-wide',
+            width: GROUP_LIST_COLUMN_WIDTHS.actions,
             render: (_, row) => (
-              <div className='router-action-group-tight'>
+              <div className='router-action-group-tight router-table-actions-wide'>
                 <AppButton
                   className='router-inline-button'
                   color={row.enabled ? undefined : 'blue'}
@@ -1422,7 +1533,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
           title={
             options.hideTitle
               ? t('group_manage.detail.supported_models')
-              : t('group_manage.edit.model_configs')
+              : t('group_manage.edit.models')
           }
           titleTag={options.hideTitle ? 'h3' : 'div'}
           titleClassName={
@@ -1432,12 +1543,22 @@ const GroupsManager = ({ detailGroupId = '' }) => {
           }
           endClassName='router-block-gap-sm router-group-model-toolbar-end'
           actions={
-            <AppInput
-              className='router-inline-input router-search-form-sm router-group-model-search'
-              placeholder={t('group_manage.edit.model_search_placeholder')}
-              value={detailModelSearchKeyword}
-              onChange={(e, { value }) => setDetailModelSearchKeyword(value || '')}
-            />
+            <>
+              <AppButton
+                type='button'
+                className='router-inline-button'
+                disabled={submitting || detailModelsEditLocked}
+                onClick={openDetailAddModelModal}
+              >
+                {t('group_manage.buttons.add_model')}
+              </AppButton>
+              <AppInput
+                className='router-inline-input router-search-form-sm router-group-model-search'
+                placeholder={t('group_manage.edit.model_search_placeholder')}
+                value={detailModelSearchKeyword}
+                onChange={(e, { value }) => setDetailModelSearchKeyword(value || '')}
+              />
+            </>
           }
         />
         <AppTable
@@ -1445,7 +1566,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
           rowKey={(entry) => `group-detail-model-${entry.model || '-'}`}
           pagination={false}
           loading={detailModelLoading}
-          locale={{ emptyText: t('group_manage.edit.empty_model_configs') }}
+          locale={{ emptyText: t('group_manage.edit.empty_models') }}
           dataSource={detailModelEntries}
           columns={[
             {
@@ -1453,7 +1574,11 @@ const GroupsManager = ({ detailGroupId = '' }) => {
               dataIndex: 'model',
               key: 'model',
               className: 'router-group-supported-models-col-model',
-              render: (value) => value || '-',
+              render: (value, entry) => (
+                <div className='router-cell-truncate' title={value || '-'}>
+                  <span>{value || '-'}</span>
+                </div>
+              ),
             },
             {
               title: t('group_manage.detail.model_channels'),
@@ -1479,7 +1604,9 @@ const GroupsManager = ({ detailGroupId = '' }) => {
                     ))}
                   </div>
                 ) : (
-                  '-'
+                  <span className='router-text-meta router-group-models-empty-mapping'>
+                    -
+                  </span>
                 ),
             },
             {
@@ -1487,14 +1614,28 @@ const GroupsManager = ({ detailGroupId = '' }) => {
               key: 'enabled',
               className: 'router-group-supported-models-col-enabled',
               render: (_, entry) => (
-                <AppSwitch
-                  checked={entry.allEnabled}
-                  disabled={submitting || detailModelsEditLocked}
-                  onChange={(event, { checked }) => {
-                    event?.stopPropagation?.();
-                    toggleDetailModelEnabled(entry.model, !!checked);
-                  }}
-                />
+                <AppTooltip
+                  title={
+                    Array.isArray(entry?.rows) && entry.rows.length > 0
+                      ? ''
+                      : t('group_manage.detail.enabled_requires_mapping')
+                  }
+                >
+                  <span className='router-inline-switch-wrap'>
+                    <AppSwitch
+                      checked={entry.allEnabled}
+                      disabled={
+                        submitting ||
+                        detailModelsEditLocked ||
+                        (Array.isArray(entry?.rows) ? entry.rows.length === 0 : true)
+                      }
+                      onChange={(event, { checked }) => {
+                        event?.stopPropagation?.();
+                        toggleDetailModelEnabled(entry.model, !!checked);
+                      }}
+                    />
+                  </span>
+                </AppTooltip>
               ),
             },
             {
@@ -1502,14 +1643,32 @@ const GroupsManager = ({ detailGroupId = '' }) => {
               key: 'actions',
               className: 'router-group-supported-models-col-actions',
               render: (_, entry) => (
-                <AppButton
-                  type='button'
-                  className='router-inline-button'
-                  disabled={submitting || detailModelsEditLocked}
-                  onClick={() => openDetailModelEdit(entry)}
-                >
-                  {t('group_manage.buttons.edit')}
-                </AppButton>
+                <div className='router-action-group-tight'>
+                  <AppButton
+                    type='button'
+                    className='router-inline-button'
+                    disabled={submitting || detailModelsEditLocked}
+                    onClick={() => openDetailModelEdit(entry)}
+                  >
+                    {t('group_manage.buttons.edit')}
+                  </AppButton>
+                  <AppPopconfirm
+                    title={t('group_manage.modal.model_delete_confirm', {
+                      model: entry?.model || '-',
+                    })}
+                    onConfirm={() => deleteDetailModel(entry?.model || '')}
+                    disabled={submitting || detailModelsEditLocked}
+                  >
+                    <AppButton
+                      type='button'
+                      className='router-inline-button'
+                      color='red'
+                      disabled={submitting || detailModelsEditLocked}
+                    >
+                      {t('group_manage.buttons.delete')}
+                    </AppButton>
+                  </AppPopconfirm>
+                </div>
               ),
             },
           ]}
@@ -1520,7 +1679,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
 
   const getChannelModelOptions = (channelID) => {
     const channel = formModelChannelLookup[channelID];
-    const models = Array.isArray(channel?.models) ? channel.models : [];
+    const models = getChannelModelOptionRows(channel);
     return models.map((item) => ({
       key: `${channelID}-${item.upstream_model}-${item.model}`,
       text: item.label || item.model || item.upstream_model || '-',
@@ -1534,7 +1693,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       return '';
     }
     const channel = formModelChannelLookup[channelID];
-    const models = Array.isArray(channel?.models) ? channel.models : [];
+    const models = getChannelModelOptionRows(channel);
     const upstreamModel = (item?.upstream_model || '').trim();
     if (upstreamModel !== '') {
       const matched = models.find((row) => (row?.upstream_model || '') === upstreamModel);
@@ -1552,7 +1711,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     return '';
   };
 
-  const visibleEditModelConfigs = useMemo(() => {
+  const visibleEditModels = useMemo(() => {
     const keyword = editModelSearchKeyword.trim().toLowerCase();
     const selectedChannelIDSet = new Set(formChannelIDs);
     const entries = (Array.isArray(formModelConfigs) ? formModelConfigs : [])
@@ -1577,11 +1736,11 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     });
   }, [editModelSearchKeyword, formChannelIDs, formModelConfigs, formModelChannelLookup]);
 
-  const addEmptyModelConfigRow = () => {
+  const addEmptyModelRow = () => {
     setFormModelConfigs((prev) => [createEmptyModelConfig(), ...(Array.isArray(prev) ? prev : [])]);
   };
 
-  const updateModelConfigRow = (index, updater) => {
+  const updateModelRow = (index, updater) => {
     setFormModelConfigs((prev) =>
       (Array.isArray(prev) ? prev : []).map((item, itemIndex) => {
         if (itemIndex !== index) {
@@ -1592,39 +1751,17 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     );
   };
 
-  const removeModelConfigRow = (index) => {
+  const removeModelRow = (index) => {
     setFormModelConfigs((prev) =>
       (Array.isArray(prev) ? prev : []).filter((item, itemIndex) => itemIndex !== index)
     );
   };
 
-  const detailModelSourceRows = useMemo(() => {
-    return (Array.isArray(detailModelRows) ? detailModelRows : []).map((item) => ({
-      ...item,
-      enabled: item?.enabled !== false,
-      priority: item?.priority ?? 0,
-    }));
-  }, [detailModelRows]);
-
   const detailModelEntries = useMemo(() => {
-    const grouped = new Map();
-    detailModelSourceRows.forEach((item) => {
-      const model = (item?.model || '').trim();
-      if (model === '') {
-        return;
-      }
-      if (!grouped.has(model)) {
-        grouped.set(model, {
-          model,
-          rows: [],
-        });
-      }
-      grouped.get(model).rows.push(item);
-    });
-
-    const entries = Array.from(grouped.values())
+    const entries = (Array.isArray(detailModels) ? detailModels : [])
       .map((entry) => {
-        const rows = [...entry.rows].sort((left, right) => {
+        const model = (entry?.model || '').toString().trim();
+        const rows = [...(Array.isArray(entry?.rows) ? entry.rows : [])].sort((left, right) => {
           const priorityDiff =
             toSafePriorityNumber(right?.priority, 0) - toSafePriorityNumber(left?.priority, 0);
           if (priorityDiff !== 0) {
@@ -1636,15 +1773,13 @@ const GroupsManager = ({ detailGroupId = '' }) => {
           }
           return (left?.channel_id || '').localeCompare(right?.channel_id || '');
         });
-        const enabledCount = rows.filter((row) => row?.enabled !== false).length;
         return {
-          model: entry.model,
+          model,
           rows,
-          enabledCount,
-          allEnabled: rows.length > 0 && enabledCount === rows.length,
-          partiallyEnabled: enabledCount > 0 && enabledCount < rows.length,
+          allEnabled: entry?.allEnabled !== false,
         };
       })
+      .filter(Boolean)
       .sort((left, right) => left.model.localeCompare(right.model));
 
     const keyword = detailModelSearchKeyword.trim().toLowerCase();
@@ -1663,7 +1798,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       ];
       return haystacks.some((value) => value.toLowerCase().includes(keyword));
     });
-  }, [detailModelSearchKeyword, detailModelSourceRows]);
+  }, [detailModelSearchKeyword, detailModels]);
 
   const openDetailModelEdit = useCallback(async (entry) => {
     const editorState = await loadDetailModelEditorState();
@@ -1694,7 +1829,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       if (channelID === '' || !selectedChannelIDSet.has(channelID)) {
         return;
       }
-      const matchedModel = (Array.isArray(channel?.models) ? channel.models : []).find(
+      const matchedModel = getChannelModelOptionRows(channel).find(
         (item) => (item?.model || '').toString().trim() === targetModel
       );
       const existing = existingByChannelID.get(channelID);
@@ -1738,6 +1873,57 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     setDetailModelModalOpen(true);
   }, [loadDetailModelEditorState, t]);
 
+  const openDetailAddModelModal = useCallback(async () => {
+    const editorState = await loadDetailModelEditorState();
+    if (!editorState) {
+      return;
+    }
+    const existingModelSet = new Set(
+      detailModelEntries
+        .map((entry) => (entry?.model || '').toString().trim())
+        .filter((item) => item !== '')
+    );
+    const selectedChannelIDSet = new Set(editorState.selectedChannelIDs || []);
+    const optionsMap = new Map();
+    (Array.isArray(editorState.channels) ? editorState.channels : []).forEach((channel) => {
+      const channelID = (channel?.id || '').toString().trim();
+      if (channelID === '' || !selectedChannelIDSet.has(channelID)) {
+        return;
+      }
+      getChannelModelOptionRows(channel).forEach((item) => {
+        const modelName = (item?.model || '').toString().trim();
+        if (modelName === '' || existingModelSet.has(modelName) || optionsMap.has(modelName)) {
+          return;
+        }
+        optionsMap.set(modelName, {
+          key: modelName,
+          value: modelName,
+          text: modelName,
+        });
+      });
+    });
+    const options = [...optionsMap.values()].sort((left, right) =>
+      (left.text || '').localeCompare(right.text || '')
+    );
+    if (options.length === 0) {
+      showInfo(t('group_manage.messages.model_add_empty'));
+      return;
+    }
+    setDetailAddModelOptions(options);
+    setDetailAddModelValue(options[0]?.value || '');
+    setDetailAddModelModalOpen(true);
+  }, [detailModelEntries, loadDetailModelEditorState, t]);
+
+  const submitDetailAddModel = useCallback(async () => {
+    const modelName = (detailAddModelValue || '').toString().trim();
+    if (modelName === '') {
+      showInfo(t('group_manage.messages.model_required'));
+      return;
+    }
+    closeDetailAddModelModal();
+    await openDetailModelEdit({ model: modelName });
+  }, [closeDetailAddModelModal, detailAddModelValue, openDetailModelEdit, t]);
+
   const updateDetailModelChannelDraft = useCallback((channelID, updater) => {
     setDetailModelChannelDrafts((prev) =>
       (Array.isArray(prev) ? prev : []).map((item) => {
@@ -1758,7 +1944,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     if (normalizedModel === '') {
       return;
     }
-    const nextItems = sortGroupModelConfigRows(
+    const nextItems = sortGroupModelRows(
       (Array.isArray(editorState.items) ? editorState.items : []).map((item) =>
         (item?.model || '').toString().trim() === normalizedModel
           ? { ...item, enabled: !!nextEnabled }
@@ -1770,17 +1956,17 @@ const GroupsManager = ({ detailGroupId = '' }) => {
         enabled: !!item.enabled,
       }))
     );
-    await saveSingleDetailModelConfigs(
+    await saveSingleDetailModel(
       normalizedModel,
       nextItems,
       editorState.channels,
     );
-  }, [loadDetailModelEditorState, saveSingleDetailModelConfigs]);
+  }, [loadDetailModelEditorState, saveSingleDetailModel]);
 
   const submitDetailModelDraft = useCallback(async () => {
     const model = detailModelEditTarget.trim();
     if (model === '') {
-      showInfo(t('group_manage.messages.model_config_incomplete'));
+      showInfo(t('group_manage.messages.model_incomplete'));
       return;
     }
     const selectedDrafts = (Array.isArray(detailModelChannelDrafts) ? detailModelChannelDrafts : []).filter(
@@ -1800,10 +1986,9 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       channel_protocol: item.channel_protocol,
       channel_status: item.channel_status,
     }));
-    const saved = await saveSingleDetailModelConfigs(
+    const saved = await saveSingleDetailModel(
       model,
-      sortGroupModelConfigRows(nextRows),
-      formModelChannels,
+      sortGroupModelRows(nextRows),
     );
     if (saved) {
       closeDetailModelModal();
@@ -1812,23 +1997,30 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     closeDetailModelModal,
     detailModelChannelDrafts,
     detailModelEditTarget,
-    formModelChannels,
-    saveSingleDetailModelConfigs,
+    saveSingleDetailModel,
     t,
   ]);
 
-  const renderEditModelConfigTable = () => (
+  const deleteDetailModel = useCallback(async (modelName) => {
+    const normalizedModel = (modelName || '').toString().trim();
+    if (normalizedModel === '') {
+      return;
+    }
+    await deleteSingleDetailModel(normalizedModel);
+  }, [deleteSingleDetailModel]);
+
+  const renderEditModelsTable = () => (
     <div className='router-block-top-md'>
       <AppFilterHeader
         className='router-block-gap-xs'
-        title={t('group_manage.edit.model_configs')}
+        title={t('group_manage.edit.models')}
         actions={
           <>
             <AppButton
               type='button'
               className='router-inline-button'
               disabled={submitting || formModelLoading}
-              onClick={addEmptyModelConfigRow}
+              onClick={addEmptyModelRow}
             >
               {t('group_manage.buttons.add_model')}
             </AppButton>
@@ -1853,8 +2045,8 @@ const GroupsManager = ({ detailGroupId = '' }) => {
         }}
         pagination={false}
         loading={formModelLoading}
-        locale={{ emptyText: t('group_manage.edit.empty_model_configs') }}
-        dataSource={visibleEditModelConfigs}
+        locale={{ emptyText: t('group_manage.edit.empty_models') }}
+        dataSource={visibleEditModels}
         columns={[
           {
             title: t('group_manage.edit.model'),
@@ -1866,7 +2058,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
                 placeholder={t('group_manage.edit.model_placeholder')}
                 value={record?.item?.model || ''}
                 onChange={(e, { value }) =>
-                  updateModelConfigRow(record.index, (current) => ({
+                  updateModelRow(record.index, (current) => ({
                     ...current,
                     model: value || '',
                   }))
@@ -1890,7 +2082,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
                   const nextChannel = formModelChannelLookup[nextChannelID];
                   const nextModels = Array.isArray(nextChannel?.models) ? nextChannel.models : [];
                   const firstModel = nextModels[0] || null;
-                  updateModelConfigRow(record.index, (current) => ({
+                  updateModelRow(record.index, (current) => ({
                     ...current,
                     channel_id: nextChannelID,
                     upstream_model: firstModel?.upstream_model || '',
@@ -1920,7 +2112,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
                   value={resolveChannelModelOptionValue(item)}
                   onChange={(e, { value }) => {
                     const decoded = decodeChannelModelOptionValue(value);
-                    updateModelConfigRow(record.index, (current) => ({
+                    updateModelRow(record.index, (current) => ({
                       ...current,
                       upstream_model: decoded.upstream_model || '',
                       model:
@@ -1943,7 +2135,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
                 className='router-inline-button'
                 color='red'
                 disabled={submitting}
-                onClick={() => removeModelConfigRow(record.index)}
+                onClick={() => removeModelRow(record.index)}
               >
                 {t('group_manage.buttons.delete')}
               </AppButton>
@@ -2184,11 +2376,23 @@ const GroupsManager = ({ detailGroupId = '' }) => {
               </AppButton>
             }
           >
+            <AppAlert
+              type='info'
+              showIcon
+              className='router-section-message'
+              title={t('group_manage.detail.channels_hint')}
+            />
             {renderDetailChannelsTable(detailChannelRows, detailChannelLoading)}
           </AppDetailSection>
         )}
         {activeDetailTab === 'models' && (
           <AppDetailSection>
+            <AppAlert
+              type='info'
+              showIcon
+              className='router-section-message'
+              title={t('group_manage.detail.models_hint')}
+            />
             {renderDetailModelConfigTable({
               hideTitle: true,
             })}
@@ -2290,7 +2494,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
           </AppField>
         </AppFormRow>
       </div>
-      {renderEditModelConfigTable()}
+      {renderEditModelsTable()}
     </div>
   );
 
@@ -2496,6 +2700,42 @@ const GroupsManager = ({ detailGroupId = '' }) => {
               className='router-modal-button'
               color='blue'
               onClick={submitDetailModelDraft}
+              disabled={submitting}
+            >
+              {t('group_manage.buttons.confirm')}
+            </AppButton>
+          </AppFormActions>
+        </div>
+      </AppModal>
+
+      <AppModal
+        open={detailAddModelModalOpen}
+        onClose={closeDetailAddModelModal}
+        size='small'
+        title={t('group_manage.modal.add_model_title')}
+        footer={null}
+      >
+        <div className='router-page-stack'>
+          <AppSelect
+            className='router-inline-dropdown'
+            search
+            options={detailAddModelOptions}
+            value={detailAddModelValue}
+            placeholder={t('group_manage.edit.model_placeholder')}
+            onChange={(e, { value }) => setDetailAddModelValue(value || '')}
+          />
+          <AppFormActions>
+            <AppButton
+              className='router-modal-button'
+              onClick={closeDetailAddModelModal}
+              disabled={submitting}
+            >
+              {t('group_manage.buttons.cancel')}
+            </AppButton>
+            <AppButton
+              className='router-modal-button'
+              color='blue'
+              onClick={submitDetailAddModel}
               disabled={submitting}
             >
               {t('group_manage.buttons.confirm')}

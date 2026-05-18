@@ -165,6 +165,12 @@ func RelayTextHelper(c *gin.Context) *model.ErrorWithStatusCode {
 		logger.Warnf(ctx, "preConsumeQuota failed: %+v", *bizErr)
 		return bizErr
 	}
+	preConsumedQuotaSettled := false
+	defer func() {
+		if !preConsumedQuotaSettled && preConsumedQuota > 0 {
+			billing.ReturnPreConsumedQuota(ctx, preConsumedQuota, meta.TokenId, meta.UserId, billingPlan.ChargeUserBalance())
+		}
+	}()
 
 	upstreamRequest, err := convertTextRequestForUpstream(textRequest, meta.Mode, upstreamMode)
 	if err != nil {
@@ -193,18 +199,17 @@ func RelayTextHelper(c *gin.Context) *model.ErrorWithStatusCode {
 		return openai.ErrorWrapper(err, "do_request_failed", http.StatusInternalServerError)
 	}
 	if isErrorHappened(meta, resp) {
-		billing.ReturnPreConsumedQuota(ctx, preConsumedQuota, meta.TokenId, meta.UserId, billingPlan.ChargeUserBalance())
 		return RelayErrorHandler(meta, resp)
 	}
 
 	// do response
 	usage, respErr := adaptor.DoResponse(c, resp, meta)
 	if respErr != nil {
-		billing.ReturnPreConsumedQuota(ctx, preConsumedQuota, meta.TokenId, meta.UserId, billingPlan.ChargeUserBalance())
 		return respErr
 	}
 	// post-consume quota
 	go postConsumeQuota(ctx, usage, meta, upstreamRequest, pricing, preConsumedQuota, groupRatio, estimateResult, responsesImageTools, false, billingPlan.ChargeUserBalance(), packageReservation)
+	preConsumedQuotaSettled = true
 	groupQuotaSettled = true
 	return nil
 }
@@ -276,42 +281,6 @@ func getRequestBody(c *gin.Context, meta *meta.Meta, textRequest *model.GeneralO
 			)
 		}
 		return c.Request.Body, nil
-	}
-	if upstreamMode == relaymode.Responses {
-		if textRequest.Input == nil && len(textRequest.Messages) > 0 {
-			textRequest.Input = textRequest.Messages
-			textRequest.Messages = nil
-		}
-		normalizeResponsesInput(textRequest)
-		jsonData, err := json.Marshal(textRequest)
-		if err != nil {
-			return nil, err
-		}
-		jsonData, err = normalizeRequestBodyForResponses(jsonData)
-		if err != nil {
-			return nil, err
-		}
-		jsonData, err = applyEndpointRequestPolicy(c, meta, jsonData)
-		if err != nil {
-			return nil, err
-		}
-		logger.Debugf(
-			c.Request.Context(),
-			"[responses_body] len=%d model=%s stream=%t",
-			len(jsonData),
-			strings.TrimSpace(meta.ActualModelName),
-			meta.IsStream,
-		)
-		if config.DebugEnabled {
-			logger.Debugf(
-				c.Request.Context(),
-				"[upstream_request_body] downstream=%s upstream=%s body=%s",
-				relayModeLabel(meta.Mode),
-				relayModeLabel(upstreamMode),
-				sanitizePayloadForRelayDebug(jsonData),
-			)
-		}
-		return bytes.NewBuffer(jsonData), nil
 	}
 	if !config.EnforceIncludeUsage &&
 		meta.APIType == apitype.OpenAI &&

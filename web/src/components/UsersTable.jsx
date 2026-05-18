@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import UnitDropdown from './UnitDropdown';
 
 import { ITEMS_PER_PAGE } from '../constants';
+import { USER_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
 import {
   formatCompactNumber,
   renderText,
@@ -359,7 +360,7 @@ const UsersTable = () => {
       />
 
       <AppTable
-        className='router-hover-table router-list-table'
+        className='router-hover-table router-list-table router-table-fit-page'
         pagination={false}
         rowKey={(user) => user.id}
         dataSource={users
@@ -386,6 +387,8 @@ const UsersTable = () => {
             ),
             dataIndex: 'username',
             key: 'username',
+            width: USER_LIST_COLUMN_WIDTHS.username,
+            ellipsis: true,
             render: (_, user) => (
               <AppTooltip
                 title={
@@ -403,6 +406,7 @@ const UsersTable = () => {
             title: t('user.table.wallet'),
             dataIndex: 'wallet_address',
             key: 'wallet_address',
+            width: USER_LIST_COLUMN_WIDTHS.wallet,
             render: (value) =>
               value ? (
                 <span className='router-action-group'>
@@ -437,6 +441,8 @@ const UsersTable = () => {
             ),
             dataIndex: 'active_package_name',
             key: 'active_package_name',
+            width: USER_LIST_COLUMN_WIDTHS.package,
+            ellipsis: true,
             render: (value) => (value ? renderText(value, 18) : '-'),
           },
           {
@@ -459,6 +465,7 @@ const UsersTable = () => {
             ),
             key: 'balance',
             className: 'router-redemption-face-value-header',
+            width: USER_LIST_COLUMN_WIDTHS.balance,
             render: (_, user) =>
               yycToBillingInputValue(
                 user.yyc_balance ?? user.quota,
@@ -479,6 +486,8 @@ const UsersTable = () => {
             ),
             dataIndex: 'request_count',
             key: 'request_count',
+            className: 'router-table-col-status-narrow',
+            width: USER_LIST_COLUMN_WIDTHS.requestCount,
             render: (value) => renderCountValue(value),
           },
           {
@@ -494,6 +503,8 @@ const UsersTable = () => {
             ),
             dataIndex: 'created_at',
             key: 'created_at',
+            className: 'router-table-col-datetime',
+            width: USER_LIST_COLUMN_WIDTHS.createdAt,
             render: (value) => (value ? timestamp2string(value) : '-'),
           },
           {
@@ -509,6 +520,8 @@ const UsersTable = () => {
             ),
             dataIndex: 'updated_at',
             key: 'updated_at',
+            className: 'router-table-col-datetime',
+            width: USER_LIST_COLUMN_WIDTHS.updatedAt,
             render: (value) => (value ? timestamp2string(value) : '-'),
           },
           {
@@ -524,6 +537,8 @@ const UsersTable = () => {
             ),
             dataIndex: 'role',
             key: 'role',
+            className: 'router-table-col-status-compact',
+            width: USER_LIST_COLUMN_WIDTHS.role,
             render: (value) => renderRole(value, t),
           },
           {
@@ -539,16 +554,23 @@ const UsersTable = () => {
             ),
             dataIndex: 'status',
             key: 'status',
+            className: 'router-table-col-status-compact',
+            width: USER_LIST_COLUMN_WIDTHS.status,
             render: (value) => renderStatus(value),
           },
           {
             title: t('user.table.actions'),
             key: 'actions',
+            className: 'router-table-col-actions-compact',
+            width: USER_LIST_COLUMN_WIDTHS.actions,
             render: (_, user, idx) => {
               const isAdminUser = Number(user.role) >= 10;
               const canManageAdminUser = !isAdminUser || isRoot();
               return (
-                <div className='router-action-group' onClick={stopRowClick}>
+                <div
+                  className='router-action-group router-table-actions-compact'
+                  onClick={stopRowClick}
+                >
                   <AppButton
                     className='router-inline-button'
                     color={user.status === 1 ? undefined : 'blue'}

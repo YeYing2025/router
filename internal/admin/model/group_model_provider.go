@@ -7,7 +7,7 @@ import (
 )
 
 func NormalizeGroupModelProviderValue(provider string) string {
-	return NormalizeGroupModelRouteProvider(provider)
+	return NormalizeGroupModelChannelProvider(provider)
 }
 
 func ListGroupModelProviderMapByModels(groupID string, modelNames []string) (map[string]string, error) {
@@ -30,14 +30,14 @@ func ListGroupModelProviderMapByModels(groupID string, modelNames []string) (map
 	return buildGroupModelProviderMap(rows)
 }
 
-func buildGroupModelRouteProviderMap(rows []GroupModelRoute) (map[string]string, error) {
+func buildGroupModelChannelProviderMap(rows []GroupModelChannel) (map[string]string, error) {
 	groupModels := make([]GroupModel, 0, len(rows))
 	for _, row := range rows {
 		groupModels = append(groupModels, GroupModel{
 			Group:    strings.TrimSpace(row.Group),
 			Model:    strings.TrimSpace(row.Model),
-			Provider: NormalizeGroupModelRouteProvider(row.Provider),
-			Enabled:  row.Enabled,
+			Provider: NormalizeGroupModelChannelProvider(row.Provider),
+			Enabled:  true,
 		})
 	}
 	return buildGroupModelProviderMap(groupModels)
@@ -59,7 +59,7 @@ func buildGroupModelProviderMap(rows []GroupModel) (map[string]string, error) {
 			seenModel[modelName] = struct{}{}
 			modelOrder = append(modelOrder, modelName)
 		}
-		provider := NormalizeGroupModelRouteProvider(row.Provider)
+		provider := NormalizeGroupModelChannelProvider(row.Provider)
 		if provider == "" {
 			continue
 		}

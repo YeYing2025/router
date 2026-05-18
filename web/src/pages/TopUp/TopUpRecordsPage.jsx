@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API, timestamp2string, showError, showSuccess } from '../../helpers';
+import { TOPUP_RECORD_COLUMN_WIDTHS } from '../../constants/tableWidthPresets';
 import {
   AppButton,
   AppPagination,
@@ -290,12 +291,15 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
         title: t('topup.redemption_records.columns.time'),
         dataIndex: 'created_at',
         key: 'created_at',
+        className: 'router-table-col-datetime',
+        width: TOPUP_RECORD_COLUMN_WIDTHS.time,
         render: (value) => (value ? timestamp2string(value) : '-'),
       },
       {
         title: t('topup.redemption_records.columns.amount'),
         dataIndex: 'yycAmount',
         key: 'yycAmount',
+        width: TOPUP_RECORD_COLUMN_WIDTHS.amount,
         render: (value) =>
           value ? (
             <AppTag color='green' className='router-tag'>
@@ -309,6 +313,8 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
         title: t('topup.redemption_records.columns.redemption_code'),
         dataIndex: 'redemptionCode',
         key: 'redemptionCode',
+        width: TOPUP_RECORD_COLUMN_WIDTHS.redemptionCode,
+        ellipsis: true,
         render: (value) => value || '-',
       },
     ],
@@ -320,18 +326,24 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
         title: t('topup.external_topup_orders.columns.time'),
         dataIndex: 'created_at',
         key: 'created_at',
+        className: 'router-table-col-datetime',
+        width: TOPUP_RECORD_COLUMN_WIDTHS.time,
         render: (value) => (value ? timestamp2string(value) : '-'),
       },
       {
         title: t('topup.external_topup_orders.columns.business_type'),
         dataIndex: 'business_type',
         key: 'business_type',
+        className: 'router-table-col-type-narrow',
+        width: TOPUP_RECORD_COLUMN_WIDTHS.businessType,
         render: (value) => formatTopupBusinessType(value, t),
       },
       {
         title: t('topup.external_topup_orders.columns.status'),
         dataIndex: 'status',
         key: 'status',
+        className: 'router-table-col-status-compact',
+        width: TOPUP_RECORD_COLUMN_WIDTHS.status,
         render: (value) => {
           const statusNode = renderTopupOrderStatus(value, t);
           const statusHint = !isPackageRecord
@@ -353,6 +365,7 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
         title: t('topup.external_topup_orders.columns.amount'),
         dataIndex: 'amount',
         key: 'amount',
+        width: TOPUP_RECORD_COLUMN_WIDTHS.amount,
         render: (_, order) =>
           order.amount > 0
             ? `${order.currency || 'CNY'} ${Number(order.amount || 0).toFixed(2)}`
@@ -366,6 +379,8 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
           : t('topup.external_topup_orders.columns.quota'),
         dataIndex: isPackageRecord ? 'package_name' : 'quota',
         key: isPackageRecord ? 'package_name' : 'quota',
+        width: TOPUP_RECORD_COLUMN_WIDTHS.quotaOrPackage,
+        ellipsis: true,
         render: (_, order) =>
           isPackageRecord
             ? order.package_name || '-'
@@ -376,8 +391,10 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
       {
         title: t('topup.external_topup_orders.columns.action'),
         key: 'action',
+        className: 'router-table-col-actions-token',
+        width: TOPUP_RECORD_COLUMN_WIDTHS.actions,
         render: (_, order) => (
-          <div className='router-action-group-tight'>
+          <div className='router-action-group-tight router-table-actions-wide'>
             <AppButton
               className='router-inline-button'
               onClick={(event) => {
@@ -464,7 +481,7 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
         {isRedemptionRecord ? (
             <>
               <AppTable
-                className='router-list-table'
+                className='router-list-table router-table-fit-page'
                 rowKey={(log) => log.id || log.trace_id || `${log.created_at}-${log.content}`}
                 pagination={false}
                 loading={loadingRedemptionRecords}
@@ -488,7 +505,7 @@ const TopUpRecordsPage = ({ recordKey = 'topup' }) => {
         ) : (
             <>
               <AppTable
-                className='router-list-table'
+                className='router-list-table router-table-fit-page'
                 rowKey='id'
                 pagination={false}
                 loading={loadingOrders}

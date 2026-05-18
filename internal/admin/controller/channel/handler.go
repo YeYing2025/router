@@ -2,6 +2,7 @@ package channel
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
@@ -16,19 +17,6 @@ import (
 )
 
 const maxChannelListPageSize = 100
-
-type updateChannelTestModelRequest struct {
-	ID        string `json:"id"`
-	TestModel string `json:"test_model"`
-}
-
-type createChannelRequest struct {
-	Name     string `json:"name"`
-	Protocol string `json:"protocol"`
-	Key      string `json:"key"`
-	BaseURL  string `json:"base_url"`
-	Config   string `json:"config"`
-}
 
 type channelListItem struct {
 	ID                 string   `json:"id"`
@@ -333,74 +321,6 @@ func AddChannel(c *gin.Context) {
 	return
 }
 
-// CreateChannel godoc
-// @Summary Create channel record (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param body body docs.ChannelCreateRecordRequest true "Channel create payload"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/channel/create [post]
-func CreateChannel(c *gin.Context) {
-	req := createChannelRequest{}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		logChannelAdminWarn(c, "create_record", stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	name := model.NormalizeChannelIdentifier(req.Name)
-	key := strings.TrimSpace(req.Key)
-	if err := model.ValidateChannelIdentifier(name); err != nil {
-		logChannelAdminWarn(c, "create_record", stringField("name", name), stringField("protocol", req.Protocol), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	if key == "" {
-		logChannelAdminWarn(c, "create_record", stringField("name", name), stringField("protocol", req.Protocol), stringField("reason", "渠道密钥不能为空"))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "渠道密钥不能为空",
-		})
-		return
-	}
-	baseURL := strings.TrimSpace(req.BaseURL)
-	channel := model.Channel{
-		Name:        name,
-		Protocol:    strings.TrimSpace(req.Protocol),
-		Key:         key,
-		Status:      model.ChannelStatusCreating,
-		Models:      "",
-		BaseURL:     &baseURL,
-		Config:      strings.TrimSpace(req.Config),
-		CreatedTime: helper.GetTimestamp(),
-		UpdatedAt:   helper.GetTimestamp(),
-	}
-	if err := channelsvc.Insert(&channel); err != nil {
-		logChannelAdminWarn(c, "create_record", stringField("name", channel.DisplayName()), stringField("protocol", channel.GetProtocol()), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	logChannelAdminInfo(c, "create_record", stringField("channel_id", channel.Id), stringField("name", channel.DisplayName()), stringField("protocol", channel.GetProtocol()))
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "",
-		"data": gin.H{
-			"id": channel.Id,
-		},
-	})
-}
-
 // DeleteChannel godoc
 // @Summary Delete channel (admin)
 // @Tags admin
@@ -508,6 +428,19 @@ func UpdateChannel(c *gin.Context) {
 	channel.NormalizeModelConfigState()
 	err = channelsvc.Update(&channel)
 	if err != nil {
+		var blockedErr *model.ChannelDisableBlockedError
+		if errors.As(err, &blockedErr) {
+			logChannelAdminWarn(c, "update", stringField("channel_id", channel.Id), stringField("name", channel.DisplayName()), stringField("protocol", channel.GetProtocol()), stringField("reason", blockedErr.Error()))
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": blockedErr.Error(),
+				"data": gin.H{
+					"code":   "channel_disable_blocked",
+					"impact": blockedErr.Impact,
+				},
+			})
+			return
+		}
 		logChannelAdminWarn(c, "update", stringField("channel_id", channel.Id), stringField("name", channel.DisplayName()), stringField("protocol", channel.GetProtocol()), stringField("reason", err.Error()))
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -523,69 +456,4 @@ func UpdateChannel(c *gin.Context) {
 		"data":    presenter.NewChannel(&channel),
 	})
 	return
-}
-
-// UpdateChannelTestModel godoc
-// @Summary Update channel test model (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param body body object true "Channel test model payload"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/channel/test_model [put]
-func UpdateChannelTestModel(c *gin.Context) {
-	req := updateChannelTestModelRequest{}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		logChannelAdminWarn(c, "update_test_model", stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	req.ID = strings.TrimSpace(req.ID)
-	if req.ID == "" {
-		logChannelAdminWarn(c, "update_test_model", stringField("reason", "渠道 ID 无效"))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "渠道 ID 无效",
-		})
-		return
-	}
-	channel, err := channelsvc.GetByID(req.ID)
-	if err != nil {
-		logChannelAdminWarn(c, "update_test_model", stringField("channel_id", req.ID), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	req.TestModel = strings.TrimSpace(req.TestModel)
-	if !isModelInChannelModels(req.TestModel, channel.Models) {
-		logChannelAdminWarn(c, "update_test_model", stringField("channel_id", req.ID), stringField("test_model", req.TestModel), stringField("reason", "测试模型不在渠道支持的模型列表中"))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "测试模型不在渠道支持的模型列表中",
-		})
-		return
-	}
-	if err := channelsvc.UpdateTestModelByID(req.ID, req.TestModel); err != nil {
-		logChannelAdminWarn(c, "update_test_model", stringField("channel_id", req.ID), stringField("test_model", req.TestModel), stringField("reason", err.Error()))
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	logChannelAdminInfo(c, "update_test_model", stringField("channel_id", req.ID), stringField("test_model", req.TestModel))
-	channel.TestModel = req.TestModel
-	sanitizeChannelForResponse(channel)
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "",
-		"data":    presenter.NewChannel(channel),
-	})
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/yeying-community/router/common/config"
 	"github.com/yeying-community/router/common/i18n"
 	"github.com/yeying-community/router/common/logger"
-	"github.com/yeying-community/router/internal/admin/controller/channel"
 	task "github.com/yeying-community/router/internal/admin/controller/task"
 	"github.com/yeying-community/router/internal/admin/model"
 	_ "github.com/yeying-community/router/internal/admin/repository/bootstrap"
@@ -70,9 +69,6 @@ func Run() {
 	if config.MemoryCacheEnabled {
 		go model.SyncOptions(config.SyncFrequency)
 		go model.SyncChannelCache(config.SyncFrequency)
-	}
-	if common.ChannelTestFrequency > 0 {
-		go channel.AutomaticallyTestChannels(common.ChannelTestFrequency)
 	}
 	if config.BatchUpdateEnabled {
 		logger.SysLog("batch update enabled with interval " + strconv.Itoa(config.BatchUpdateInterval) + "s")

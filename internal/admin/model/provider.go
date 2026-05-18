@@ -1,6 +1,6 @@
 package model
 
-// Provider stores model provider catalog in a dedicated table.
+// Provider stores provider metadata in a dedicated table.
 type Provider struct {
 	Id          string `json:"id" gorm:"column:id;primaryKey;type:varchar(64)"`
 	Name        string `json:"name" gorm:"type:varchar(128);default:''"`
