@@ -381,10 +381,15 @@ func ReplaceChannelSelectedModelsWithDB(db *gorm.DB, channelID string, selected 
 }
 
 func ReplaceChannelModelsWithDB(db *gorm.DB, channelID string, rows []ChannelModel) error {
-	if err := replaceChannelModelRowsWithDB(db, channelID, rows); err != nil {
+	normalizedChannelID := strings.TrimSpace(channelID)
+	if err := replaceChannelModelRowsWithDB(db, normalizedChannelID, rows); err != nil {
 		return err
 	}
-	return SyncChannelModelEndpointsWithDB(db, channelID, rows)
+	storedRows, err := listChannelModelRowsByChannelIDWithDB(db, normalizedChannelID)
+	if err != nil {
+		return err
+	}
+	return SyncChannelModelEndpointsWithDB(db, normalizedChannelID, storedRows)
 }
 
 func DisableChannelModelCapability(channelID string, modelName string) (bool, error) {
