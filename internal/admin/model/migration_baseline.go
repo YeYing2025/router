@@ -32,6 +32,7 @@ func runMainBaselineMigrationWithDB(tx *gorm.DB) error {
 		&GroupChannel{},
 		&GroupModel{},
 		&ServicePackage{},
+		&ServicePackageVisibleUser{},
 		&UserPackageSubscription{},
 		&GroupQuotaCounter{},
 		&UserQuotaCounter{},

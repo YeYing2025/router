@@ -31,9 +31,11 @@ export const TOPUP_PLAN_LIST_COLUMN_WIDTHS = {
 };
 
 export const PACKAGE_LIST_COLUMN_WIDTHS = {
-  name: '15%',
-  group: '15%',
+  name: 220,
+  group: 180,
   salePrice: 110,
+  dailyQuota: 160,
+  emergencyQuota: 160,
   durationDays: 100,
   status: 92,
   createdAt: 148,

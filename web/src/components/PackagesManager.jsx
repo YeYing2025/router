@@ -40,6 +40,8 @@ const createEmptyForm = (defaultBillingUnit = 'USD') => ({
   name: '',
   description: '',
   group_id: '',
+  visibility_scope: 'all',
+  visible_user_ids: [],
   sale_price: '0',
   sale_currency: 'CNY',
   daily_amount: '0',
@@ -71,6 +73,17 @@ const toGroupOptions = (rows) =>
     text: item.name || item.id,
   }));
 
+const toUserOption = (item) => {
+  const id = (item?.id || '').toString().trim();
+  const username = (item?.username || '').toString().trim();
+  const displayName = (item?.display_name || '').toString().trim();
+  return {
+    key: id,
+    value: id,
+    text: [username, displayName].filter(Boolean).join(' / ') || id,
+  };
+};
+
 const appendGroupOptionIfMissing = (options, groupID, groupName) => {
   const normalizedGroupID = (groupID || '').toString().trim();
   if (!normalizedGroupID) {
@@ -88,6 +101,24 @@ const appendGroupOptionIfMissing = (options, groupID, groupName) => {
       text: (groupName || '').toString().trim() || normalizedGroupID,
     },
   ];
+};
+
+const appendUserOptionsIfMissing = (options, users) => {
+  const currentOptions = Array.isArray(options) ? options : [];
+  const nextOptions = [...currentOptions];
+  const seen = new Set(
+    currentOptions.map((item) => (item?.value || '').toString().trim()).filter(Boolean)
+  );
+  (Array.isArray(users) ? users : []).forEach((item) => {
+    const option = toUserOption(item);
+    const normalizedID = (option?.value || '').toString().trim();
+    if (!normalizedID || seen.has(normalizedID)) {
+      return;
+    }
+    seen.add(normalizedID);
+    nextOptions.push(option);
+  });
+  return nextOptions;
 };
 
 const formatByCurrencyMinorUnit = (amount, currency) => {
@@ -147,6 +178,8 @@ const PackagesManager = () => {
 
   const [groupOptions, setGroupOptions] = useState([]);
   const [groupLoading, setGroupLoading] = useState(false);
+  const [userOptions, setUserOptions] = useState([]);
+  const [userLoading, setUserLoading] = useState(false);
   const [displayUnit, setDisplayUnit] = useState('USD');
   const [currencyIndex, setCurrencyIndex] = useState(
     buildBillingCurrencyIndex([], { activeOnly: true })
@@ -238,6 +271,34 @@ const PackagesManager = () => {
         showError(error);
       } finally {
         setLoading(false);
+      }
+    },
+    [t]
+  );
+
+  const searchUsers = useCallback(
+    async (keyword) => {
+      const normalizedValue = (keyword || '').toString().trim();
+      if (normalizedValue === '') {
+        return;
+      }
+      setUserLoading(true);
+      try {
+        const res = await API.get('/api/v1/admin/user/search', {
+          params: {
+            keyword: normalizedValue,
+          },
+        });
+        const { success, message, data } = res?.data || {};
+        if (!success) {
+          showError(message || t('package_manage.messages.user_load_failed'));
+          return;
+        }
+        setUserOptions((current) => appendUserOptionsIfMissing(current, data));
+      } catch (error) {
+        showError(error?.message || t('package_manage.messages.user_load_failed'));
+      } finally {
+        setUserLoading(false);
       }
     },
     [t]
@@ -372,6 +433,10 @@ const PackagesManager = () => {
         name: detail.name || '',
         description: detail.description || '',
         group_id: resolvedGroupID,
+        visibility_scope: detail?.visibility_scope || 'all',
+        visible_user_ids: Array.isArray(detail?.visible_user_ids)
+          ? detail.visible_user_ids.map((item) => (item || '').toString()).filter(Boolean)
+          : [],
         sale_price: detail?.sale_price ?? '0',
         sale_currency: detail?.sale_currency || 'CNY',
         daily_amount: yycToBillingInputValue(
@@ -392,6 +457,9 @@ const PackagesManager = () => {
         sort_order: Number(detail?.sort_order || 0),
         source: detail?.source || 'manual',
       });
+      setUserOptions((current) =>
+        appendUserOptionsIfMissing(current, detail?.visible_users)
+      );
       setEditOpen(true);
     } catch (error) {
       showError(error?.message || error);
@@ -413,6 +481,14 @@ const PackagesManager = () => {
     const groupID = (form.group_id || '').trim();
     if (groupID === '') {
       showInfo(t('package_manage.messages.group_required'));
+      return null;
+    }
+    const visibilityScope = (form.visibility_scope || 'all').toString().trim() || 'all';
+    const visibleUserIDs = Array.isArray(form.visible_user_ids)
+      ? [...new Set(form.visible_user_ids.map((item) => (item || '').toString().trim()).filter(Boolean))]
+      : [];
+    if (visibilityScope === 'partial_users' && visibleUserIDs.length === 0) {
+      showInfo(t('package_manage.messages.visible_users_required'));
       return null;
     }
     const dailyStored = billingInputValueToYYC(
@@ -446,6 +522,8 @@ const PackagesManager = () => {
       name,
       description: (form.description || '').trim(),
       group_id: groupID,
+      visibility_scope: visibilityScope,
+      visible_user_ids: visibilityScope === 'partial_users' ? visibleUserIDs : [],
       sale_price: Number(form.sale_price || 0),
       sale_currency: (form.sale_currency || 'CNY').trim().toUpperCase() || 'CNY',
       daily_quota_limit: Math.trunc(dailyStored),
@@ -638,6 +716,8 @@ const PackagesManager = () => {
                 </div>
               ),
               key: 'daily_quota_limit',
+              className: 'router-package-daily-quota-cell',
+              width: PACKAGE_LIST_COLUMN_WIDTHS.dailyQuota,
               render: (_, row) =>
                 renderPackageAmountFieldValue(row, 'daily', displayUnit, currencyIndex),
             },
@@ -660,6 +740,8 @@ const PackagesManager = () => {
                 </div>
               ),
               key: 'package_emergency_quota_limit',
+              className: 'router-package-emergency-quota-cell',
+              width: PACKAGE_LIST_COLUMN_WIDTHS.emergencyQuota,
               render: (_, row) =>
                 renderPackageAmountFieldValue(row, 'emergency', displayUnit, currencyIndex),
             },
@@ -774,6 +856,57 @@ const PackagesManager = () => {
             loading={groupLoading}
             onChange={(e, { value }) =>
               setForm((prev) => ({ ...prev, group_id: (value || '').toString() }))
+            }
+          />
+        </AppField>
+      </AppFormRow>
+
+      <AppFormRow>
+        <AppField label={t('package_manage.form.visibility_scope')} required>
+          <AppSelect
+            className='router-section-input'
+            options={[
+              {
+                key: 'all',
+                value: 'all',
+                text: t('package_manage.form.visibility_scope_all'),
+              },
+              {
+                key: 'partial_users',
+                value: 'partial_users',
+                text: t('package_manage.form.visibility_scope_partial_users'),
+              },
+            ]}
+            value={form.visibility_scope}
+            onChange={(e, { value }) =>
+              setForm((prev) => ({
+                ...prev,
+                visibility_scope: (value || 'all').toString(),
+                visible_user_ids:
+                  (value || 'all').toString() === 'partial_users'
+                    ? prev.visible_user_ids
+                    : [],
+              }))
+            }
+          />
+        </AppField>
+        <AppField label={t('package_manage.form.visible_users')}>
+          <AppSelect
+            className='router-section-input'
+            placeholder={t('package_manage.form.visible_users_placeholder')}
+            options={userOptions}
+            value={form.visible_user_ids}
+            loading={userLoading}
+            multiple
+            search
+            clearable
+            disabled={form.visibility_scope !== 'partial_users'}
+            onSearch={searchUsers}
+            onChange={(e, { value }) =>
+              setForm((prev) => ({
+                ...prev,
+                visible_user_ids: Array.isArray(value) ? value : [],
+              }))
             }
           />
         </AppField>

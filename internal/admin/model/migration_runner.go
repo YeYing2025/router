@@ -365,6 +365,22 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			},
 		},
 		{
+			Version:     "202605191030_service_package_visibility",
+			Description: "add package visibility scope and visible user mapping",
+			Up: func(tx *gorm.DB) error {
+				if err := tx.AutoMigrate(&ServicePackage{}, &ServicePackageVisibleUser{}); err != nil {
+					return err
+				}
+				if err := tx.Exec(
+					"UPDATE service_packages SET visibility_scope = ? WHERE COALESCE(visibility_scope, '') = ''",
+					ServicePackageVisibilityScopeAll,
+				).Error; err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		{
 			Version:     "202604031130_user_created_updated_at",
 			Description: "add created_at and updated_at columns to users and backfill existing rows",
 			Up: func(tx *gorm.DB) error {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yeying-community/router/common/config"
+	"github.com/yeying-community/router/common/ctxkey"
 	"github.com/yeying-community/router/internal/admin/model"
 	plansvc "github.com/yeying-community/router/internal/admin/service/plan"
 	"gorm.io/gorm"
@@ -23,19 +24,21 @@ type packageListPageData struct {
 }
 
 type upsertServicePackageRequest struct {
-	Id                         string  `json:"id"`
-	Name                       *string `json:"name"`
-	Description                *string `json:"description"`
-	GroupID                    *string `json:"group_id"`
+	Id                         string   `json:"id"`
+	Name                       *string  `json:"name"`
+	Description                *string  `json:"description"`
+	GroupID                    *string  `json:"group_id"`
+	VisibilityScope            *string  `json:"visibility_scope"`
+	VisibleUserIDs             []string `json:"visible_user_ids"`
 	SalePrice                  *float64 `json:"sale_price"`
-	SaleCurrency               *string `json:"sale_currency"`
-	DailyQuotaLimit            *int64  `json:"daily_quota_limit"`
-	PackageEmergencyQuotaLimit *int64  `json:"package_emergency_quota_limit"`
-	DurationDays               *int    `json:"duration_days"`
-	QuotaResetTimezone         *string `json:"quota_reset_timezone"`
-	Enabled                    *bool   `json:"enabled"`
-	SortOrder                  *int    `json:"sort_order"`
-	Source                     *string `json:"source"`
+	SaleCurrency               *string  `json:"sale_currency"`
+	DailyQuotaLimit            *int64   `json:"daily_quota_limit"`
+	PackageEmergencyQuotaLimit *int64   `json:"package_emergency_quota_limit"`
+	DurationDays               *int     `json:"duration_days"`
+	QuotaResetTimezone         *string  `json:"quota_reset_timezone"`
+	Enabled                    *bool    `json:"enabled"`
+	SortOrder                  *int     `json:"sort_order"`
+	Source                     *string  `json:"source"`
 }
 
 type assignServicePackageRequest struct {
@@ -140,7 +143,7 @@ func GetPackages(c *gin.Context) {
 // @Failure 401 {object} docs.ErrorResponse
 // @Router /api/v1/public/user/packages [get]
 func GetPublicPackages(c *gin.Context) {
-	rows, err := model.ListEnabledServicePackages()
+	rows, err := model.ListEnabledServicePackagesForUser(strings.TrimSpace(c.GetString(ctxkey.Id)))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -151,7 +154,7 @@ func GetPublicPackages(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data": rows,
+		"data":    rows,
 	})
 }
 
@@ -215,6 +218,8 @@ func CreatePackage(c *gin.Context) {
 		Name:                       optionalStringValue(req.Name, ""),
 		Description:                optionalStringValue(req.Description, ""),
 		GroupID:                    optionalStringValue(req.GroupID, ""),
+		VisibilityScope:            optionalStringValue(req.VisibilityScope, model.ServicePackageVisibilityScopeAll),
+		VisibleUserIDs:             req.VisibleUserIDs,
 		SalePrice:                  optionalFloat64Value(req.SalePrice, 0),
 		SaleCurrency:               optionalStringValue(req.SaleCurrency, model.BillingCurrencyCodeCNY),
 		DailyQuotaLimit:            optionalInt64Value(req.DailyQuotaLimit, 0),
@@ -283,6 +288,8 @@ func UpdatePackage(c *gin.Context) {
 		Name:                       optionalStringValue(req.Name, current.Name),
 		Description:                optionalStringValue(req.Description, current.Description),
 		GroupID:                    optionalStringValue(req.GroupID, current.GroupID),
+		VisibilityScope:            optionalStringValue(req.VisibilityScope, current.VisibilityScope),
+		VisibleUserIDs:             req.VisibleUserIDs,
 		SalePrice:                  optionalFloat64Value(req.SalePrice, current.SalePrice),
 		SaleCurrency:               optionalStringValue(req.SaleCurrency, current.SaleCurrency),
 		DailyQuotaLimit:            optionalInt64Value(req.DailyQuotaLimit, current.DailyQuotaLimit),
@@ -292,6 +299,9 @@ func UpdatePackage(c *gin.Context) {
 		Enabled:                    optionalBoolValue(req.Enabled, current.Enabled),
 		SortOrder:                  optionalIntValue(req.SortOrder, current.SortOrder),
 		Source:                     optionalStringValue(req.Source, current.Source),
+	}
+	if req.VisibleUserIDs == nil {
+		item.VisibleUserIDs = current.VisibleUserIDs
 	}
 	row, err := plansvc.Update(item)
 	if err != nil {
