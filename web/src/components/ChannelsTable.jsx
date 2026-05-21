@@ -10,12 +10,14 @@ import {
 } from '../helpers';
 
 import { ITEMS_PER_PAGE } from '../constants';
-import { CHANNEL_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  CHANNEL_LIST_COLUMN_WIDTHS,
+  CHANNEL_LIST_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import {
   getChannelProtocolOptions,
   loadChannelProtocolOptions,
 } from '../helpers/helper';
-import { renderNumber } from '../helpers/render';
 import {
   AppButton,
   AppFilterHeader,
@@ -113,35 +115,12 @@ function renderChannelName(channel, t) {
   return <span>{displayName || t('channel.table.no_name')}</span>;
 }
 
-function renderBalance(protocol, balance, t) {
-  const normalized = (protocol || '').toString().trim().toLowerCase();
-  switch (normalized) {
-    case 'openai':
-      if (balance === 0) {
-        return <span>{t('channel.table.balance_not_supported')}</span>;
-      }
-      return <span>${balance.toFixed(2)}</span>;
-    case 'closeai':
-      return <span>¥{balance.toFixed(2)}</span>;
-    case 'custom':
-      return <span>${balance.toFixed(2)}</span>;
-    case 'openai-sb':
-      return <span>¥{(balance / 10000).toFixed(2)}</span>;
-    case 'aiproxy':
-      return <span>{renderNumber(balance)}</span>;
-    case 'api2gpt':
-      return <span>¥{balance.toFixed(2)}</span>;
-    case 'aigc2d':
-      return <span>{renderNumber(balance)}</span>;
-    case 'openrouter':
-      return <span>${balance.toFixed(2)}</span>;
-    case 'deepseek':
-      return <span>¥{balance.toFixed(2)}</span>;
-    case 'siliconflow':
-      return <span>¥{balance.toFixed(2)}</span>;
-    default:
-      return <span>{t('channel.table.balance_not_supported')}</span>;
+function renderBillingSummary(channel, t) {
+  const summary = (channel?.billing_summary || '').toString().trim();
+  if (summary === '') {
+    return <span>{t('channel.table.billing_not_available')}</span>;
   }
+  return <span>{summary}</span>;
 }
 
 const selectionModeNone = '';
@@ -164,7 +143,7 @@ const ChannelsTable = () => {
   const [selectedChannelIds, setSelectedChannelIds] = useState([]);
   const [disableBlockedImpact, setDisableBlockedImpact] = useState(null);
   const currentPagePath = `${location.pathname}${location.search}${location.hash}`;
-  const [balanceRefreshTasks, setBalanceRefreshTasks] = useState({});
+  const [billingRefreshTasks, setBillingRefreshTasks] = useState({});
   const [protocolMap, setProtocolMap] = useState(() =>
     buildProtocolMap(getChannelProtocolOptions(), t)
   );
@@ -251,7 +230,7 @@ const ChannelsTable = () => {
   }, [selectionMode, channels]);
 
   useEffect(() => {
-    const taskEntries = Object.entries(balanceRefreshTasks || {});
+    const taskEntries = Object.entries(billingRefreshTasks || {});
     if (taskEntries.length === 0) {
       return undefined;
     }
@@ -286,7 +265,7 @@ const ChannelsTable = () => {
           finishedTasks.push({ channelId, task });
         }
       });
-      setBalanceRefreshTasks(nextTaskMap);
+      setBillingRefreshTasks(nextTaskMap);
       if (finishedTasks.length === 0) {
         return;
       }
@@ -301,19 +280,19 @@ const ChannelsTable = () => {
         const targetChannel = channels.find((item) => item.id === channelId);
         const channelName = getChannelDisplayName(targetChannel);
         if (normalizeAsyncTaskStatus(task?.status) === 'succeeded') {
-          showSuccess(t('channel.messages.balance_update_success', { name: channelName }));
+          showSuccess(t('channel.messages.billing_update_success', { name: channelName }));
           return;
         }
         showError(
           task?.error_message ||
-            t('channel.messages.balance_update_failed', { name: channelName })
+            t('channel.messages.billing_update_failed', { name: channelName })
         );
       });
     }, 1500);
     return () => window.clearInterval(timer);
   }, [
     activePage,
-    balanceRefreshTasks,
+    billingRefreshTasks,
     channels,
     loadChannels,
     searchKeyword,
@@ -440,10 +419,10 @@ const ChannelsTable = () => {
     setSearching(false);
   };
 
-  const updateChannelBalance = async (id, name, idx) => {
+  const refreshChannelBilling = async (id, name, idx) => {
     try {
       const res = await API.post(`/api/v1/admin/channel/${id}/refresh`, {
-        action: 'balance',
+        action: 'billing',
       });
       const { success, message, data, meta } = res.data || {};
       if (!success) {
@@ -452,21 +431,21 @@ const ChannelsTable = () => {
       }
       const task = data?.task;
       if (!task?.id) {
-        showError(t('channel.messages.balance_update_submit_failed'));
+        showError(t('channel.messages.billing_update_submit_failed'));
         return;
       }
-      setBalanceRefreshTasks((prev) => ({
+      setBillingRefreshTasks((prev) => ({
         ...prev,
         [id]: task,
       }));
       showSuccess(
         meta?.reused
-          ? t('channel.messages.balance_update_reused', { name })
-          : t('channel.messages.balance_update_submitted', { name })
+          ? t('channel.messages.billing_update_reused', { name })
+          : t('channel.messages.billing_update_submitted', { name })
       );
     } catch (error) {
       showError(
-        error?.message || t('channel.messages.balance_update_submit_failed')
+        error?.message || t('channel.messages.billing_update_submit_failed')
       );
     }
   };
@@ -759,18 +738,20 @@ const ChannelsTable = () => {
           </div>
         }
       />
-      <AppTable
-        className='router-hover-table router-list-table router-table-fit-page'
-        pagination={false}
-        rowKey={(channel) => channel.id}
-        dataSource={visibleChannels}
-        rowSelection={tableRowSelection}
-        locale={{ emptyText: '-' }}
-        onRow={(channel) => ({
-          onClick: () => openChannelByStatus(channel),
-          className: inBatchSelectMode ? undefined : 'router-row-clickable',
-        })}
-        columns={[
+      <div className='router-table-scroll-x'>
+        <AppTable
+          className='router-hover-table router-list-table router-table-fit-page'
+          pagination={false}
+          scroll={{ x: CHANNEL_LIST_TABLE_MIN_WIDTH }}
+          rowKey={(channel) => channel.id}
+          dataSource={visibleChannels}
+          rowSelection={tableRowSelection}
+          locale={{ emptyText: '-' }}
+          onRow={(channel) => ({
+            onClick: () => openChannelByStatus(channel),
+            className: inBatchSelectMode ? undefined : 'router-row-clickable',
+          })}
+          columns={[
           {
             title: (
               <span
@@ -878,24 +859,30 @@ const ChannelsTable = () => {
               <span
                 className='router-sortable-header'
                 onClick={() => {
-                  sortChannel('balance');
+                  sortChannel('billing_summary');
                 }}
               >
-                {t('channel.table.balance')}
+                {t('channel.table.billing')}
               </span>
             ),
-            dataIndex: 'balance',
-            key: 'balance',
+            dataIndex: 'billing_summary',
+            key: 'billing_summary',
             width: CHANNEL_LIST_COLUMN_WIDTHS.balance,
             render: (_, channel, idx) => (
               <div onClick={stopRowClick}>
-                <AppTooltip title={t('channel.table.click_to_update')}>
+                <AppTooltip
+                  title={
+                    channel.billing_snapshot_at
+                      ? `${t('channel.table.click_to_update')} · ${timestamp2string(channel.billing_snapshot_at)}`
+                      : t('channel.table.click_to_update')
+                  }
+                >
                   <span
                     onClick={() => {
-                      if (balanceRefreshTasks[channel.id]) {
+                      if (billingRefreshTasks[channel.id]) {
                         return;
                       }
-                      updateChannelBalance(
+                      refreshChannelBilling(
                         channel.id,
                         getChannelDisplayName(channel),
                         idx,
@@ -903,13 +890,13 @@ const ChannelsTable = () => {
                     }}
                     className='router-row-clickable'
                   >
-                    {balanceRefreshTasks[channel.id] ? (
+                    {billingRefreshTasks[channel.id] ? (
                       <>
                         <AppIcon name='spinner' className='router-spin-icon' />
-                        {renderBalance(channel.protocol, channel.balance, t)}
+                        {renderBillingSummary(channel, t)}
                       </>
                     ) : (
-                      renderBalance(channel.protocol, channel.balance, t)
+                      renderBillingSummary(channel, t)
                     )}
                   </span>
                 </AppTooltip>
@@ -993,8 +980,9 @@ const ChannelsTable = () => {
               </div>
             ),
           },
-        ]}
-      />
+          ]}
+        />
+      </div>
       <AppModal
         size='small'
         open={!!disableBlockedImpact}

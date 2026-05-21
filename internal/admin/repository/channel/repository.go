@@ -18,7 +18,6 @@ func init() {
 		Update:                       Update,
 		UpdateModels:                 UpdateModels,
 		UpdateResponseTime:           UpdateResponseTime,
-		UpdateBalance:                UpdateBalance,
 		Delete:                       Delete,
 		UpdateChannelStatusById:      UpdateStatusByID,
 		UpdateChannelUsedQuota:       UpdateUsedQuota,
@@ -378,16 +377,6 @@ func UpdateResponseTime(channel *model.Channel, responseTime int64) {
 	}).Error
 	if err != nil {
 		logger.SysError("failed to update response time: " + err.Error())
-	}
-}
-
-func UpdateBalance(channel *model.Channel, balance float64) {
-	err := model.DB.Model(channel).Select("balance_updated_time", "balance").Updates(model.Channel{
-		BalanceUpdatedTime: helper.GetTimestamp(),
-		Balance:            balance,
-	}).Error
-	if err != nil {
-		logger.SysError("failed to update balance: " + err.Error())
 	}
 }
 

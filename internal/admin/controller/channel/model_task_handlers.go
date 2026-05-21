@@ -21,17 +21,6 @@ type refreshChannelRequest struct {
 	Action string `json:"action,omitempty"`
 }
 
-// RefreshChannel godoc
-// @Summary Submit channel refresh task (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param id path string true "Channel ID"
-// @Param body body object false "Refresh payload, e.g. {\"action\":\"models\"|\"balance\"}"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/channel/{id}/refresh [post]
 func RefreshChannel(c *gin.Context) {
 	channelID := strings.TrimSpace(c.Param("id"))
 	if channelID == "" {
@@ -64,9 +53,9 @@ func RefreshChannel(c *gin.Context) {
 		logAction = "refresh_models"
 		task, reusedValue, taskErr := CreateChannelRefreshModelsTask(channelID, createdBy, traceID)
 		taskRow, reused, err = task, reusedValue, taskErr
-	case "balance":
-		logAction = "refresh_balance"
-		task, reusedValue, taskErr := CreateChannelRefreshBalanceTask(channelID, createdBy, traceID)
+	case "billing":
+		logAction = "refresh_billing"
+		task, reusedValue, taskErr := CreateChannelRefreshBillingTask(channelID, createdBy, traceID)
 		taskRow, reused, err = task, reusedValue, taskErr
 	default:
 		logChannelAdminWarn(c, "refresh_channel", stringField("channel_id", channelID), stringField("action", action), stringField("reason", "不支持的刷新动作"))
@@ -87,17 +76,6 @@ func RefreshChannel(c *gin.Context) {
 	})
 }
 
-// TestChannelModels godoc
-// @Summary Test channel models (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param id path string true "Channel ID"
-// @Param body body docs.ChannelModelTestsRequest true "Channel model test payload"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/channel/{id}/tests [post]
 func TestChannelModels(c *gin.Context) {
 	channelID := strings.TrimSpace(c.Param("id"))
 	if channelID == "" {

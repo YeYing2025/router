@@ -25,13 +25,17 @@ import {
   resolvePreferredDisplayCurrency,
   YYC_DISPLAY_CODE,
 } from '../helpers/billing';
-import { LOG_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  LOG_LIST_COLUMN_WIDTHS,
+  LOG_LIST_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import {
   AppButton,
   AppFilterHeader,
   AppFormActions,
   AppPagination,
   AppPopover,
+  resolvePopupContainer,
   AppSelect,
   AppTable,
   AppTag,
@@ -749,22 +753,13 @@ const LogsTable = () => {
         picker={
             <AppPopover
               open={addFilterPopupOpen}
+              trigger='click'
               placement='bottomLeft'
               onOpenChange={(open) => {
                 if (!open) {
                   closeFilterDraft();
                 }
               }}
-              trigger={
-                <AppButton
-                  type='button'
-                  className='router-section-button'
-                  disabled={availableConditionalFilterOptions.length === 0}
-                  onClick={() => setAddFilterPopupOpen(true)}
-                >
-                  {t('log.filters.add')}
-                </AppButton>
-              }
               content={
                 <div className='router-log-filter-picker'>
                   <div className='router-log-filter-picker-options'>
@@ -819,6 +814,7 @@ const LogsTable = () => {
                           fluid
                           search
                           clearable
+                          getPopupContainer={resolvePopupContainer}
                           options={
                             conditionalFilterConfig.find((item) => item.key === draftFilterKey)
                               ?.options || []
@@ -872,7 +868,16 @@ const LogsTable = () => {
                   )}
                 </div>
               }
-            />
+            >
+              <AppButton
+                type='button'
+                className='router-section-button'
+                disabled={availableConditionalFilterOptions.length === 0}
+                onClick={() => setAddFilterPopupOpen(true)}
+              >
+                {t('log.filters.add')}
+              </AppButton>
+            </AppPopover>
         }
         query={
           <>
@@ -919,26 +924,28 @@ const LogsTable = () => {
         }
         endClassName='router-log-query-wrap'
       />
-      <AppTable
-        className='router-list-table router-table-fit-page router-log-table'
-        pagination={false}
-        rowKey={(log) =>
-          log.id ||
-          log.trace_id ||
-          `${log.timestamp || ''}-${log.type || ''}-${log.token_name || ''}-${log.model_name || ''}`
-        }
-        dataSource={filteredLogs
-          .slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE)
-          .filter((log) => !log.deleted)}
-        locale={{ emptyText: loading ? t('common.loading') : t('task.empty') }}
-        onRow={(log) => ({
-          className: 'router-row-clickable',
-          onClick: () =>
-            log.id
-              ? navigate(`${detailBasePath}/${log.id}${location.search || ''}`)
-              : undefined,
-        })}
-        columns={[
+      <div className='router-table-scroll-x'>
+        <AppTable
+          className='router-list-table router-table-fit-page router-log-table'
+          pagination={false}
+          scroll={{ x: LOG_LIST_TABLE_MIN_WIDTH }}
+          rowKey={(log) =>
+            log.id ||
+            log.trace_id ||
+            `${log.timestamp || ''}-${log.type || ''}-${log.token_name || ''}-${log.model_name || ''}`
+          }
+          dataSource={filteredLogs
+            .slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE)
+            .filter((log) => !log.deleted)}
+          locale={{ emptyText: loading ? t('common.loading') : t('task.empty') }}
+          onRow={(log) => ({
+            className: 'router-row-clickable',
+            onClick: () =>
+              log.id
+                ? navigate(`${detailBasePath}/${log.id}${location.search || ''}`)
+                : undefined,
+          })}
+          columns={[
           {
             title: (
               <span
@@ -1184,21 +1191,22 @@ const LogsTable = () => {
                 },
               ]
             : []),
-        ]}
-        footer={() => (
-          <AppToolbar
-            start={
-            <AppPagination
-              className='router-page-pagination'
-              activePage={activePage}
-              onPageChange={onPaginationChange}
-              siblingRange={1}
-              totalPages={totalPages}
+          ]}
+          footer={() => (
+            <AppToolbar
+              start={
+                <AppPagination
+                  className='router-page-pagination'
+                  activePage={activePage}
+                  onPageChange={onPaginationChange}
+                  siblingRange={1}
+                  totalPages={totalPages}
+                />
+              }
             />
-            }
-          />
-        )}
-      />
+          )}
+        />
+      </div>
     </>
   );
 };

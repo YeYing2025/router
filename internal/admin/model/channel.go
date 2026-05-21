@@ -36,8 +36,6 @@ type Channel struct {
 	ResponseTime          int            `json:"response_time"`
 	BaseURL               *string        `json:"base_url" gorm:"column:base_url;default:''"`
 	Other                 *string        `json:"other"`
-	Balance               float64        `json:"balance"`
-	BalanceUpdatedTime    int64          `json:"balance_updated_time" gorm:"bigint"`
 	Models                string         `json:"models" gorm:"-"`
 	AvailableModels       []string       `json:"available_models,omitempty" gorm:"-"`
 	ChannelModels         []ChannelModel `json:"channel_models,omitempty" gorm:"-"`
@@ -393,10 +391,6 @@ func (channel *Channel) Update() error {
 
 func (channel *Channel) UpdateResponseTime(responseTime int64) {
 	mustChannelRepo().UpdateResponseTime(channel, responseTime)
-}
-
-func (channel *Channel) UpdateBalance(balance float64) {
-	mustChannelRepo().UpdateBalance(channel, balance)
 }
 
 func (channel *Channel) Delete() error {

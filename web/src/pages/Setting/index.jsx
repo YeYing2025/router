@@ -145,6 +145,8 @@ const Setting = () => {
       ? requestedSection
       : sectionKeys[0] || '';
   const pageTitle = activeGroup?.label || t('setting.title');
+  const activeSectionLabel =
+    activeGroup?.sections?.find((item) => item.key === activeSection)?.label || '';
   const singleGroupMode = visibleMenuGroups.length === 1;
   const hideSettingsMenu =
     singleGroupMode &&
@@ -193,8 +195,34 @@ const Setting = () => {
     <div className='dashboard-container'>
       <AppFilterHeader
         breadcrumbs={[
-          { key: 'admin', label: t('header.admin_workspace') },
-          { key: 'setting', label: t('header.setting'), active: true },
+          { key: 'workspace', label: t('header.admin_workspace') },
+          {
+            key: 'section',
+            label:
+              activeTab === 'operation' ||
+              activeTab === 'currency' ||
+              activeTab === 'exchange'
+                ? t('header.platform_operation')
+                : t('header.setting_center'),
+          },
+          ...(activeGroup
+            ? [
+                {
+                  key: 'group',
+                  label: activeGroup.label,
+                  active: activeSectionLabel === '' || activeSectionLabel === activeGroup.label,
+                },
+              ]
+            : []),
+          ...(activeSectionLabel !== '' && activeSectionLabel !== activeGroup?.label
+            ? [
+                {
+                  key: 'section-current',
+                  label: activeSectionLabel,
+                  active: true,
+                },
+              ]
+            : []),
         ]}
         title={pageTitle}
       />

@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API, showError, showInfo, showSuccess, timestamp2string } from '../helpers';
-import { GROUP_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  GROUP_LIST_COLUMN_WIDTHS,
+  GROUP_LIST_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import {
   AppAlert,
   AppButton,
@@ -45,6 +48,19 @@ const createEmptyModelConfig = () => ({
   enabled: true,
   priority: null,
 });
+
+const GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS = {
+  name: 320,
+  status: 120,
+  priority: 140,
+  actions: 220,
+};
+
+const GROUP_DETAIL_CHANNEL_TABLE_MIN_WIDTH =
+  GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.name +
+  GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.status +
+  GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.priority +
+  GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.actions;
 
 const sortGroupModelRows = (items) =>
   [...(Array.isArray(items) ? items : [])].sort((a, b) => {
@@ -1229,18 +1245,20 @@ const GroupsManager = ({ detailGroupId = '' }) => {
         }
       />
 
-      <AppTable
-        className='router-hover-table router-list-table router-table-fit-page'
-        rowKey='id'
-        pagination={false}
-        loading={loading}
-        locale={{ emptyText: t('group_manage.messages.empty') }}
-        dataSource={visibleRows}
-        onRow={(row) => ({
-          onClick: () => openViewPanel(row),
-          className: submitting || loading ? undefined : 'router-row-clickable',
-        })}
-        columns={[
+      <div className='router-table-scroll-x'>
+        <AppTable
+          className='router-hover-table router-list-table router-table-fit-page'
+          rowKey='id'
+          pagination={false}
+          loading={loading}
+          scroll={{ x: GROUP_LIST_TABLE_MIN_WIDTH }}
+          locale={{ emptyText: t('group_manage.messages.empty') }}
+          dataSource={visibleRows}
+          onRow={(row) => ({
+            onClick: () => openViewPanel(row),
+            className: submitting || loading ? undefined : 'router-row-clickable',
+          })}
+          columns={[
           {
             title: t('group_manage.table.id'),
             dataIndex: 'name',
@@ -1358,8 +1376,9 @@ const GroupsManager = ({ detailGroupId = '' }) => {
               </div>
             ),
           },
-        ]}
-      />
+          ]}
+        />
+      </div>
     </>
   );
 
@@ -1421,107 +1440,110 @@ const GroupsManager = ({ detailGroupId = '' }) => {
   const renderDetailChannelsTable = (items, loadingState) => {
     const rows = (Array.isArray(items) ? items : []).filter((item) => !!item?.bound);
     return (
-      <AppTable
-        className='router-detail-table'
-        rowKey='id'
-        pagination={false}
-        loading={loadingState}
-        locale={{ emptyText: t('group_manage.detail.empty_channels') }}
-        dataSource={rows}
-        columns={[
-          {
-            title: t('group_manage.detail.model_channels'),
-            dataIndex: 'name',
-            key: 'name',
-            width: '44%',
-            render: (_, item) => (
-              <span className='router-cell-truncate' title={formatChannelDisplayName(item)}>
-                {formatChannelDisplayName(item)}
-              </span>
-            ),
-          },
-          {
-            title: t('group_manage.table.status'),
-            dataIndex: 'status',
-            key: 'status',
-            width: '16%',
-            render: (value) => (
-              <AppTag color={channelStatusColor(value)} className='router-tag'>
-                {value === 1
-                  ? t('group_manage.status.enabled')
-                  : t('group_manage.status.disabled')}
-              </AppTag>
-            ),
-          },
-          {
-            title: t('group_manage.detail.priority'),
-            dataIndex: 'priority',
-            key: 'priority',
-            width: '16%',
-            render: (_, item) => {
-              const channelID = (item?.id || '').toString().trim();
-              return (
-                <AppInputNumber
-                  className='router-inline-input'
-                  step={1}
-                  precision={0}
-                  disabled={submitting || detailChannelsEditLocked || detailChannelModalOpen}
-                  value={toSafePriorityNumber(item?.priority, 0)}
-                  onChange={(e, { value }) =>
-                    updateDetailChannelDraft(channelID, (current) => ({
-                      ...current,
-                      priority: Number.isFinite(Number(value))
-                        ? Math.trunc(Number(value))
-                        : 0,
-                    }))
-                  }
-                  onBlur={async () => {
-                    const nextRows = (Array.isArray(detailChannelRows) ? detailChannelRows : []).map((row) =>
-                      (row?.id || '').toString().trim() === channelID
-                        ? {
-                            ...row,
-                            priority: toSafePriorityNumber(row?.priority, 0),
-                          }
-                        : row
-                    );
-                    setDetailChannelRows(nextRows);
-                    await submitDetailChannels(nextRows);
-                  }}
-                />
-              );
+      <div className='router-table-scroll-x'>
+        <AppTable
+          className='router-detail-table'
+          rowKey='id'
+          pagination={false}
+          scroll={{ x: GROUP_DETAIL_CHANNEL_TABLE_MIN_WIDTH }}
+          loading={loadingState}
+          locale={{ emptyText: t('group_manage.detail.empty_channels') }}
+          dataSource={rows}
+          columns={[
+            {
+              title: t('group_manage.detail.model_channels'),
+              dataIndex: 'name',
+              key: 'name',
+              width: GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.name,
+              render: (_, item) => (
+                <span className='router-cell-truncate' title={formatChannelDisplayName(item)}>
+                  {formatChannelDisplayName(item)}
+                </span>
+              ),
             },
-          },
-          {
-            title: t('group_manage.table.actions'),
-            key: 'actions',
-            width: '24%',
-            render: (_, item) => {
-              const channelID = (item?.id || '').toString().trim();
-              return (
-                <div className='router-inline-actions'>
-                  <AppButton
-                    type='button'
-                    className='router-inline-button'
-                    basic
-                    onClick={() => openChannelDetailFromCurrentPage(channelID)}
-                  >
-                    {t('group_manage.buttons.view_channel')}
-                  </AppButton>
-                  <AppButton
-                    type='button'
-                    className='router-inline-button'
-                    basic
+            {
+              title: t('group_manage.table.status'),
+              dataIndex: 'status',
+              key: 'status',
+              width: GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.status,
+              render: (value) => (
+                <AppTag color={channelStatusColor(value)} className='router-tag'>
+                  {value === 1
+                    ? t('group_manage.status.enabled')
+                    : t('group_manage.status.disabled')}
+                </AppTag>
+              ),
+            },
+            {
+              title: t('group_manage.detail.priority'),
+              dataIndex: 'priority',
+              key: 'priority',
+              width: GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.priority,
+              render: (_, item) => {
+                const channelID = (item?.id || '').toString().trim();
+                return (
+                  <AppInputNumber
+                    className='router-inline-input'
+                    step={1}
+                    precision={0}
                     disabled={submitting || detailChannelsEditLocked || detailChannelModalOpen}
-                    onClick={() => removeDetailChannel(item)}
-                  >
-                    {t('group_manage.buttons.remove_channel')}
-                  </AppButton>
-                </div>
-              );
+                    value={toSafePriorityNumber(item?.priority, 0)}
+                    onChange={(e, { value }) =>
+                      updateDetailChannelDraft(channelID, (current) => ({
+                        ...current,
+                        priority: Number.isFinite(Number(value))
+                          ? Math.trunc(Number(value))
+                          : 0,
+                      }))
+                    }
+                    onBlur={async () => {
+                      const nextRows = (Array.isArray(detailChannelRows) ? detailChannelRows : []).map((row) =>
+                        (row?.id || '').toString().trim() === channelID
+                          ? {
+                              ...row,
+                              priority: toSafePriorityNumber(row?.priority, 0),
+                            }
+                          : row
+                      );
+                      setDetailChannelRows(nextRows);
+                      await submitDetailChannels(nextRows);
+                    }}
+                  />
+                );
+              },
             },
-          },
-        ]}
-      />
+            {
+              title: t('group_manage.table.actions'),
+              key: 'actions',
+              width: GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.actions,
+              render: (_, item) => {
+                const channelID = (item?.id || '').toString().trim();
+                return (
+                  <div className='router-inline-actions'>
+                    <AppButton
+                      type='button'
+                      className='router-inline-button'
+                      basic
+                      onClick={() => openChannelDetailFromCurrentPage(channelID)}
+                    >
+                      {t('group_manage.buttons.view_channel')}
+                    </AppButton>
+                    <AppButton
+                      type='button'
+                      className='router-inline-button'
+                      basic
+                      disabled={submitting || detailChannelsEditLocked || detailChannelModalOpen}
+                      onClick={() => removeDetailChannel(item)}
+                    >
+                      {t('group_manage.buttons.remove_channel')}
+                    </AppButton>
+                  </div>
+                );
+              },
+            },
+          ]}
+        />
+      </div>
     );
   };
 

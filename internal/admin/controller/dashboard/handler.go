@@ -75,7 +75,6 @@ type channelHealthItem struct {
 	Protocol           string   `json:"protocol"`
 	Status             int      `json:"status"`
 	Capabilities       []string `json:"capabilities"`
-	Balance            float64  `json:"balance"`
 	UsedQuota          int64    `json:"used_quota"`
 	YYCUsed            int64    `json:"yyc_used"`
 	Priority           int64    `json:"priority"`
@@ -465,7 +464,6 @@ func listTopChannels() ([]channelHealthItem, int64, int64, int64, error) {
 			Protocol:           strings.TrimSpace(row.Protocol),
 			Status:             row.Status,
 			Capabilities:       collectCapabilities(row),
-			Balance:            row.Balance,
 			UsedQuota:          row.UsedQuota,
 			YYCUsed:            row.UsedQuota,
 			Priority:           row.GetPriority(),
@@ -786,16 +784,6 @@ func resolveAllTimeRange(now time.Time) (time.Time, time.Time, error) {
 	return start, end, nil
 }
 
-// GetDashboard godoc
-// @Summary Get admin dashboard aggregate data
-// @Tags admin
-// @Security BearerAuth
-// @Produce json
-// @Param period query string false "today|last_7_days|last_30_days|this_month|last_month|this_year|last_year|last_12_months|all_time"
-// @Param section query string false "all|overview|trend|health"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/dashboard [get]
 func GetDashboard(c *gin.Context) {
 	period := normalizePeriod(c.DefaultQuery("period", periodLast7Days))
 	section := normalizeSection(c.Query("section"))

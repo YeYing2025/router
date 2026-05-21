@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -362,6 +363,22 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 					"UPDATE service_packages SET created_at = COALESCE(NULLIF(updated_at, 0), ?) WHERE COALESCE(created_at, 0) = 0",
 					helper.GetTimestamp(),
 				).Error
+			},
+		},
+		{
+			Version:     "202605191030_service_package_visibility",
+			Description: "add package visibility scope and visible user mapping",
+			Up: func(tx *gorm.DB) error {
+				if err := tx.AutoMigrate(&ServicePackage{}, &ServicePackageVisibleUser{}); err != nil {
+					return err
+				}
+				if err := tx.Exec(
+					"UPDATE service_packages SET visibility_scope = ? WHERE COALESCE(visibility_scope, '') = ''",
+					ServicePackageVisibilityScopeAll,
+				).Error; err != nil {
+					return err
+				}
+				return nil
 			},
 		},
 		{
@@ -1012,6 +1029,160 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			Description: "backfill latest endpoint test facts from channel test history",
 			Up: func(tx *gorm.DB) error {
 				return BackfillChannelModelEndpointTestResultsFromChannelTestsWithDB(tx)
+			},
+		},
+		{
+			Version:     "202605191030_channel_billing_resources",
+			Description: "add channel billing profile, snapshot, and action tables",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&ChannelBillingProfile{}, &ChannelBillingSnapshot{}, &ChannelBillingAction{})
+			},
+		},
+		{
+			Version:     "202605191230_channel_billing_snapshot_items",
+			Description: "add channel billing snapshot item table and backfill explicit billing profiles",
+			Up: func(tx *gorm.DB) error {
+				if err := tx.AutoMigrate(&ChannelBillingSnapshotItem{}); err != nil {
+					return err
+				}
+				rows := make([]Channel, 0)
+				if err := tx.Find(&rows).Error; err != nil {
+					return err
+				}
+				for _, row := range rows {
+					if _, err := GetChannelBillingProfileByChannelIDWithDB(tx, row.Id); err == nil {
+						continue
+					} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+						return err
+					}
+					profile, ok := BuildChannelBillingProfileFromChannelConfig(&row)
+					if !ok {
+						continue
+					}
+					if _, err := SaveChannelBillingProfileWithDB(tx, profile); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Version:     "202605191430_channel_billing_fetch_config_api_base_url",
+			Description: "backfill billing fetch api base url from legacy account base url config",
+			Up: func(tx *gorm.DB) error {
+				rows := make([]Channel, 0)
+				if err := tx.Find(&rows).Error; err != nil {
+					return err
+				}
+				for _, row := range rows {
+					profile, err := GetChannelBillingProfileByChannelIDWithDB(tx, row.Id)
+					if err != nil {
+						if errors.Is(err, gorm.ErrRecordNotFound) {
+							continue
+						}
+						return err
+					}
+					if strings.TrimSpace(profile.BillingConfig) != "" {
+						continue
+					}
+					if strings.TrimSpace(profile.BillingMode) == ChannelBillingModeManual {
+						continue
+					}
+					cfg, configErr := row.LoadConfig()
+					if configErr != nil {
+						continue
+					}
+					accountBaseURL := cfg.GetAccountBaseURL()
+					if accountBaseURL == "" || deriveChannelActivateURLTemplate(accountBaseURL) != "" {
+						continue
+					}
+					profile.BillingConfig = marshalJSONString(channelBillingConfig{
+						APIBaseURL: accountBaseURL,
+					})
+					if _, err := SaveChannelBillingProfileWithDB(tx, profile); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Version:     "202605200930_drop_channel_balance_columns",
+			Description: "drop legacy channel balance columns",
+			Up: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&Channel{}, "balance_updated_time") {
+					if err := tx.Migrator().DropColumn(&Channel{}, "balance_updated_time"); err != nil {
+						return err
+					}
+				}
+				if tx.Migrator().HasColumn(&Channel{}, "balance") {
+					if err := tx.Migrator().DropColumn(&Channel{}, "balance"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Version:     "202605201030_rename_channel_billing_task_and_capabilities",
+			Description: "rename channel billing task type and billing capability values",
+			Up: func(tx *gorm.DB) error {
+				if err := tx.Model(&AsyncTask{}).
+					Where("type = ?", "channel_refresh_balance").
+					Update("type", AsyncTaskTypeChannelRefreshBilling).Error; err != nil {
+					return err
+				}
+				if err := tx.Exec(
+					"UPDATE "+AdminTasksTableName+
+						" SET dedupe_key = REPLACE(dedupe_key, ?, ?), result = REPLACE(result, ?, ?)"+
+						" WHERE dedupe_key LIKE ? OR result LIKE ?",
+					"channel_refresh_balance:",
+					AsyncTaskTypeChannelRefreshBilling+":",
+					"\"balance_urls\":",
+					"\"billing_request_urls\":",
+					"channel_refresh_balance:%",
+					"%\"balance_urls\":%",
+				).Error; err != nil {
+					return err
+				}
+				if err := tx.Exec(
+					"UPDATE "+ChannelBillingProfilesTableName+
+						" SET action_capabilities = REPLACE(REPLACE(action_capabilities, ?, ?), ?, ?)"+
+						" WHERE action_capabilities LIKE ? OR action_capabilities LIKE ?",
+					"refresh_balance",
+					ChannelBillingCapabilityRefreshBilling,
+					"manual_update_balance",
+					ChannelBillingCapabilityManualUpdateSnapshot,
+					"%refresh_balance%",
+					"%manual_update_balance%",
+				).Error; err != nil {
+					return err
+				}
+				if err := tx.Model(&ChannelBillingAction{}).
+					Where("action_type = ?", "manual_update_balance").
+					Update("action_type", ChannelBillingActionTypeManualUpdateSnapshot).Error; err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		{
+			Version:     "202605201130_rename_channel_billing_profile_columns",
+			Description: "rename channel billing profile mode and config columns",
+			Up: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&ChannelBillingProfile{}, "balance_fetch_mode") &&
+					!tx.Migrator().HasColumn(&ChannelBillingProfile{}, "billing_mode") {
+					if err := tx.Migrator().RenameColumn(&ChannelBillingProfile{}, "balance_fetch_mode", "billing_mode"); err != nil {
+						return err
+					}
+				}
+				if tx.Migrator().HasColumn(&ChannelBillingProfile{}, "balance_fetch_config") &&
+					!tx.Migrator().HasColumn(&ChannelBillingProfile{}, "billing_config") {
+					if err := tx.Migrator().RenameColumn(&ChannelBillingProfile{}, "balance_fetch_config", "billing_config"); err != nil {
+						return err
+					}
+				}
+				return tx.AutoMigrate(&ChannelBillingProfile{})
 			},
 		},
 	}

@@ -5,6 +5,7 @@ import {
   AppDetailSection,
   AppFilterHeader,
   AppPopover,
+  resolvePopupContainer,
   AppSelect,
   AppSwitch,
   AppTable,
@@ -393,6 +394,7 @@ const ChannelDetailTestsTab = ({
                     </label>
                     <AppSelect
                       className='router-section-dropdown router-dropdown-min-170'
+                      getPopupContainer={resolvePopupContainer}
                       options={audioLanguageOptions}
                       value={audioTestLanguage || 'zh-CN'}
                       onChange={(e, { value }) =>

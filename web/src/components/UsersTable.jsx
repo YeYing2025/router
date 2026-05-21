@@ -5,7 +5,10 @@ import { useTranslation } from 'react-i18next';
 import UnitDropdown from './UnitDropdown';
 
 import { ITEMS_PER_PAGE } from '../constants';
-import { USER_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  USER_LIST_COLUMN_WIDTHS,
+  USER_LIST_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import {
   formatCompactNumber,
   renderText,
@@ -359,21 +362,23 @@ const UsersTable = () => {
         }
       />
 
-      <AppTable
-        className='router-hover-table router-list-table router-table-fit-page'
-        pagination={false}
-        rowKey={(user) => user.id}
-        dataSource={users
-          .slice(
-            (activePage - 1) * ITEMS_PER_PAGE,
-            activePage * ITEMS_PER_PAGE,
-          )
-          .filter((user) => !user?.deleted)}
-        onRow={(user, idx) => ({
-          className: 'router-row-clickable',
-          onClick: () => navigate(`/user/detail/${user.id}`),
-        })}
-        columns={[
+      <div className='router-table-scroll-x'>
+        <AppTable
+          className='router-hover-table router-list-table router-table-fit-page router-user-list-table'
+          pagination={false}
+          scroll={{ x: USER_LIST_TABLE_MIN_WIDTH }}
+          rowKey={(user) => user.id}
+          dataSource={users
+            .slice(
+              (activePage - 1) * ITEMS_PER_PAGE,
+              activePage * ITEMS_PER_PAGE,
+            )
+            .filter((user) => !user?.deleted)}
+          onRow={(user, idx) => ({
+            className: 'router-row-clickable',
+            onClick: () => navigate(`/user/detail/${user.id}`),
+          })}
+          columns={[
           {
             title: (
               <span
@@ -601,8 +606,9 @@ const UsersTable = () => {
               );
             },
           },
-        ]}
-      />
+          ]}
+        />
+      </div>
       <div className='router-pagination-wrap'>
         <AppPagination
           className='router-page-pagination'

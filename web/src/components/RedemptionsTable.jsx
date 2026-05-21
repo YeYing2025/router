@@ -11,7 +11,10 @@ import {
 } from '../helpers';
 
 import { ITEMS_PER_PAGE } from '../constants';
-import { REDEMPTION_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  REDEMPTION_LIST_COLUMN_WIDTHS,
+  REDEMPTION_LIST_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import {
   buildBillingCurrencyIndex,
   buildDisplayUnitOptions,
@@ -324,6 +327,11 @@ const RedemptionsTable = () => {
     <>
       <AppFilterHeader
         className='router-block-gap-md'
+        breadcrumbs={[
+          { key: 'workspace', label: t('header.admin_workspace') },
+          { key: 'business', label: t('header.business_operation') },
+          { key: 'redemption', label: t('header.redemption'), active: true },
+        ]}
         title={t('header.redemption')}
         actions={
           <div className='router-list-toolbar-actions'>
@@ -355,27 +363,29 @@ const RedemptionsTable = () => {
         }
       />
 
-      <AppTable
-        className='router-hover-table router-list-table router-table-fit-page'
-        pagination={false}
-        rowKey={(redemption) => redemption.id}
-        dataSource={redemptions
-          .slice(
-            (activePage - 1) * ITEMS_PER_PAGE,
-            activePage * ITEMS_PER_PAGE,
-          )
-          .filter((redemption) => !redemption?.deleted)}
-        onRow={(redemption) => ({
-          className: 'router-row-clickable',
-          onClick: () => {
-            navigate(`/redemption/${redemption.id}`, {
-              state: {
-                from: currentPagePath,
-              },
-            });
-          },
-        })}
-        columns={[
+      <div className='router-table-scroll-x'>
+        <AppTable
+          className='router-hover-table router-list-table router-table-fit-page router-redemption-list-table'
+          pagination={false}
+          scroll={{ x: REDEMPTION_LIST_TABLE_MIN_WIDTH }}
+          rowKey={(redemption) => redemption.id}
+          dataSource={redemptions
+            .slice(
+              (activePage - 1) * ITEMS_PER_PAGE,
+              activePage * ITEMS_PER_PAGE,
+            )
+            .filter((redemption) => !redemption?.deleted)}
+          onRow={(redemption) => ({
+            className: 'router-row-clickable',
+            onClick: () => {
+              navigate(`/redemption/${redemption.id}`, {
+                state: {
+                  from: currentPagePath,
+                },
+              });
+            },
+          })}
+          columns={[
           {
             title: (
               <span
@@ -564,8 +574,9 @@ const RedemptionsTable = () => {
               </div>
             ),
           },
-        ]}
-      />
+          ]}
+        />
+      </div>
       <div className='router-pagination-wrap'>
         <AppPagination
           className='router-page-pagination'

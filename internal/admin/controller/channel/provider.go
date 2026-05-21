@@ -731,14 +731,6 @@ func appendModelToProviderItem(id string, req appendProviderModelRequest) (provi
 	return saveProviderItem(existing, false)
 }
 
-// GetPublicProviderModels godoc
-// @Summary Get provider model list for clients
-// @Tags public
-// @Security BearerAuth
-// @Produce json
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/public/providers/models [get]
 func GetPublicProviderModels(c *gin.Context) {
 	items, err := listPublicProviderModels()
 	if err != nil {
@@ -755,17 +747,6 @@ func GetPublicProviderModels(c *gin.Context) {
 	})
 }
 
-// GetProviders godoc
-// @Summary Get paged provider list (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Produce json
-// @Param page query int false "Page (1-based)"
-// @Param page_size query int false "Page size"
-// @Param keyword query string false "Keyword"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/providers [get]
 func GetProviders(c *gin.Context) {
 	page, pageSize := parseProviderPageParams(c)
 	data, err := listProvidersPage(page, pageSize, c.Query("keyword"))
@@ -783,15 +764,6 @@ func GetProviders(c *gin.Context) {
 	})
 }
 
-// GetProvider godoc
-// @Summary Get provider detail (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Provider ID"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/providers/{id} [get]
 func GetProvider(c *gin.Context) {
 	item, err := getProviderItemByID(c.Param("id"))
 	if err != nil {
@@ -812,15 +784,6 @@ func GetProvider(c *gin.Context) {
 	})
 }
 
-// CreateProvider godoc
-// @Summary Create provider (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/providers [post]
 func CreateProvider(c *gin.Context) {
 	req := providerItem{}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -845,16 +808,6 @@ func CreateProvider(c *gin.Context) {
 	})
 }
 
-// UpdateProvider godoc
-// @Summary Update provider (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param id path string true "Provider ID"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/providers/{id} [put]
 func UpdateProvider(c *gin.Context) {
 	req := providerItem{}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -884,16 +837,6 @@ func UpdateProvider(c *gin.Context) {
 	})
 }
 
-// AppendProviderModel godoc
-// @Summary Append one model detail into provider list (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param id path string true "Provider ID"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/providers/{id}/model [post]
 func AppendProviderModel(c *gin.Context) {
 	req := appendProviderModelRequest{}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -924,15 +867,6 @@ func AppendProviderModel(c *gin.Context) {
 	})
 }
 
-// DeleteProvider godoc
-// @Summary Delete provider (admin)
-// @Tags admin
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Provider ID"
-// @Success 200 {object} docs.StandardResponse
-// @Failure 401 {object} docs.ErrorResponse
-// @Router /api/v1/admin/providers/{id} [delete]
 func DeleteProvider(c *gin.Context) {
 	if err := deleteProviderItem(c.Param("id")); err != nil {
 		message := "删除供应商失败: " + err.Error()

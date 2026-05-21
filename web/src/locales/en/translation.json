@@ -40,7 +40,7 @@
     "title": "Top Up Center",
     "display_currency": "Display",
     "mine": {
-      "balance": "Balance",
+      "billing": "Billing",
       "package": "Package"
     },
     "record_nav": {
@@ -383,7 +383,7 @@
       "not_tested": "Not Tested",
       "priority_tip": "Channel selection priority, higher is preferred",
       "click_to_update": "Click to update",
-      "balance_not_supported": "-"
+      "billing_not_available": "-"
     },
     "buttons": {
       "test": "Test",
@@ -410,12 +410,12 @@
       "batch_disable_done": "Batch disable finished: {{success}} succeeded, {{failed}} failed.",
       "batch_delete_select_required": "Please select at least one channel to delete.",
       "batch_delete_done": "Batch deletion finished: {{success}} succeeded, {{failed}} failed.",
-      "balance_update_success": "Channel {{name}} balance updated successfully!",
-      "balance_update_submitted": "Balance refresh task submitted for channel {{name}}.",
-      "balance_update_reused": "An active balance refresh task already exists for channel {{name}}.",
-      "balance_update_failed": "Failed to refresh balance for channel {{name}}.",
-      "balance_update_submit_failed": "Failed to submit balance refresh task.",
-      "all_balance_updated": "All enabled channel balances have been updated!",
+      "billing_update_success": "Channel {{name}} billing updated successfully!",
+      "billing_update_submitted": "Billing refresh task submitted for channel {{name}}.",
+      "billing_update_reused": "An active billing refresh task already exists for channel {{name}}.",
+      "billing_update_failed": "Failed to refresh billing for channel {{name}}.",
+      "billing_update_submit_failed": "Failed to submit billing refresh task.",
+      "all_billing_updated": "All enabled channel billing snapshots have been updated!",
       "operation_success": "Operation completed successfully!",
       "disable_blocked_title": "This channel cannot be disabled yet",
       "disable_blocked_description": "This channel is still used by the following groups. Remove the related group channel bindings or model mappings first, then disable it.",
@@ -575,7 +575,90 @@
         "overview": "Overview",
         "models": "Models",
         "endpoints": "Endpoints",
-        "tests": "Tests"
+        "tests": "Tests",
+        "billing": "Billing"
+      },
+      "billing": {
+        "title": "Billing",
+        "hint": "This section shows channel billing capabilities, current quota items, manual records, and activate-page actions. Quotas are tracked as structured items such as daily, weekly, and total quotas with their own expiration times.",
+        "load_failed": "Failed to load channel billing data",
+        "profile_title": "Billing Profile",
+        "profile_enabled": "Billing Enabled",
+        "billing_api_base_url": "Billing API Base URL",
+        "profile_update_success": "Billing profile updated",
+        "profile_update_failed": "Failed to update billing profile",
+        "current_quotas_title": "Current Quotas",
+        "billing_mode": "Billing Mode",
+        "updated_at": "Updated At",
+        "portal": "Billing Portal",
+        "activate_title": "Activate",
+        "cdk": "CDK",
+        "cdk_required": "Please enter a CDK first",
+        "open_activate_page": "Open Activate Page",
+        "open_activate_success": "Activate page link generated",
+        "open_activate_failed": "Failed to generate activate page link",
+        "manual_update_title": "Manual Quota Update",
+        "manual_snapshot_invalid": "Please provide at least one valid quota item",
+        "manual_snapshot_success": "Manual billing snapshot saved",
+        "manual_snapshot_failed": "Failed to save manual billing snapshot",
+        "confirm_manual_snapshot": "Confirm Update",
+        "manual_quota_type": "Quota Type",
+        "manual_quota_label": "Quota Name",
+        "manual_quota_amount": "Quota Amount",
+        "manual_quota_expires_at": "Expires At",
+        "add_quota_item": "Add Quota",
+        "remove_quota_item": "Remove",
+        "row_action": "Action",
+        "currency": "Currency",
+        "message": "Message",
+        "snapshots_title": "Balance History",
+        "actions_title": "Action History",
+        "no_capabilities": "No billing capabilities",
+        "no_quota_items": "No quota items",
+        "no_expire": "No expiration",
+        "capabilities": {
+          "refresh_billing": "Supports billing refresh",
+          "open_activate_page": "Supports activate page",
+          "manual_update_snapshot": "Supports manual billing snapshot entry",
+          "open_billing_portal": "Supports billing portal"
+        },
+        "modes": {
+          "unsupported": "Unsupported",
+          "manual": "Manual",
+          "builtin_openai": "Built-in OpenAI billing API",
+          "builtin_closeai": "Built-in CloseAI billing API",
+          "builtin_openai_sb": "Built-in OpenAI-SB billing API",
+          "builtin_aiproxy": "Built-in AIProxy billing API",
+          "builtin_api2gpt": "Built-in API2GPT billing API",
+          "builtin_aigc2d": "Built-in AIGC2D billing API",
+          "builtin_siliconflow": "Built-in SiliconFlow billing API",
+          "builtin_deepseek": "Built-in DeepSeek billing API",
+          "builtin_openrouter": "Built-in OpenRouter billing API"
+        },
+        "quota_types": {
+          "daily": "Daily Quota",
+          "weekly": "Weekly Quota",
+          "monthly": "Monthly Quota",
+          "total": "Total Quota",
+          "custom": "Custom"
+        },
+        "quota_table": {
+          "quota_label": "Quota Item",
+          "amount": "Amount",
+          "expires_at": "Expires At"
+        },
+        "snapshot_table": {
+          "created_at": "Time",
+          "source_type": "Source",
+          "quota_items": "Quota Items",
+          "message": "Message"
+        },
+        "action_table": {
+          "created_at": "Time",
+          "action_type": "Action",
+          "status": "Status",
+          "message": "Result"
+        }
       },
       "endpoint_capabilities": {
         "title": "Endpoints",
@@ -661,10 +744,11 @@
       "base_url": "Address",
       "base_url_placeholder": "The address required by the OpenAPI SDK",
       "api_base_url": "API Base URL",
-      "api_base_url_placeholder": "Leave empty to use the protocol default address; existing legacy channel addresses remain compatible",
-      "account_base_url": "Account Base URL",
-      "account_base_url_placeholder": "Used for balance, billing, recharge, and other account-side pages; falls back to API routing or legacy compatible settings when empty",
-      "address_routing_hint": "Request forwarding uses API Base URL by default. If a channel endpoint has its own address configured, that endpoint address takes precedence. Account-side requests use Account Base URL.",
+      "api_base_url_placeholder": "Leave empty to use the protocol address",
+      "billing_api_base_url": "Billing API Base URL",
+      "account_base_url": "Account Portal URL",
+      "account_base_url_placeholder": "Used for billing portals, recharge pages, activate pages, and other account-side pages",
+      "address_routing_hint": "Request forwarding uses API Base URL by default. If a channel endpoint has its own address configured, that endpoint address takes precedence. Account-side page entry uses Account Portal URL.",
       "key": "Secret Key",
       "key_placeholder": "Please enter key",
       "buttons": {
@@ -1061,6 +1145,11 @@
       "description": "Description",
       "group": "Group",
       "group_placeholder": "Select group",
+      "visibility_scope": "Visibility",
+      "visibility_scope_all": "Visible to All",
+      "visibility_scope_partial_users": "Visible to Selected Users",
+      "visible_users": "Visible Users",
+      "visible_users_placeholder": "Search and select users",
       "sale_price": "Sale Price",
       "sale_currency": "Sale Currency",
       "daily_quota_limit": "Daily Amount",
@@ -1094,6 +1183,7 @@
       "id_required": "Package ID is required",
       "name_required": "Package name is required",
       "group_required": "Group is required",
+      "visible_users_required": "Please select visible users for partial visibility",
       "quota_invalid": "Amount values must be greater than or equal to 0",
       "duration_invalid": "Duration must be greater than 0",
       "user_required": "Please select a user",
@@ -1446,7 +1536,7 @@
       "video": "Video Task",
       "channel_model_test": "Model Test",
       "channel_refresh_models": "Refresh Models",
-      "channel_refresh_balance": "Refresh Balance"
+      "channel_refresh_billing": "Refresh Billing"
     },
     "status": {
       "pending": "Pending",
@@ -1883,7 +1973,7 @@
       "task_type": {
         "channel_model_test": "Model Test",
         "channel_refresh_models": "Model Refresh",
-        "channel_refresh_balance": "Balance Refresh",
+        "channel_refresh_billing": "Billing Refresh",
         "default": "Other"
       },
       "capabilities": {

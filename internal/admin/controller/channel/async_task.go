@@ -25,7 +25,7 @@ type channelRefreshModelsTaskPayload struct {
 	ChannelID string `json:"channel_id"`
 }
 
-type channelRefreshBalanceTaskPayload struct {
+type channelRefreshBillingTaskPayload struct {
 	ChannelID string `json:"channel_id"`
 }
 
@@ -57,8 +57,8 @@ func buildChannelRefreshModelsTaskDedupeKey(channelID string) string {
 	return fmt.Sprintf("%s:%s", model.AsyncTaskTypeChannelRefreshModels, strings.TrimSpace(channelID))
 }
 
-func buildChannelRefreshBalanceTaskDedupeKey(channelID string) string {
-	return fmt.Sprintf("%s:%s", model.AsyncTaskTypeChannelRefreshBalance, strings.TrimSpace(channelID))
+func buildChannelRefreshBillingTaskDedupeKey(channelID string) string {
+	return fmt.Sprintf("%s:%s", model.AsyncTaskTypeChannelRefreshBilling, strings.TrimSpace(channelID))
 }
 
 func buildChannelModelTestTaskPayload(modelID string, channelID string, endpoint string, streamOverride *bool, audioLanguage string) string {
@@ -160,7 +160,7 @@ func CreateChannelRefreshModelsTask(channelID string, createdBy string, traceID 
 	return task, reused, err
 }
 
-func CreateChannelRefreshBalanceTask(channelID string, createdBy string, traceID string) (model.AsyncTask, bool, error) {
+func CreateChannelRefreshBillingTask(channelID string, createdBy string, traceID string) (model.AsyncTask, bool, error) {
 	normalizedChannelID := strings.TrimSpace(channelID)
 	if normalizedChannelID == "" {
 		return model.AsyncTask{}, false, fmt.Errorf("渠道 ID 无效")
@@ -169,10 +169,10 @@ func CreateChannelRefreshBalanceTask(channelID string, createdBy string, traceID
 		return model.AsyncTask{}, false, err
 	}
 	task, reused, err := model.CreateOrReuseAsyncTaskWithDB(model.DB, model.AsyncTask{
-		Type:      model.AsyncTaskTypeChannelRefreshBalance,
-		DedupeKey: buildChannelRefreshBalanceTaskDedupeKey(normalizedChannelID),
+		Type:      model.AsyncTaskTypeChannelRefreshBilling,
+		DedupeKey: buildChannelRefreshBillingTaskDedupeKey(normalizedChannelID),
 		ChannelId: normalizedChannelID,
-		Payload: marshalJSONForLog(channelRefreshBalanceTaskPayload{
+		Payload: marshalJSONForLog(channelRefreshBillingTaskPayload{
 			ChannelID: normalizedChannelID,
 		}),
 		CreatedBy: strings.TrimSpace(createdBy),
@@ -190,8 +190,8 @@ func ExecuteAsyncTask(ctx context.Context, task *model.AsyncTask) (string, error
 		return executeChannelModelTestTask(ctx, task)
 	case model.AsyncTaskTypeChannelRefreshModels:
 		return executeChannelRefreshModelsTask(task)
-	case model.AsyncTaskTypeChannelRefreshBalance:
-		return executeChannelRefreshBalanceTask(task)
+	case model.AsyncTaskTypeChannelRefreshBilling:
+		return executeChannelRefreshBillingTask(task)
 	default:
 		return "", fmt.Errorf("暂不支持的任务类型: %s", task.Type)
 	}
@@ -279,8 +279,8 @@ func executeChannelRefreshModelsTask(task *model.AsyncTask) (string, error) {
 	}), nil
 }
 
-func executeChannelRefreshBalanceTask(task *model.AsyncTask) (string, error) {
-	payload := channelRefreshBalanceTaskPayload{}
+func executeChannelRefreshBillingTask(task *model.AsyncTask) (string, error) {
+	payload := channelRefreshBillingTaskPayload{}
 	if err := json.Unmarshal([]byte(task.Payload), &payload); err != nil {
 		return "", err
 	}
@@ -292,15 +292,20 @@ func executeChannelRefreshBalanceTask(task *model.AsyncTask) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	balance, err := updateChannelBalance(channelRow)
+	primaryAmount, err := refreshChannelBillingAmount(channelRow)
 	if err != nil {
 		return "", err
 	}
+	if err := persistChannelAutoBillingSnapshot(channelRow, primaryAmount, "自动刷新账务"); err != nil {
+		return "", err
+	}
+	profile, _ := model.GetChannelBillingProfileByChannelIDWithDB(model.DB, channelID)
 	return marshalJSONForLog(map[string]any{
-		"channel_id":       channelID,
-		"account_base_url": channelRow.ResolveAccountBaseURL(),
-		"balance_urls":     resolveChannelBalanceRequestURLs(channelRow),
-		"balance":          balance,
+		"channel_id":           channelID,
+		"billing_api_base_url": resolveChannelBillingAPIBaseURL(channelRow, profile),
+		"account_portal_url":   channelRow.ResolveAccountBaseURL(),
+		"billing_request_urls": resolveChannelBillingRequestURLs(channelRow),
+		"primary_amount":       primaryAmount,
 	}), nil
 }
 

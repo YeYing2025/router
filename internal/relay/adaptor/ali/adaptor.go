@@ -13,8 +13,6 @@ import (
 	"github.com/yeying-community/router/internal/relay/relaymode"
 )
 
-// https://help.aliyun.com/zh/dashscope/developer-reference/api-details
-
 type Adaptor struct {
 	meta *meta.Meta
 }

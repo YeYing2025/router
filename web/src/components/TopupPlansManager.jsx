@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API, showError, showSuccess } from '../helpers';
-import { TOPUP_PLAN_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS,
+  TOPUP_PLAN_LIST_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import {
   AppButton,
   AppField,
@@ -265,6 +268,11 @@ const TopupPlansManager = () => {
     <>
       <AppFilterHeader
         className='router-block-gap-md'
+        breadcrumbs={[
+          { key: 'workspace', label: t('header.admin_workspace') },
+          { key: 'business', label: t('header.business_operation') },
+          { key: 'topup', label: t('header.topup'), active: true },
+        ]}
         title={t('topup.manage.title')}
         titleClassName='router-ui-section-title'
         actions={
@@ -283,6 +291,7 @@ const TopupPlansManager = () => {
         <AppTable
           className='router-table router-list-table router-table-fit-page router-topup-plan-table'
           dataSource={plans}
+          scroll={{ x: TOPUP_PLAN_LIST_TABLE_MIN_WIDTH }}
           rowKey={(row) =>
             row?.id ||
             [

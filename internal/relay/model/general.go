@@ -22,7 +22,6 @@ type StreamOptions struct {
 }
 
 type GeneralOpenAIRequest struct {
-	// https://platform.openai.com/docs/api-reference/chat/create
 	Messages            []Message       `json:"messages,omitempty"`
 	Model               string          `json:"model,omitempty"`
 	Store               *bool           `json:"store,omitempty"`
@@ -55,15 +54,13 @@ type GeneralOpenAIRequest struct {
 	User                string          `json:"user,omitempty"`
 	FunctionCall        any             `json:"function_call,omitempty"`
 	Functions           any             `json:"functions,omitempty"`
-	// https://platform.openai.com/docs/api-reference/embeddings/create
-	Input          any    `json:"input,omitempty"`
-	EncodingFormat string `json:"encoding_format,omitempty"`
-	Dimensions     int    `json:"dimensions,omitempty"`
-	// https://platform.openai.com/docs/api-reference/images/create
-	Prompt  any     `json:"prompt,omitempty"`
-	Quality *string `json:"quality,omitempty"`
-	Size    string  `json:"size,omitempty"`
-	Style   *string `json:"style,omitempty"`
+	Input               any             `json:"input,omitempty"`
+	EncodingFormat      string          `json:"encoding_format,omitempty"`
+	Dimensions          int             `json:"dimensions,omitempty"`
+	Prompt              any             `json:"prompt,omitempty"`
+	Quality             *string         `json:"quality,omitempty"`
+	Size                string          `json:"size,omitempty"`
+	Style               *string         `json:"style,omitempty"`
 	// Others
 	Instructions any    `json:"instructions,omitempty"`
 	Instruction  string `json:"instruction,omitempty"`

@@ -1139,6 +1139,11 @@ body,
     height: 36px !important;
 }
 
+.router-ui-field-control > .router-ui-select.router-section-input,
+.router-ui-field-control > .router-ui-select.router-modal-dropdown {
+    width: 100%;
+}
+
 .router-ui-select.router-modal-dropdown .ant-select-selector {
     border-radius: 10px !important;
     display: flex !important;
@@ -1298,6 +1303,10 @@ body,
 
 .router-provider-model-detail-field-wide {
     grid-column: 1 / -1;
+}
+
+.router-user-detail-modal-form-row.router-ui-form-row {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .router-ui-select.router-provider-endpoint-multi-select,
@@ -2880,6 +2889,14 @@ body,
     min-width: 0;
 }
 
+.router-ui-field-control > .router-ui-input,
+.router-ui-field-control > .router-ui-input-number,
+.router-ui-field-control > .router-ui-select,
+.router-ui-field-control > .router-ui-textarea {
+    width: 100%;
+    max-width: 100%;
+}
+
 .router-ui-form-actions {
     display: flex;
     align-items: center;
@@ -3703,6 +3720,8 @@ body,
 }
 
 .router-ui-table.router-package-list-table .ant-table-tbody > tr > td.router-package-name-cell,
+.router-ui-table.router-package-list-table .ant-table-tbody > tr > td.router-package-daily-quota-cell,
+.router-ui-table.router-package-list-table .ant-table-tbody > tr > td.router-package-emergency-quota-cell,
 .router-ui-table.router-package-list-table .ant-table-tbody > tr > td.router-package-sale-price-cell,
 .router-ui-table.router-package-list-table .ant-table-tbody > tr > td.router-package-created-at-cell,
 .router-ui-table.router-package-list-table .ant-table-tbody > tr > td.router-package-updated-at-cell {

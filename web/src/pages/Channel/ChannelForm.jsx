@@ -20,6 +20,7 @@ import {
   loadChannelProtocolOptions,
 } from '../../helpers/helper';
 import ChannelDetailEndpointsTab from './components/ChannelDetailEndpointsTab';
+import ChannelDetailBillingTab from './components/ChannelDetailBillingTab';
 import ChannelDetailModelsTab from './components/ChannelDetailModelsTab';
 import ChannelDetailOverviewTab from './components/ChannelDetailOverviewTab';
 import ChannelDetailTestsTab from './components/ChannelDetailTestsTab';
@@ -296,6 +297,7 @@ const DETAIL_TAB_KEYS = [
   'models',
   'endpoints',
   'tests',
+  'billing',
 ];
 
 const normalizeDetailTab = (value) => {
@@ -436,6 +438,88 @@ const normalizeChannelEndpointRows = (items) => {
     return left.endpoint.localeCompare(right.endpoint);
   });
   return rows;
+};
+
+const normalizeChannelBillingSummary = (item) => {
+  if (!item || typeof item !== 'object') {
+    return null;
+  }
+  return {
+    channel_id: (item.channel_id || '').toString().trim(),
+    profile_enabled: item.profile_enabled === true,
+    billing_mode: (item.billing_mode || '').toString().trim(),
+    action_capabilities: Array.isArray(item.action_capabilities)
+      ? item.action_capabilities
+      : [],
+    billing_portal_url: (item.billing_portal_url || '').toString().trim(),
+    activate_supported: item.activate_supported === true,
+    manual_update_supported: item.manual_update_supported === true,
+    refresh_supported: item.refresh_supported === true,
+    latest_snapshot_at: Number(item.latest_snapshot_at || 0),
+    quota_items: Array.isArray(item.quota_items)
+      ? item.quota_items.map((quotaItem) => ({
+          quota_type: (quotaItem?.quota_type || '').toString().trim(),
+          quota_label: (quotaItem?.quota_label || '').toString().trim(),
+          amount: Number(quotaItem?.amount || 0),
+          currency: (quotaItem?.currency || '').toString().trim(),
+          expires_at: Number(quotaItem?.expires_at || 0),
+        }))
+      : [],
+  };
+};
+
+const normalizeChannelBillingProfile = (item) => {
+  if (!item || typeof item !== 'object') {
+    return null;
+  }
+  return {
+    channel_id: (item.channel_id || '').toString().trim(),
+    enabled: item.enabled === true,
+    billing_mode: (item.billing_mode || '').toString().trim(),
+    billing_api_base_url: (item.billing_api_base_url || '').toString().trim(),
+    action_capabilities: Array.isArray(item.action_capabilities)
+      ? item.action_capabilities
+      : [],
+    billing_portal_url: (item.billing_portal_url || '').toString().trim(),
+  };
+};
+
+const normalizeChannelBillingSnapshots = (items) => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      id: (item.id || '').toString().trim(),
+      source_type: (item.source_type || '').toString().trim(),
+      message: (item.message || '').toString().trim(),
+      created_at: Number(item.created_at || 0),
+      items: Array.isArray(item.items)
+        ? item.items.map((quotaItem) => ({
+            quota_type: (quotaItem?.quota_type || '').toString().trim(),
+            quota_label: (quotaItem?.quota_label || '').toString().trim(),
+            amount: Number(quotaItem?.amount || 0),
+            currency: (quotaItem?.currency || '').toString().trim(),
+            expires_at: Number(quotaItem?.expires_at || 0),
+          }))
+        : [],
+    }));
+};
+
+const normalizeChannelBillingActions = (items) => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      id: (item.id || '').toString().trim(),
+      action_type: (item.action_type || '').toString().trim(),
+      status: (item.status || '').toString().trim(),
+      message: (item.message || '').toString().trim(),
+      created_at: Number(item.created_at || 0),
+    }));
 };
 
 const prettyJSONString = (value) => {
@@ -1231,6 +1315,64 @@ const fetchActiveChannelTasks = async (channelId) => {
   return normalizeAsyncTasks(data?.items);
 };
 
+const fetchChannelBillingSummary = async (channelId) => {
+  const normalizedChannelId = (channelId || '').toString().trim();
+  if (normalizedChannelId === '') {
+    return null;
+  }
+  const res = await API.get(`/api/v1/admin/channel/${normalizedChannelId}/billing`);
+  const { success, message, data } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'fetch channel billing failed');
+  }
+  return normalizeChannelBillingSummary(data);
+};
+
+const fetchChannelBillingProfile = async (channelId) => {
+  const normalizedChannelId = (channelId || '').toString().trim();
+  if (normalizedChannelId === '') {
+    return null;
+  }
+  const res = await API.get(
+    `/api/v1/admin/channel/${normalizedChannelId}/billing/profile`,
+  );
+  const { success, message, data } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'fetch channel billing profile failed');
+  }
+  return normalizeChannelBillingProfile(data);
+};
+
+const fetchChannelBillingSnapshots = async (channelId) => {
+  const normalizedChannelId = (channelId || '').toString().trim();
+  if (normalizedChannelId === '') {
+    return [];
+  }
+  const res = await API.get(
+    `/api/v1/admin/channel/${normalizedChannelId}/billing/snapshots`,
+  );
+  const { success, message, data } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'fetch channel billing snapshots failed');
+  }
+  return normalizeChannelBillingSnapshots(data?.items);
+};
+
+const fetchChannelBillingActions = async (channelId) => {
+  const normalizedChannelId = (channelId || '').toString().trim();
+  if (normalizedChannelId === '') {
+    return [];
+  }
+  const res = await API.get(
+    `/api/v1/admin/channel/${normalizedChannelId}/billing/actions`,
+  );
+  const { success, message, data } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'fetch channel billing actions failed');
+  }
+  return normalizeChannelBillingActions(data?.items);
+};
+
 const fetchTaskById = async (taskId) => {
   const normalizedTaskId = (taskId || '').toString().trim();
   if (normalizedTaskId === '') {
@@ -1594,6 +1736,16 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     buildEmptyEndpointPolicyDraft('', '', ''),
   );
   const [modelTesting, setModelTesting] = useState(false);
+  const [channelBillingSummary, setChannelBillingSummary] = useState(null);
+  const [channelBillingProfile, setChannelBillingProfile] = useState(null);
+  const [channelBillingSnapshots, setChannelBillingSnapshots] = useState([]);
+  const [channelBillingActions, setChannelBillingActions] = useState([]);
+  const [channelBillingLoading, setChannelBillingLoading] = useState(false);
+  const [channelBillingError, setChannelBillingError] = useState('');
+  const [channelBillingSubmitting, setChannelBillingSubmitting] =
+    useState(false);
+  const [detailBillingEditing, setDetailBillingEditing] = useState(false);
+  const [detailBillingDraft, setDetailBillingDraft] = useState(null);
   const [modelTestingScope, setModelTestingScope] = useState('');
   const [modelTestingTargets, setModelTestingTargets] = useState([]);
   const [channelTasks, setChannelTasks] = useState([]);
@@ -1737,10 +1889,12 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const showDetailModelsTab = isDetailMode && activeDetailTab === 'models';
   const showDetailEndpointsTab = isDetailMode && activeDetailTab === 'endpoints';
   const showDetailTestsTab = isDetailMode && activeDetailTab === 'tests';
+  const showDetailBillingTab = isDetailMode && activeDetailTab === 'billing';
   const detailBasicReadonly = isDetailMode && !detailBasicEditing;
   const detailModelsEditing =
     isDetailMode && detailEditingModelKey.toString().trim() !== '';
-  const isAnyDetailSectionEditing = detailBasicEditing || detailModelsEditing;
+  const isAnyDetailSectionEditing =
+    detailBasicEditing || detailModelsEditing || detailBillingEditing;
   const detailTabItems = [
     {
       key: 'overview',
@@ -1758,6 +1912,11 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       disabled: isAnyDetailSectionEditing && activeDetailTab !== 'tests',
     },
     {
+      key: 'billing',
+      label: t('channel.edit.detail_tabs.billing'),
+      disabled: isAnyDetailSectionEditing && activeDetailTab !== 'billing',
+    },
+    {
       key: 'endpoints',
       label: t('channel.edit.detail_tabs.endpoints'),
       disabled: isAnyDetailSectionEditing && activeDetailTab !== 'endpoints',
@@ -1766,9 +1925,11 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const detailBasicEditLocked =
     isDetailMode &&
     !detailBasicEditing &&
-    detailModelsEditing;
-  const detailModelsEditLocked = isDetailMode && detailBasicEditing;
+    (detailModelsEditing || detailBillingEditing);
+  const detailModelsEditLocked =
+    isDetailMode && (detailBasicEditing || detailBillingEditing);
   const detailTestingReadonly = isDetailMode && isAnyDetailSectionEditing;
+  const detailBillingReadonly = isDetailMode && isAnyDetailSectionEditing;
   const inputReadonlyProps = detailBasicReadonly ? { readOnly: true } : {};
   const visibleChannelModels = useMemo(
     () => normalizeChannelModels(inputs.channel_models, inputs.protocol),
@@ -2629,6 +2790,95 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     }
   }, []);
 
+  const loadChannelBillingSummaryFromServer = useCallback(
+    async (targetChannelId) => {
+      try {
+        return await fetchChannelBillingSummary(targetChannelId);
+      } catch (error) {
+        throw new Error(
+          error?.message || t('channel.edit.billing.load_failed'),
+        );
+      }
+    },
+    [t],
+  );
+
+  const loadChannelBillingProfileFromServer = useCallback(
+    async (targetChannelId) => {
+      try {
+        return await fetchChannelBillingProfile(targetChannelId);
+      } catch (error) {
+        throw new Error(
+          error?.message || t('channel.edit.billing.load_failed'),
+        );
+      }
+    },
+    [t],
+  );
+
+  const loadChannelBillingSnapshotsFromServer = useCallback(
+    async (targetChannelId) => {
+      try {
+        return await fetchChannelBillingSnapshots(targetChannelId);
+      } catch (error) {
+        throw new Error(
+          error?.message || t('channel.edit.billing.load_failed'),
+        );
+      }
+    },
+    [t],
+  );
+
+  const loadChannelBillingActionsFromServer = useCallback(
+    async (targetChannelId) => {
+      try {
+        return await fetchChannelBillingActions(targetChannelId);
+      } catch (error) {
+        throw new Error(
+          error?.message || t('channel.edit.billing.load_failed'),
+        );
+      }
+    },
+    [t],
+  );
+
+  const refreshChannelBillingState = useCallback(
+    async (targetChannelId) => {
+      const normalizedChannelId = (targetChannelId || '').toString().trim();
+      if (normalizedChannelId === '') {
+        return;
+      }
+      setChannelBillingLoading(true);
+      try {
+        const [summary, profile, snapshots, actions] = await Promise.all([
+          loadChannelBillingSummaryFromServer(normalizedChannelId),
+          loadChannelBillingProfileFromServer(normalizedChannelId),
+          loadChannelBillingSnapshotsFromServer(normalizedChannelId),
+          loadChannelBillingActionsFromServer(normalizedChannelId),
+        ]);
+        setChannelBillingSummary(summary);
+        setChannelBillingProfile(profile);
+        setDetailBillingDraft(profile);
+        setChannelBillingSnapshots(snapshots);
+        setChannelBillingActions(actions);
+        setChannelBillingError('');
+      } catch (error) {
+        setChannelBillingError(
+          error?.message || t('channel.edit.billing.load_failed'),
+        );
+      } finally {
+        setChannelBillingLoading(false);
+      }
+    },
+    [
+      loadChannelBillingActionsFromServer,
+      loadChannelBillingProfileFromServer,
+      loadChannelBillingSnapshotsFromServer,
+      loadChannelBillingSummaryFromServer,
+      t,
+    ],
+  );
+
   const refreshChannelRuntimeState = useCallback(
     async (targetChannelId) => {
       const normalizedChannelId = (targetChannelId || '').toString().trim();
@@ -2641,6 +2891,10 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         nextTasks,
         nextEndpoints,
         nextPolicies,
+        nextBillingSummary,
+        nextBillingProfile,
+        nextBillingSnapshots,
+        nextBillingActions,
       ] =
         await Promise.all([
         loadChannelModelsFromServer(normalizedChannelId, inputs.protocol),
@@ -2648,6 +2902,10 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         loadChannelTasksFromServer(normalizedChannelId),
         loadChannelEndpointsFromServer(normalizedChannelId),
         loadChannelEndpointPoliciesFromServer(normalizedChannelId),
+        loadChannelBillingSummaryFromServer(normalizedChannelId),
+        loadChannelBillingProfileFromServer(normalizedChannelId),
+        loadChannelBillingSnapshotsFromServer(normalizedChannelId),
+        loadChannelBillingActionsFromServer(normalizedChannelId),
       ]);
       const nextInputs = buildNextInputsWithChannelModels(
         inputs,
@@ -2680,12 +2938,22 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         normalizeChannelEndpointPolicyRows(nextPolicies),
       );
       setChannelEndpointPoliciesError('');
+      setChannelBillingSummary(nextBillingSummary);
+      setChannelBillingProfile(nextBillingProfile);
+      setDetailBillingDraft(nextBillingProfile);
+      setChannelBillingSnapshots(nextBillingSnapshots);
+      setChannelBillingActions(nextBillingActions);
+      setChannelBillingError('');
     },
     [
       effectiveAPIBaseURL,
       effectivePreviewKey,
       inputs,
       inputs.protocol,
+      loadChannelBillingActionsFromServer,
+      loadChannelBillingProfileFromServer,
+      loadChannelBillingSnapshotsFromServer,
+      loadChannelBillingSummaryFromServer,
       loadChannelEndpointPoliciesFromServer,
       loadChannelEndpointsFromServer,
       loadChannelModelsFromServer,
@@ -2694,13 +2962,172 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     ],
   );
 
+  const openChannelBillingActivatePage = useCallback(
+    async (cdk) => {
+      const targetChannelId = (channelId || '').toString().trim();
+      const normalizedCDK = (cdk || '').toString().trim();
+      if (targetChannelId === '' || normalizedCDK === '') {
+        showInfo(t('channel.edit.billing.cdk_required'));
+        return;
+      }
+      setChannelBillingSubmitting(true);
+      try {
+        const res = await API.post(
+          `/api/v1/admin/channel/${targetChannelId}/billing/open-activate-page`,
+          { cdk: normalizedCDK },
+        );
+        const { success, message, data } = res.data || {};
+        if (!success) {
+          showError(message || t('channel.edit.billing.open_activate_failed'));
+          return;
+        }
+        if ((data?.open_url || '').toString().trim() !== '') {
+          window.open(data.open_url, '_blank', 'noopener,noreferrer');
+        }
+        await refreshChannelBillingState(targetChannelId);
+        showSuccess(t('channel.edit.billing.open_activate_success'));
+      } catch (error) {
+        showError(
+          error?.message || t('channel.edit.billing.open_activate_failed'),
+        );
+      } finally {
+        setChannelBillingSubmitting(false);
+      }
+    },
+    [channelId, refreshChannelBillingState, t],
+  );
+
+  const updateChannelManualBillingSnapshot = useCallback(
+    async ({ items, message }) => {
+      const targetChannelId = (channelId || '').toString().trim();
+      if (targetChannelId === '') {
+        return;
+      }
+      const normalizedItems = (Array.isArray(items) ? items : [])
+        .map((item) => ({
+          quota_type: (item?.quota_type || '').toString().trim(),
+          quota_label: (item?.quota_label || '').toString().trim(),
+          amount: Number(item?.amount),
+          currency: (item?.currency || '').toString().trim(),
+          expires_at: Number(item?.expires_at || 0),
+        }))
+        .filter(
+          (item) =>
+            item.quota_label !== '' &&
+            Number.isFinite(item.amount) &&
+            item.amount >= 0,
+        );
+      if (normalizedItems.length === 0) {
+        showInfo(t('channel.edit.billing.manual_snapshot_invalid'));
+        return;
+      }
+      setChannelBillingSubmitting(true);
+      try {
+        const res = await API.post(
+          `/api/v1/admin/channel/${targetChannelId}/billing/snapshots`,
+          {
+            items: normalizedItems,
+            message: (message || '').toString().trim(),
+          },
+        );
+        const { success, message: responseMessage } = res.data || {};
+        if (!success) {
+          showError(
+            responseMessage || t('channel.edit.billing.manual_snapshot_failed'),
+          );
+          return;
+        }
+        await refreshChannelBillingState(targetChannelId);
+        showSuccess(t('channel.edit.billing.manual_snapshot_success'));
+      } catch (error) {
+        showError(
+          error?.message || t('channel.edit.billing.manual_snapshot_failed'),
+        );
+      } finally {
+        setChannelBillingSubmitting(false);
+      }
+    },
+    [channelId, refreshChannelBillingState, t],
+  );
+
+  const updateBillingProfileDraft = useCallback((patch) => {
+    setDetailBillingDraft((prev) => ({
+      ...(prev || {
+        channel_id: (channelId || '').toString().trim(),
+        enabled: true,
+        billing_mode: 'unsupported',
+        billing_api_base_url: '',
+        action_capabilities: [],
+        billing_portal_url: '',
+      }),
+      ...(patch || {}),
+    }));
+  }, [channelId]);
+
+  const cancelDetailBillingEdit = useCallback(() => {
+    setDetailBillingDraft(channelBillingProfile);
+    setDetailBillingEditing(false);
+  }, [channelBillingProfile]);
+
+  const saveDetailBillingProfile = useCallback(async () => {
+    const targetChannelId = (channelId || '').toString().trim();
+    if (targetChannelId === '' || !detailBillingDraft) {
+      return;
+    }
+    setChannelBillingSubmitting(true);
+    try {
+      const res = await API.put(
+        `/api/v1/admin/channel/${targetChannelId}/billing/profile`,
+        {
+          enabled: detailBillingDraft.enabled === true,
+          billing_mode: (detailBillingDraft.billing_mode || '')
+            .toString()
+            .trim(),
+          billing_api_base_url: normalizeBaseURL(
+            detailBillingDraft.billing_api_base_url,
+          ),
+        },
+      );
+      const { success, message, data } = res.data || {};
+      if (!success) {
+        showError(message || t('channel.edit.billing.profile_update_failed'));
+        return;
+      }
+      const normalizedProfile = normalizeChannelBillingProfile(data);
+      setChannelBillingProfile(normalizedProfile);
+      setDetailBillingDraft(normalizedProfile);
+      setDetailBillingEditing(false);
+      await refreshChannelBillingState(targetChannelId);
+      showSuccess(t('channel.edit.billing.profile_update_success'));
+    } catch (error) {
+      showError(
+        error?.message || t('channel.edit.billing.profile_update_failed'),
+      );
+    } finally {
+      setChannelBillingSubmitting(false);
+    }
+  }, [
+    channelId,
+    detailBillingDraft,
+    refreshChannelBillingState,
+    t,
+  ]);
+
   const loadChannelById = useCallback(
     async (targetId, forCopy = false, fromCreating = false) => {
       try {
         let res = await API.get(`/api/v1/admin/channel/${targetId}`);
         const { success, message, data } = res.data;
         if (success) {
-          const [remoteChannelModels, channelTestsData, activeTasks] =
+          const [
+            remoteChannelModels,
+            channelTestsData,
+            activeTasks,
+            billingSummaryData,
+            billingProfileData,
+            billingSnapshotsData,
+            billingActionsData,
+          ] =
             await Promise.all([
               loadChannelModelsFromServer(
                 data.id || targetId,
@@ -2712,6 +3139,18 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
               forCopy
                 ? Promise.resolve([])
                 : loadChannelTasksFromServer(data.id || targetId),
+              forCopy
+                ? Promise.resolve(null)
+                : loadChannelBillingSummaryFromServer(data.id || targetId),
+              forCopy
+                ? Promise.resolve(null)
+                : loadChannelBillingProfileFromServer(data.id || targetId),
+              forCopy
+                ? Promise.resolve([])
+                : loadChannelBillingSnapshotsFromServer(data.id || targetId),
+              forCopy
+                ? Promise.resolve([])
+                : loadChannelBillingActionsFromServer(data.id || targetId),
             ]);
           const storedModelTestResults = normalizeModelTestResults(
             channelTestsData.items,
@@ -2760,6 +3199,12 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             setModelTestedSignature('');
             setModelTestTargetModels([]);
             setChannelTasks([]);
+            setChannelBillingSummary(null);
+            setChannelBillingProfile(null);
+            setDetailBillingDraft(null);
+            setChannelBillingSnapshots([]);
+            setChannelBillingActions([]);
+            setChannelBillingError('');
           } else {
             pendingRefreshTaskIdRef.current = '';
             pendingRefreshSignatureRef.current = '';
@@ -2789,6 +3234,12 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             );
             setModelTestTargetModels([]);
             setChannelTasks(normalizeAsyncTasks(activeTasks));
+            setChannelBillingSummary(billingSummaryData);
+            setChannelBillingProfile(billingProfileData);
+            setDetailBillingDraft(billingProfileData);
+            setChannelBillingSnapshots(billingSnapshotsData);
+            setChannelBillingActions(billingActionsData);
+            setChannelBillingError('');
           }
           setConfig({
             ...CHANNEL_DEFAULT_CONFIG,
@@ -2810,6 +3261,10 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     },
     [
       hasChannelID,
+      loadChannelBillingActionsFromServer,
+      loadChannelBillingProfileFromServer,
+      loadChannelBillingSnapshotsFromServer,
+      loadChannelBillingSummaryFromServer,
       loadChannelModelsFromServer,
       loadChannelTasksFromServer,
       loadChannelTestsFromServer,
@@ -4143,6 +4598,21 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
               {...inputReadonlyProps}
             />
           </AppField>
+          <AppField label={t('channel.edit.billing_api_base_url')}>
+            {detailBasicReadonly ? (
+              <AppInput
+                className='router-section-input'
+                value={channelBillingProfile?.billing_api_base_url || '-'}
+                readOnly
+              />
+            ) : (
+              <AppInput
+                className='router-section-input'
+                value={channelBillingProfile?.billing_api_base_url || '-'}
+                readOnly
+              />
+            )}
+          </AppField>
           <AppField label={t('channel.edit.account_base_url')}>
             <AppInput
               className='router-section-input'
@@ -4730,6 +5200,28 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 normalizeChannelModelType={normalizeChannelModelType}
                 audioTestLanguage={audioTestLanguage}
                 setAudioTestLanguage={setAudioTestLanguage}
+              />
+            )}
+            {showDetailBillingTab && (
+              <ChannelDetailBillingTab
+                t={t}
+                billingSummary={channelBillingSummary}
+                billingProfile={channelBillingProfile}
+                billingLoading={channelBillingLoading}
+                billingError={channelBillingError}
+                billingSnapshots={channelBillingSnapshots}
+                billingActions={channelBillingActions}
+                billingReadonly={detailBillingReadonly}
+                billingSubmitting={channelBillingSubmitting}
+                detailBillingEditing={detailBillingEditing}
+                detailBillingDraft={detailBillingDraft}
+                setDetailBillingEditing={setDetailBillingEditing}
+                onUpdateBillingProfileDraft={updateBillingProfileDraft}
+                onCancelBillingProfileEdit={cancelDetailBillingEdit}
+                onSaveBillingProfile={saveDetailBillingProfile}
+                onOpenActivatePage={openChannelBillingActivatePage}
+                onManualSnapshotUpdate={updateChannelManualBillingSnapshot}
+                timestamp2string={timestamp2string}
               />
             )}
             </div>
