@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API, showError, showSuccess, timestamp2string } from '../../helpers';
-import { TASK_LIST_COLUMN_WIDTHS } from '../../constants/tableWidthPresets';
+import {
+  TASK_LIST_COLUMN_WIDTHS,
+  TASK_LIST_TABLE_MIN_WIDTH,
+} from '../../constants/tableWidthPresets';
 import {
   AppButton,
   AppFilterHeader,
@@ -1059,30 +1062,32 @@ const Task = () => {
             endClassName='router-log-query-wrap'
       />
 
-      <AppTable
-            className='router-list-table router-table-fit-page'
-            pagination={false}
-            rowKey={(item) => getTaskId(item)}
-            dataSource={items}
-            locale={{ emptyText: loading ? t('common.loading') : t('task.empty') }}
-            onRow={(item) => {
-              const taskId = getTaskId(item);
-              return {
-                className: 'router-row-clickable',
-                onClick: () =>
-                  navigate(`${detailBasePath}/${taskId}`, {
-                    state: {
-                      from: currentPagePath,
-                      fromLabel: pageTitle,
-                      contextType,
-                      contextLabel,
-                      originPath: returnPath,
-                      originLabel: contextLabel || returnLabel,
-                    },
-                  }),
-              };
-            }}
-            columns={[
+      <div className='router-table-scroll-x'>
+        <AppTable
+              className='router-list-table router-table-fit-page'
+              pagination={false}
+              scroll={{ x: TASK_LIST_TABLE_MIN_WIDTH }}
+              rowKey={(item) => getTaskId(item)}
+              dataSource={items}
+              locale={{ emptyText: loading ? t('common.loading') : t('task.empty') }}
+              onRow={(item) => {
+                const taskId = getTaskId(item);
+                return {
+                  className: 'router-row-clickable',
+                  onClick: () =>
+                    navigate(`${detailBasePath}/${taskId}`, {
+                      state: {
+                        from: currentPagePath,
+                        fromLabel: pageTitle,
+                        contextType,
+                        contextLabel,
+                        originPath: returnPath,
+                        originLabel: contextLabel || returnLabel,
+                      },
+                    }),
+                };
+              }}
+              columns={[
               {
                 title: t('task.table.type'),
                 dataIndex: 'type',
@@ -1246,31 +1251,32 @@ const Task = () => {
                 },
               },
             ]}
-            footer={() => (
-              <AppToolbar
-                className='router-task-footer-toolbar'
-                start={
-                  <span className='router-toolbar-meta'>
-                    {t('task.summary', { total })}
-                  </span>
-                }
-                end={
-                  <AppPagination
-                    className='router-page-pagination'
-                    activePage={page}
-                    totalPages={totalPages}
-                    siblingRange={1}
-                    boundaryRange={0}
-                    onPageChange={(e, { activePage }) => {
-                      const nextPage = Number(activePage || 1);
-                      setPage(nextPage);
-                      loadTasks(nextPage).then();
-                    }}
-                  />
-                }
-              />
-            )}
-          />
+              footer={() => (
+                <AppToolbar
+                  className='router-task-footer-toolbar'
+                  start={
+                    <span className='router-toolbar-meta'>
+                      {t('task.summary', { total })}
+                    </span>
+                  }
+                  end={
+                    <AppPagination
+                      className='router-page-pagination'
+                      activePage={page}
+                      totalPages={totalPages}
+                      siblingRange={1}
+                      boundaryRange={0}
+                      onPageChange={(e, { activePage }) => {
+                        const nextPage = Number(activePage || 1);
+                        setPage(nextPage);
+                        loadTasks(nextPage).then();
+                      }}
+                    />
+                  }
+                />
+              )}
+            />
+      </div>
     </div>
   );
 };

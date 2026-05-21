@@ -25,7 +25,10 @@ import {
   resolvePreferredDisplayCurrency,
   YYC_DISPLAY_CODE,
 } from '../helpers/billing';
-import { LOG_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  LOG_LIST_COLUMN_WIDTHS,
+  LOG_LIST_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import {
   AppButton,
   AppFilterHeader,
@@ -919,26 +922,28 @@ const LogsTable = () => {
         }
         endClassName='router-log-query-wrap'
       />
-      <AppTable
-        className='router-list-table router-table-fit-page router-log-table'
-        pagination={false}
-        rowKey={(log) =>
-          log.id ||
-          log.trace_id ||
-          `${log.timestamp || ''}-${log.type || ''}-${log.token_name || ''}-${log.model_name || ''}`
-        }
-        dataSource={filteredLogs
-          .slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE)
-          .filter((log) => !log.deleted)}
-        locale={{ emptyText: loading ? t('common.loading') : t('task.empty') }}
-        onRow={(log) => ({
-          className: 'router-row-clickable',
-          onClick: () =>
-            log.id
-              ? navigate(`${detailBasePath}/${log.id}${location.search || ''}`)
-              : undefined,
-        })}
-        columns={[
+      <div className='router-table-scroll-x'>
+        <AppTable
+          className='router-list-table router-table-fit-page router-log-table'
+          pagination={false}
+          scroll={{ x: LOG_LIST_TABLE_MIN_WIDTH }}
+          rowKey={(log) =>
+            log.id ||
+            log.trace_id ||
+            `${log.timestamp || ''}-${log.type || ''}-${log.token_name || ''}-${log.model_name || ''}`
+          }
+          dataSource={filteredLogs
+            .slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE)
+            .filter((log) => !log.deleted)}
+          locale={{ emptyText: loading ? t('common.loading') : t('task.empty') }}
+          onRow={(log) => ({
+            className: 'router-row-clickable',
+            onClick: () =>
+              log.id
+                ? navigate(`${detailBasePath}/${log.id}${location.search || ''}`)
+                : undefined,
+          })}
+          columns={[
           {
             title: (
               <span
@@ -1184,21 +1189,22 @@ const LogsTable = () => {
                 },
               ]
             : []),
-        ]}
-        footer={() => (
-          <AppToolbar
-            start={
-            <AppPagination
-              className='router-page-pagination'
-              activePage={activePage}
-              onPageChange={onPaginationChange}
-              siblingRange={1}
-              totalPages={totalPages}
+          ]}
+          footer={() => (
+            <AppToolbar
+              start={
+                <AppPagination
+                  className='router-page-pagination'
+                  activePage={activePage}
+                  onPageChange={onPaginationChange}
+                  siblingRange={1}
+                  totalPages={totalPages}
+                />
+              }
             />
-            }
-          />
-        )}
-      />
+          )}
+        />
+      </div>
     </>
   );
 };

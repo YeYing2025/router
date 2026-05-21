@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API, showError, showInfo, showSuccess, timestamp2string } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
-import { PACKAGE_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  PACKAGE_LIST_COLUMN_WIDTHS,
+  PACKAGE_LIST_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import {
   buildBillingCurrencyIndex,
   buildDisplayUnitOptions,
@@ -683,6 +686,7 @@ const PackagesManager = () => {
         <AppTable
           className='router-hover-table router-list-table router-table-fit-page router-package-list-table'
           pagination={false}
+          scroll={{ x: PACKAGE_LIST_TABLE_MIN_WIDTH }}
           rowKey='id'
           dataSource={rows}
           locale={{

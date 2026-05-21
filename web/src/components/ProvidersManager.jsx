@@ -8,7 +8,10 @@ import {
   timestamp2string,
 } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
-import { PROVIDER_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  PROVIDER_LIST_COLUMN_WIDTHS,
+  PROVIDER_LIST_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import {
   AppButton,
   AppDetailSection,
@@ -2862,35 +2865,37 @@ const ProvidersManager = () => {
           />
         }
       />
-      <AppTable
-        className='router-hover-table router-list-table router-table-fit-page'
-        size='small'
-        pagination={false}
-        rowKey={(row) =>
-          row?.id ||
-          `${row?.name || 'provider'}-${row?.created_at || 0}-${row?.updated_at || 0}`
-        }
-        dataSource={rows}
-        locale={{
-          emptyText: (
-            <AppEmpty>
-              {loading ? t('common.loading') : t('channel.providers.table.empty')}
-            </AppEmpty>
-          ),
-        }}
-        onRow={(row) =>
-          creating || saving
-            ? {}
-            : {
-                onClick: () => {
-                  openViewer(row);
-                },
-              }
-        }
-        rowClassName={() =>
-          creating || saving ? '' : 'router-row-clickable'
-        }
-        columns={[
+      <div className='router-table-scroll-x'>
+        <AppTable
+          className='router-hover-table router-list-table router-table-fit-page'
+          size='small'
+          pagination={false}
+          scroll={{ x: PROVIDER_LIST_TABLE_MIN_WIDTH }}
+          rowKey={(row) =>
+            row?.id ||
+            `${row?.name || 'provider'}-${row?.created_at || 0}-${row?.updated_at || 0}`
+          }
+          dataSource={rows}
+          locale={{
+            emptyText: (
+              <AppEmpty>
+                {loading ? t('common.loading') : t('channel.providers.table.empty')}
+              </AppEmpty>
+            ),
+          }}
+          onRow={(row) =>
+            creating || saving
+              ? {}
+              : {
+                  onClick: () => {
+                    openViewer(row);
+                  },
+                }
+          }
+          rowClassName={() =>
+            creating || saving ? '' : 'router-row-clickable'
+          }
+          columns={[
           {
             title: t('channel.providers.table.provider'),
             dataIndex: 'id',
@@ -2943,8 +2948,9 @@ const ProvidersManager = () => {
               </div>
             ),
           },
-        ]}
-      />
+          ]}
+        />
+      </div>
       {totalPages > 1 ? (
         <div className='router-pagination-wrap-md'>
           <AppPagination

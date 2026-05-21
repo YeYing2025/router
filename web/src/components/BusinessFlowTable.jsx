@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API, showError, timestamp2string } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
-import { BUSINESS_FLOW_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  BUSINESS_FLOW_COLUMN_WIDTHS,
+  BUSINESS_FLOW_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import UnitDropdown from './UnitDropdown';
 import { buildBillingCurrencyIndex, buildDisplayUnitOptions, formatDisplayAmountFromYYC } from '../helpers/billing';
 import { formatAmountWithUnit, renderText } from '../helpers/render';
@@ -825,6 +828,7 @@ const BusinessFlowTable = ({ kind }) => {
         <AppTable
           className='router-hover-table router-list-table router-table-fit-page'
           pagination={false}
+          scroll={{ x: BUSINESS_FLOW_TABLE_MIN_WIDTH }}
           rowKey={(row) => row.id || row.transaction_id || row.package_id}
           dataSource={items}
           locale={{ emptyText: config.emptyText }}

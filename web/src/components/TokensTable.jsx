@@ -12,7 +12,10 @@ import {
 } from '../helpers';
 
 import { ITEMS_PER_PAGE } from '../constants';
-import { TOKEN_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  TOKEN_LIST_COLUMN_WIDTHS,
+  TOKEN_LIST_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import {
   buildDisplayUnitOptions,
   buildPublicDisplayCurrencyIndex,
@@ -505,24 +508,26 @@ const TokensTable = () => {
         }
       />
 
-      <AppTable
-        className='router-list-table router-table-fit-page'
-        pagination={false}
-        rowKey='id'
-        dataSource={tokens
-          .slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE)
-          .filter((token) => !token?.deleted)}
-        locale={{ emptyText: t('common.no_data', '暂无数据') }}
-        onRow={(token) => ({
-          className: 'router-row-clickable',
-          onClick: () =>
-            navigate(`/token/${token.id}`, {
-              state: {
-                from: currentPagePath,
-              },
-            }),
-        })}
-        columns={[
+      <div className='router-table-scroll-x'>
+        <AppTable
+          className='router-list-table router-table-fit-page'
+          pagination={false}
+          scroll={{ x: TOKEN_LIST_TABLE_MIN_WIDTH }}
+          rowKey='id'
+          dataSource={tokens
+            .slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE)
+            .filter((token) => !token?.deleted)}
+          locale={{ emptyText: t('common.no_data', '暂无数据') }}
+          onRow={(token) => ({
+            className: 'router-row-clickable',
+            onClick: () =>
+              navigate(`/token/${token.id}`, {
+                state: {
+                  from: currentPagePath,
+                },
+              }),
+          })}
+          columns={[
           {
             title: (
               <span
@@ -776,22 +781,23 @@ const TokensTable = () => {
               );
             },
           },
-        ]}
-        footer={() => (
-          <AppToolbar
-            className='router-toolbar-compact'
-            start={
-              <AppPagination
-                className='router-page-pagination'
-                activePage={activePage}
-                onPageChange={onPaginationChange}
-                siblingRange={1}
-                totalPages={totalPages}
-              />
-            }
-          />
-        )}
-      />
+          ]}
+          footer={() => (
+            <AppToolbar
+              className='router-toolbar-compact'
+              start={
+                <AppPagination
+                  className='router-page-pagination'
+                  activePage={activePage}
+                  onPageChange={onPaginationChange}
+                  siblingRange={1}
+                  totalPages={totalPages}
+                />
+              }
+            />
+          )}
+        />
+      </div>
     </>
   );
 };

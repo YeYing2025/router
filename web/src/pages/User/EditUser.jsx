@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { API, copy, isRoot, showError, showInfo, showSuccess } from '../../helpers';
-import { BALANCE_LOT_COLUMN_WIDTHS } from '../../constants/tableWidthPresets';
+import {
+  BALANCE_LOT_COLUMN_WIDTHS,
+  BALANCE_LOT_DETAIL_TABLE_MIN_WIDTH,
+} from '../../constants/tableWidthPresets';
 import {
   buildBillingCurrencyIndex,
   buildBillingUnitOptions,
@@ -1578,6 +1581,7 @@ const UserDetail = () => {
                     <AppTable
                       className='router-table router-list-table router-table-fit-page'
                       pagination={false}
+                      scroll={{ x: BALANCE_LOT_DETAIL_TABLE_MIN_WIDTH }}
                       rowKey={(lot) => lot.id || `${lot.source_type}-${lot.source_id}`}
                       dataSource={balanceLots}
                       columns={[
@@ -1591,7 +1595,7 @@ const UserDetail = () => {
                           title: t('user.detail.balance_lots.columns.source_id'),
                           dataIndex: 'source_id',
                           key: 'source_id',
-                          width: '18%',
+                          width: BALANCE_LOT_COLUMN_WIDTHS.sourceId,
                           render: (value) => readOnlyValue(value),
                         },
                         {

@@ -10,7 +10,10 @@ import {
 } from '../helpers';
 
 import { ITEMS_PER_PAGE } from '../constants';
-import { CHANNEL_LIST_COLUMN_WIDTHS } from '../constants/tableWidthPresets';
+import {
+  CHANNEL_LIST_COLUMN_WIDTHS,
+  CHANNEL_LIST_TABLE_MIN_WIDTH,
+} from '../constants/tableWidthPresets';
 import {
   getChannelProtocolOptions,
   loadChannelProtocolOptions,
@@ -735,18 +738,20 @@ const ChannelsTable = () => {
           </div>
         }
       />
-      <AppTable
-        className='router-hover-table router-list-table router-table-fit-page'
-        pagination={false}
-        rowKey={(channel) => channel.id}
-        dataSource={visibleChannels}
-        rowSelection={tableRowSelection}
-        locale={{ emptyText: '-' }}
-        onRow={(channel) => ({
-          onClick: () => openChannelByStatus(channel),
-          className: inBatchSelectMode ? undefined : 'router-row-clickable',
-        })}
-        columns={[
+      <div className='router-table-scroll-x'>
+        <AppTable
+          className='router-hover-table router-list-table router-table-fit-page'
+          pagination={false}
+          scroll={{ x: CHANNEL_LIST_TABLE_MIN_WIDTH }}
+          rowKey={(channel) => channel.id}
+          dataSource={visibleChannels}
+          rowSelection={tableRowSelection}
+          locale={{ emptyText: '-' }}
+          onRow={(channel) => ({
+            onClick: () => openChannelByStatus(channel),
+            className: inBatchSelectMode ? undefined : 'router-row-clickable',
+          })}
+          columns={[
           {
             title: (
               <span
@@ -975,8 +980,9 @@ const ChannelsTable = () => {
               </div>
             ),
           },
-        ]}
-      />
+          ]}
+        />
+      </div>
       <AppModal
         size='small'
         open={!!disableBlockedImpact}
