@@ -70,7 +70,7 @@ func TestUpsertProviderMigrationProvidersPrunesStaleMigrationModelsOnlyForTarget
 	staleModel := ProviderModel{
 		Provider:  "openai",
 		Model:     "stale-model",
-		Type:      ProviderModelTypeText,
+		Tags:      ProviderModelTypeText,
 		Status:    ProviderModelStatusActive,
 		Source:    "migration",
 		UpdatedAt: 1,

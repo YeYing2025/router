@@ -10,7 +10,7 @@ const (
 type ProviderModel struct {
 	Provider           string  `json:"provider" gorm:"primaryKey;type:varchar(64)"`
 	Model              string  `json:"model" gorm:"primaryKey;type:varchar(255)"`
-	Type               string  `json:"type" gorm:"type:varchar(32);default:'text'"`
+	Tags               string  `json:"tags" gorm:"type:text;default:''"`
 	Status             string  `json:"status" gorm:"type:varchar(32);not null;default:'active'"`
 	Description        string  `json:"description" gorm:"type:text;default:''"`
 	IsDeleted          bool    `json:"is_deleted" gorm:"not null;default:false"`

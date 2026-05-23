@@ -90,7 +90,10 @@ func buildModelPricingIndexFromProviderDetailsMap(detailsMap map[string][]Provid
 			}
 			normalizedDetail := detail
 			normalizedDetail.Model = modelName
-			normalizedDetail.Type = normalizeModelType(detail.Type, modelName)
+			normalizedDetail.Type = ProviderModelTypeFromTags(detail.Tags)
+			if normalizedDetail.Type == "" {
+				continue
+			}
 			entry := providerModelPricingEntry{
 				Provider: provider,
 				Detail:   normalizedDetail,
@@ -253,7 +256,7 @@ func resolvedModelPricingFromProviderEntry(modelName string, entry providerModel
 	return ResolvedModelPricing{
 		Model:           modelName,
 		Provider:        entry.Provider,
-		Type:            normalizeModelType(entry.Detail.Type, entry.Detail.Model),
+		Type:            ProviderModelTypeFromTags(entry.Detail.Tags),
 		InputPrice:      entry.Detail.InputPrice,
 		OutputPrice:     entry.Detail.OutputPrice,
 		PriceUnit:       entry.Detail.PriceUnit,

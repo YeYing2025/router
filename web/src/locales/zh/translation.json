@@ -471,6 +471,7 @@
         "status": "状态",
         "description": "描述",
         "type": "类型",
+        "tags": "标签",
         "supported_endpoints": "支持端点",
         "price": "价格",
         "price_compact": "输入｜输出价格",
@@ -834,6 +835,7 @@
           "provider_placeholder": "请选择供应商",
           "model": "模型",
           "type": "类型",
+          "tags": "标签",
           "cancel": "取消",
           "confirm": "确认添加"
         },

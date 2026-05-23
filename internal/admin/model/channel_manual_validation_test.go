@@ -25,7 +25,7 @@ func TestValidateManualChannelModelChangesSkipsUnchangedDirtySelectedRows(t *tes
 	if err := db.Create(&ProviderModel{
 		Provider: "qwen",
 		Model:    "qwen3.7-max",
-		Type:     ProviderModelTypeText,
+		Tags:     ProviderModelTypeText,
 		Status:   ProviderModelStatusActive,
 	}).Error; err != nil {
 		t.Fatalf("create provider model: %v", err)

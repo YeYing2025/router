@@ -355,6 +355,34 @@ const CHANNEL_MODEL_TYPE_OPTIONS = [
   { key: 'embedding', value: 'embedding', text: 'embedding' },
 ];
 
+const PROVIDER_MODEL_TAG_OPTIONS = [
+  'text',
+  'image',
+  'audio',
+  'video',
+  'embedding',
+  'tool_calling',
+  'reasoning',
+  'vision',
+  'realtime',
+  'structured_output',
+].map((tag) => ({ key: tag, value: tag, text: tag }));
+
+const providerModelTypeFromTags = (tags) => {
+  const values = Array.isArray(tags)
+    ? tags
+    : typeof tags === 'string'
+      ? tags.split(',')
+      : [];
+  for (const item of values) {
+    const tag = (item || '').toString().trim().toLowerCase();
+    if (['text', 'image', 'audio', 'video', 'embedding'].includes(tag)) {
+      return tag;
+    }
+  }
+  return '';
+};
+
 const TEXT_MODEL_ENDPOINT_OPTIONS = [
   { key: 'responses', value: '/v1/responses', text: '/v1/responses' },
   { key: 'chat', value: '/v1/chat/completions', text: '/v1/chat/completions' },
@@ -843,9 +871,10 @@ const buildProviderIndex = (items) => {
       if (!modelOwners[modelName].includes(providerId)) {
         modelOwners[modelName].push(providerId);
       }
+      const providerModelType = providerModelTypeFromTags(detail?.tags);
       providerModelDetails[providerId][modelName] = {
         model: modelName,
-        type: normalizeChannelModelType(detail?.type, modelName),
+        type: providerModelType ? normalizeChannelModelType(providerModelType) : '',
         input_price: Number(detail?.input_price || 0) || 0,
         output_price: Number(detail?.output_price || 0) || 0,
         price_unit:
@@ -1900,7 +1929,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const [appendProviderForm, setAppendProviderForm] = useState({
     provider: '',
     model: '',
-    type: 'text',
+    tags: ['text'],
   });
   const [modelSearchKeyword, setModelSearchKeyword] = useState('');
   const [detailModelFilter, setDetailModelFilter] = useState('all');
@@ -3790,7 +3819,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     setAppendProviderForm({
       provider: '',
       model: '',
-      type: 'text',
+      tags: ['text'],
     });
   }, [appendingProviderModel]);
 
@@ -3807,7 +3836,9 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         `/api/v1/admin/providers/${providerId}/model`,
         {
           model: modelName,
-          type: normalizeChannelModelType(appendProviderForm.type),
+          tags: Array.isArray(appendProviderForm.tags)
+            ? appendProviderForm.tags
+            : [],
         },
       );
       const { success, message } = res.data || {};
@@ -5258,8 +5289,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         providerOptions={providerOptions}
         appendProviderForm={appendProviderForm}
         setAppendProviderForm={setAppendProviderForm}
-        channelModelTypeOptions={CHANNEL_MODEL_TYPE_OPTIONS}
-        normalizeChannelModelType={normalizeChannelModelType}
+        providerModelTagOptions={PROVIDER_MODEL_TAG_OPTIONS}
         handleAppendModelToProvider={handleAppendModelToProvider}
       />
       {isDetailMode ? (

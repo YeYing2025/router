@@ -75,6 +75,7 @@ type OpenAIModels struct {
 	Object             string                  `json:"object"`
 	Created            int                     `json:"created"`
 	OwnedBy            string                  `json:"owned_by"`
+	Tags               []string                `json:"tags"`
 	SupportedEndpoints []string                `json:"supported_endpoints"`
 	Permission         []OpenAIModelPermission `json:"permission"`
 	Root               string                  `json:"root"`
@@ -116,6 +117,7 @@ func init() {
 
 var loadGroupModelProvidersFn = model.ListGroupModelProviderMapByModels
 var loadGroupModelSupportedEndpointsFn = listGroupModelSupportedEndpoints
+var loadProviderModelTagsFn = model.LoadProviderModelTagMapByModelsWithDB
 
 var endpointSortOrder = map[string]int{
 	model.ChannelModelEndpointChat:      10,
@@ -260,6 +262,10 @@ func buildOpenAIModelsForRequest(c *gin.Context) ([]OpenAIModels, map[string]Ope
 	if err != nil {
 		return nil, nil, err
 	}
+	tagsByModel, err := loadProviderModelTagsFn(model.DB, providerByModel, modelNames)
+	if err != nil {
+		return nil, nil, err
+	}
 	items := make([]OpenAIModels, 0, len(modelNames))
 	itemMap := make(map[string]OpenAIModels, len(modelNames))
 	missingProviderModels := make([]string, 0)
@@ -274,6 +280,7 @@ func buildOpenAIModelsForRequest(c *gin.Context) ([]OpenAIModels, map[string]Ope
 			Object:             "model",
 			Created:            1626777600,
 			OwnedBy:            ownedBy,
+			Tags:               tagsByModel[modelName],
 			SupportedEndpoints: sortModelEndpoints(endpointsByModel[modelName]),
 			Permission:         cloneDefaultModelPermissions(),
 			Root:               modelName,

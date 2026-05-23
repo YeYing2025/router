@@ -1243,8 +1243,59 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return upsertProviderMigrationProvidersWithDB(tx, "qwen")
 			},
 		},
+		{
+			Version:     "202605231620_provider_model_tags",
+			Description: "add provider model tags and backfill from existing model classification",
+			Up: func(tx *gorm.DB) error {
+				return backfillProviderModelTagsWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
+}
+
+func backfillProviderModelTagsWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	if err := db.AutoMigrate(&ProviderModel{}); err != nil {
+		return err
+	}
+	type providerModelTagBackfillRow struct {
+		Provider string `gorm:"column:provider"`
+		Model    string `gorm:"column:model"`
+		Type     string `gorm:"column:type"`
+		Tags     string `gorm:"column:tags"`
+	}
+	rows := make([]providerModelTagBackfillRow, 0)
+	query := db.Table(ProviderModelsTableName).Select("provider", "model", "tags")
+	if db.Migrator().HasColumn(ProviderModelsTableName, "type") {
+		query = db.Table(ProviderModelsTableName).Select("provider", "model", "type", "tags")
+	}
+	if err := query.Find(&rows).Error; err != nil {
+		return err
+	}
+	now := helper.GetTimestamp()
+	for _, row := range rows {
+		nextTags := joinProviderModelTags(row.Model, append([]string{row.Type}, splitProviderModelTags(row.Tags)...))
+		if strings.TrimSpace(row.Tags) == nextTags {
+			continue
+		}
+		if err := db.Model(&ProviderModel{}).
+			Where("provider = ? AND model = ?", row.Provider, row.Model).
+			Updates(map[string]interface{}{
+				"tags":       nextTags,
+				"updated_at": now,
+			}).Error; err != nil {
+			return err
+		}
+	}
+	if db.Migrator().HasColumn(ProviderModelsTableName, "type") {
+		if err := db.Migrator().DropColumn(ProviderModelsTableName, "type"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func backfillOpenAITextProviderModelEndpointCandidatesWithDB(db *gorm.DB) error {
@@ -1262,7 +1313,7 @@ func backfillOpenAITextProviderModelEndpointCandidatesWithDB(db *gorm.DB) error 
 	}
 	now := helper.GetTimestamp()
 	for _, row := range rows {
-		if normalizeModelType(row.Type, row.Model) != ProviderModelTypeText {
+		if ProviderModelTypeFromTags(splitProviderModelTags(row.Tags)) != ProviderModelTypeText {
 			continue
 		}
 		nextEndpoints := openAITextProviderModelEndpointCandidates(row.SupportedEndpoints)

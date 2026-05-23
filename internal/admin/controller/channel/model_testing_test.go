@@ -182,7 +182,7 @@ func TestValidateChannelModelTestEndpointAgainstProviderRejectsOutsideProviderRa
 	if err := db.Create(&adminmodel.ProviderModel{
 		Provider:           "qwen",
 		Model:              "qwen3.7-max",
-		Type:               adminmodel.ProviderModelTypeText,
+		Tags:               adminmodel.ProviderModelTypeText,
 		Status:             adminmodel.ProviderModelStatusActive,
 		SupportedEndpoints: adminmodel.ChannelModelEndpointChat,
 	}).Error; err != nil {
@@ -221,7 +221,7 @@ func TestValidateChannelModelTestEndpointAgainstProviderAllowsProviderEndpoint(t
 	if err := db.Create(&adminmodel.ProviderModel{
 		Provider:           "qwen",
 		Model:              "qwen3.7-max",
-		Type:               adminmodel.ProviderModelTypeText,
+		Tags:               adminmodel.ProviderModelTypeText,
 		Status:             adminmodel.ProviderModelStatusActive,
 		SupportedEndpoints: adminmodel.ChannelModelEndpointChat,
 	}).Error; err != nil {

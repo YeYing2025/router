@@ -471,6 +471,7 @@
         "status": "Status",
         "description": "Description",
         "type": "Type",
+        "tags": "Tags",
         "supported_endpoints": "Supported Endpoints",
         "price": "Price",
         "price_compact": "Input | Output",
@@ -834,6 +835,7 @@
           "provider_placeholder": "Select a provider",
           "model": "Model",
           "type": "Type",
+          "tags": "Tags",
           "cancel": "Cancel",
           "confirm": "Add"
         },

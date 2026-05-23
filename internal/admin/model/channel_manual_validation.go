@@ -10,7 +10,7 @@ import (
 type providerModelValidationRow struct {
 	Provider           string `gorm:"column:provider"`
 	Model              string `gorm:"column:model"`
-	Type               string `gorm:"column:type"`
+	Tags               string `gorm:"column:tags"`
 	Status             string `gorm:"column:status"`
 	SupportedEndpoints string `gorm:"column:supported_endpoints"`
 }
@@ -123,14 +123,18 @@ func ExplainManualChannelEndpointEnableBlockWithDB(db *gorm.DB, channelID string
 	if normalizeManualValidationProviderModelStatus(official.Status) != ProviderModelStatusActive {
 		return fmt.Sprintf("模型 %s 当前官方状态不是 active，不能启用端点 %s", displayOfficialModelName(row, official.Model), normalizedEndpoint), nil
 	}
+	officialType := ProviderModelTypeFromTags(splitProviderModelTags(official.Tags))
+	if officialType == "" {
+		return fmt.Sprintf("模型 %s 缺少供应商官方 tags，不能启用端点 %s", displayOfficialModelName(row, official.Model), normalizedEndpoint), nil
+	}
 	officialEndpoints := NormalizeProviderModelSupportedEndpoints(
-		normalizeModelType(official.Type, official.Model),
+		officialType,
 		splitProviderModelSupportedEndpoints(official.SupportedEndpoints),
 	)
 	if len(officialEndpoints) == 0 {
 		officialEndpoints = DefaultProviderModelSupportedEndpoints(
 			official.Provider,
-			normalizeModelType(official.Type, official.Model),
+			officialType,
 			official.Model,
 		)
 	}
@@ -177,7 +181,7 @@ func loadProviderModelValidationRowWithDB(db *gorm.DB, provider string, candidat
 		return nil, nil
 	}
 	query := db.Model(&ProviderModel{}).
-		Select("provider", "model", "type", "status", "supported_endpoints").
+		Select("provider", "model", "tags", "status", "supported_endpoints").
 		Where("is_deleted = ?", false)
 	if normalizedProvider := NormalizeGroupModelProviderValue(provider); normalizedProvider != "" {
 		query = query.Where("provider = ?", normalizedProvider)

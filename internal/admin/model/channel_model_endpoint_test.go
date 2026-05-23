@@ -365,7 +365,7 @@ func TestReplaceChannelModelsWithDBSyncsEndpointsFromStoredRows(t *testing.T) {
 	if err := db.Create(&ProviderModel{
 		Provider:           "openai",
 		Model:              "gpt-5.4",
-		Type:               ProviderModelTypeText,
+		Tags:               ProviderModelTypeText,
 		Status:             ProviderModelStatusActive,
 		SupportedEndpoints: ChannelModelEndpointChat + "," + ChannelModelEndpointResponses,
 	}).Error; err != nil {
@@ -374,7 +374,7 @@ func TestReplaceChannelModelsWithDBSyncsEndpointsFromStoredRows(t *testing.T) {
 	if err := db.Create(&ProviderModel{
 		Provider:           "openai",
 		Model:              "gpt-5.4-nano",
-		Type:               ProviderModelTypeText,
+		Tags:               ProviderModelTypeText,
 		Status:             ProviderModelStatusActive,
 		SupportedEndpoints: ChannelModelEndpointChat + "," + ChannelModelEndpointResponses,
 	}).Error; err != nil {

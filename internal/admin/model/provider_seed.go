@@ -211,7 +211,7 @@ func upsertProviderMigrationSeedsWithDB(db *gorm.DB, providers []string) error {
 			if err := tx.Clauses(clause.OnConflict{
 				Columns: []clause.Column{{Name: "provider"}, {Name: "model"}},
 				DoUpdates: clause.AssignmentColumns([]string{
-					"type",
+					"tags",
 					"status",
 					"description",
 					"is_deleted",

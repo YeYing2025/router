@@ -11,6 +11,10 @@ func normalizeProviderMigrationSeedModelDetails(provider string, details []Provi
 		if strings.TrimSpace(next.Model) == "" {
 			continue
 		}
+		if strings.TrimSpace(next.Type) == "" {
+			next.Type = normalizeModelType("", next.Model)
+		}
+		next.Tags = NormalizeProviderModelTags(append([]string{next.Type}, next.Tags...))
 		if next.UpdatedAt <= 0 {
 			next.UpdatedAt = now
 		}

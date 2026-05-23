@@ -15,6 +15,17 @@ const (
 	ProviderModelTypeVideo     = "video"
 	ProviderModelTypeEmbedding = "embedding"
 
+	ProviderModelTagText             = ProviderModelTypeText
+	ProviderModelTagImage            = ProviderModelTypeImage
+	ProviderModelTagAudio            = ProviderModelTypeAudio
+	ProviderModelTagVideo            = ProviderModelTypeVideo
+	ProviderModelTagEmbedding        = ProviderModelTypeEmbedding
+	ProviderModelTagToolCalling      = "tool_calling"
+	ProviderModelTagReasoning        = "reasoning"
+	ProviderModelTagVision           = "vision"
+	ProviderModelTagRealtime         = "realtime"
+	ProviderModelTagStructuredOutput = "structured_output"
+
 	ProviderPriceUnitPer1KTokens = "per_1k_tokens"
 	ProviderPriceUnitPer1KChars  = "per_1k_chars"
 	ProviderPriceUnitPerImage    = "per_image"
@@ -50,7 +61,8 @@ type ProviderModelPriceComponentDetail struct {
 
 type ProviderModelDetail struct {
 	Model              string                              `json:"model"`
-	Type               string                              `json:"type,omitempty"`
+	Type               string                              `json:"-"`
+	Tags               []string                            `json:"tags,omitempty"`
 	Status             string                              `json:"status,omitempty"`
 	Description        string                              `json:"description,omitempty"`
 	IsDeleted          bool                                `json:"is_deleted,omitempty"`
@@ -81,7 +93,15 @@ func NormalizeProviderModelDetails(details []ProviderModelDetail) []ProviderMode
 		if modelName == "" {
 			continue
 		}
-		t := normalizeModelType(detail.Type, modelName)
+		tagInput := detail.Tags
+		if strings.TrimSpace(detail.Type) != "" {
+			tagInput = append([]string{detail.Type}, detail.Tags...)
+		}
+		tags := NormalizeProviderModelTags(tagInput)
+		t := ProviderModelTypeFromTags(tags)
+		if t == "" {
+			t = normalizeModelType(detail.Type, modelName)
+		}
 		priceUnit := strings.TrimSpace(strings.ToLower(detail.PriceUnit))
 		if priceUnit == "" {
 			priceUnit = defaultPriceUnitByType(t, modelName)
@@ -106,6 +126,7 @@ func NormalizeProviderModelDetails(details []ProviderModelDetail) []ProviderMode
 		entry := ProviderModelDetail{
 			Model:              modelName,
 			Type:               t,
+			Tags:               tags,
 			Status:             status,
 			Description:        strings.TrimSpace(detail.Description),
 			IsDeleted:          detail.IsDeleted,
@@ -122,6 +143,10 @@ func NormalizeProviderModelDetails(details []ProviderModelDetail) []ProviderMode
 			existing := normalized[idx]
 			if existing.Type == "" {
 				existing.Type = entry.Type
+			}
+			existing.Tags = NormalizeProviderModelTags(append(existing.Tags, entry.Tags...))
+			if t := ProviderModelTypeFromTags(existing.Tags); t != "" {
+				existing.Type = t
 			}
 			if existing.Status == "" {
 				existing.Status = entry.Status
@@ -160,6 +185,89 @@ func NormalizeProviderModelDetails(details []ProviderModelDetail) []ProviderMode
 		return normalized[i].Model < normalized[j].Model
 	})
 	return normalized
+}
+
+func NormalizeProviderModelTags(tags []string) []string {
+	result := make([]string, 0, len(tags)+1)
+	seen := make(map[string]struct{}, len(tags)+1)
+	appendTag := func(raw string) {
+		tag := strings.TrimSpace(strings.ToLower(raw))
+		if tag == "" {
+			return
+		}
+		if !isValidProviderModelTag(tag) {
+			return
+		}
+		if _, ok := seen[tag]; ok {
+			return
+		}
+		seen[tag] = struct{}{}
+		result = append(result, tag)
+	}
+	for _, tag := range tags {
+		appendTag(tag)
+	}
+	tagOrder := map[string]int{
+		ProviderModelTagText:             10,
+		ProviderModelTagImage:            20,
+		ProviderModelTagAudio:            30,
+		ProviderModelTagVideo:            40,
+		ProviderModelTagEmbedding:        50,
+		ProviderModelTagToolCalling:      60,
+		ProviderModelTagReasoning:        70,
+		ProviderModelTagVision:           80,
+		ProviderModelTagRealtime:         90,
+		ProviderModelTagStructuredOutput: 100,
+	}
+	sort.Slice(result, func(i, j int) bool {
+		leftOrder := tagOrder[result[i]]
+		if leftOrder == 0 {
+			leftOrder = 1000
+		}
+		rightOrder := tagOrder[result[j]]
+		if rightOrder == 0 {
+			rightOrder = 1000
+		}
+		if leftOrder != rightOrder {
+			return leftOrder < rightOrder
+		}
+		return result[i] < result[j]
+	})
+	return result
+}
+
+func isValidProviderModelTag(tag string) bool {
+	if tag == "" {
+		return false
+	}
+	for _, r := range tag {
+		if r >= 'a' && r <= 'z' {
+			continue
+		}
+		if r >= '0' && r <= '9' {
+			continue
+		}
+		if r == '_' || r == '-' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func ProviderModelTypeFromTags(tags []string) string {
+	normalizedTags := NormalizeProviderModelTags(tags)
+	for _, tag := range normalizedTags {
+		switch tag {
+		case ProviderModelTagText,
+			ProviderModelTagImage,
+			ProviderModelTagAudio,
+			ProviderModelTagVideo,
+			ProviderModelTagEmbedding:
+			return tag
+		}
+	}
+	return ""
 }
 
 func FilterActiveProviderModelDetails(details []ProviderModelDetail) []ProviderModelDetail {
@@ -429,6 +537,7 @@ func normalizeModelType(raw string, modelName string) string {
 	}
 	switch {
 	case strings.HasPrefix(lower, "veo"),
+		strings.HasPrefix(lower, "sora"),
 		strings.Contains(lower, "text-to-video"),
 		strings.Contains(lower, "video-generation"),
 		strings.Contains(lower, "video_generation"),
@@ -441,10 +550,21 @@ func normalizeModelType(raw string, modelName string) string {
 	switch {
 	case strings.Contains(lower, "whisper"),
 		strings.HasPrefix(lower, "tts-"),
+		strings.Contains(lower, "-tts"),
+		strings.Contains(lower, "realtime"),
+		strings.Contains(lower, "speech"),
+		strings.Contains(lower, "voice"),
 		strings.Contains(lower, "audio"):
 		return ProviderModelTypeAudio
 	case strings.HasPrefix(lower, "dall-e"),
+		strings.HasPrefix(lower, "gpt-image"),
+		strings.HasPrefix(lower, "qwen-image"),
+		strings.HasPrefix(lower, "pixtral"),
 		strings.HasPrefix(lower, "cogview"),
+		strings.Contains(lower, "image"),
+		strings.Contains(lower, "-vl"),
+		strings.Contains(lower, "-4v"),
+		strings.Contains(lower, "vision"),
 		strings.Contains(lower, "stable-diffusion"),
 		strings.HasPrefix(lower, "wanx"),
 		strings.HasPrefix(lower, "step-1x"),
