@@ -2,6 +2,7 @@ package channel
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -19,6 +20,8 @@ type channelModelTestTaskPayload struct {
 	Endpoint      string `json:"endpoint"`
 	IsStream      *bool  `json:"is_stream,omitempty"`
 	AudioLanguage string `json:"audio_language,omitempty"`
+	ImageEditURL  string `json:"image_edit_url,omitempty"`
+	ImageEditData string `json:"image_edit_data,omitempty"`
 }
 
 type channelRefreshModelsTaskPayload struct {
@@ -29,15 +32,16 @@ type channelRefreshBillingTaskPayload struct {
 	ChannelID string `json:"channel_id"`
 }
 
-func buildChannelModelTestTaskDedupeKey(channelID string, modelID string, endpoint string, streamOverride *bool, audioLanguage string) string {
+func buildChannelModelTestTaskDedupeKey(channelID string, modelID string, endpoint string, streamOverride *bool, audioLanguage string, imageEditURL string, imageEditData string) string {
 	normalizedModelID := strings.TrimSpace(modelID)
 	normalizedEndpoint := model.NormalizeRequestedChannelModelEndpoint(endpoint)
 	normalizedAudioLanguage := normalizeAudioTestLanguage(audioLanguage)
+	imageEditSignature := channelModelTestImageEditSignature(normalizedEndpoint, imageEditURL, imageEditData)
 	if streamOverride == nil {
-		if normalizedAudioLanguage == "zh-CN" {
+		if normalizedAudioLanguage == "zh-CN" && imageEditSignature == "" {
 			return fmt.Sprintf("%s:%s:%s:%s", model.AsyncTaskTypeChannelModelTest, strings.TrimSpace(channelID), normalizedModelID, normalizedEndpoint)
 		}
-		return fmt.Sprintf("%s:%s:%s:%s:%s", model.AsyncTaskTypeChannelModelTest, strings.TrimSpace(channelID), normalizedModelID, normalizedEndpoint, normalizedAudioLanguage)
+		return fmt.Sprintf("%s:%s:%s:%s:%s:%s", model.AsyncTaskTypeChannelModelTest, strings.TrimSpace(channelID), normalizedModelID, normalizedEndpoint, normalizedAudioLanguage, imageEditSignature)
 	}
 	key := fmt.Sprintf(
 		"%s:%s:%s:%s:%t",
@@ -50,7 +54,25 @@ func buildChannelModelTestTaskDedupeKey(channelID string, modelID string, endpoi
 	if normalizedAudioLanguage != "zh-CN" {
 		key = fmt.Sprintf("%s:%s", key, normalizedAudioLanguage)
 	}
+	if imageEditSignature != "" {
+		key = fmt.Sprintf("%s:%s", key, imageEditSignature)
+	}
 	return key
+}
+
+func channelModelTestImageEditSignature(endpoint string, imageEditURL string, imageEditData string) string {
+	if model.NormalizeRequestedChannelModelEndpoint(endpoint) != model.ChannelModelEndpointImageEdit {
+		return ""
+	}
+	source := strings.TrimSpace(imageEditData)
+	if source == "" {
+		source = strings.TrimSpace(imageEditURL)
+	}
+	if source == "" {
+		source = defaultChannelImageEditTestURL
+	}
+	sum := sha256.Sum256([]byte(source))
+	return fmt.Sprintf("image:%x", sum[:8])
 }
 
 func buildChannelRefreshModelsTaskDedupeKey(channelID string) string {
@@ -61,17 +83,19 @@ func buildChannelRefreshBillingTaskDedupeKey(channelID string) string {
 	return fmt.Sprintf("%s:%s", model.AsyncTaskTypeChannelRefreshBilling, strings.TrimSpace(channelID))
 }
 
-func buildChannelModelTestTaskPayload(modelID string, channelID string, endpoint string, streamOverride *bool, audioLanguage string) string {
+func buildChannelModelTestTaskPayload(modelID string, channelID string, endpoint string, streamOverride *bool, audioLanguage string, imageEditURL string, imageEditData string) string {
 	return marshalJSONForLog(channelModelTestTaskPayload{
 		ChannelID:     strings.TrimSpace(channelID),
 		Model:         strings.TrimSpace(modelID),
 		Endpoint:      model.NormalizeRequestedChannelModelEndpoint(endpoint),
 		IsStream:      streamOverride,
 		AudioLanguage: normalizeAudioTestLanguage(audioLanguage),
+		ImageEditURL:  strings.TrimSpace(imageEditURL),
+		ImageEditData: strings.TrimSpace(imageEditData),
 	})
 }
 
-func CreateChannelModelTestTasks(channelID string, createdBy string, requestedTestModel string, requestedModels []string, requestedConfigs []channelModelTestTargetItem, traceID string, requestedAudioLanguage string) ([]model.AsyncTask, int, int, error) {
+func CreateChannelModelTestTasks(channelID string, createdBy string, requestedTestModel string, requestedModels []string, requestedConfigs []channelModelTestTargetItem, traceID string, requestedAudioLanguage string, requestedImageEditURL string, requestedImageEditData string) ([]model.AsyncTask, int, int, error) {
 	normalizedChannelID := strings.TrimSpace(channelID)
 	if normalizedChannelID == "" {
 		return nil, 0, 0, fmt.Errorf("渠道 ID 无效")
@@ -118,14 +142,20 @@ func CreateChannelModelTestTasks(channelID string, createdBy string, requestedTe
 		if resolveSelectionModelType(row) == model.ProviderModelTypeAudio {
 			stream = nil
 		}
+		imageEditURL := ""
+		imageEditData := ""
+		if normalizedEndpoint == model.ChannelModelEndpointImageEdit {
+			imageEditURL = requestedImageEditURL
+			imageEditData = requestedImageEditData
+		}
 		modelID := strings.TrimSpace(row.Model)
 		task, reused, err := model.CreateOrReuseAsyncTaskWithDB(model.DB, model.AsyncTask{
 			Type:      model.AsyncTaskTypeChannelModelTest,
-			DedupeKey: buildChannelModelTestTaskDedupeKey(normalizedChannelID, modelID, normalizedEndpoint, stream, normalizedAudioLanguage),
+			DedupeKey: buildChannelModelTestTaskDedupeKey(normalizedChannelID, modelID, normalizedEndpoint, stream, normalizedAudioLanguage, imageEditURL, imageEditData),
 			ChannelId: normalizedChannelID,
 			Model:     modelID,
 			Endpoint:  normalizedEndpoint,
-			Payload:   buildChannelModelTestTaskPayload(modelID, normalizedChannelID, normalizedEndpoint, stream, normalizedAudioLanguage),
+			Payload:   buildChannelModelTestTaskPayload(modelID, normalizedChannelID, normalizedEndpoint, stream, normalizedAudioLanguage, imageEditURL, imageEditData),
 			CreatedBy: strings.TrimSpace(createdBy),
 			TraceID:   strings.TrimSpace(traceID),
 		})
@@ -260,7 +290,10 @@ func executeChannelModelTestTask(ctx context.Context, task *model.AsyncTask) (st
 	if endpoint := strings.TrimSpace(payload.Endpoint); endpoint != "" {
 		row.Endpoint = endpoint
 	}
-	testResult, execution := runSingleChannelModelTestWithContextAndStream(ctx, channelRow, row, payload.IsStream, payload.AudioLanguage)
+	testResult, execution := runSingleChannelModelTestWithContextAndStream(ctx, channelRow, row, payload.IsStream, payload.AudioLanguage, imageEditTestInput{
+		URL:     payload.ImageEditURL,
+		DataURI: payload.ImageEditData,
+	})
 	testResult.ChannelId = channelID
 	persistChannelTestArtifactForExecution(ctx, task.Id, &testResult, &execution)
 	logChannelAsyncTestExecution(task, testResult, execution)

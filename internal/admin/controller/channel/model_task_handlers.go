@@ -15,6 +15,8 @@ type channelModelTestsRequest struct {
 	TargetConfigs []channelModelTestTargetItem `json:"target_configs"`
 	TestModel     string                       `json:"test_model,omitempty"`
 	AudioLanguage string                       `json:"audio_language,omitempty"`
+	ImageEditURL  string                       `json:"image_edit_url,omitempty"`
+	ImageEditData string                       `json:"image_edit_data,omitempty"`
 }
 
 type refreshChannelRequest struct {
@@ -97,6 +99,8 @@ func TestChannelModels(c *gin.Context) {
 		req.TargetConfigs,
 		c.GetString(helper.TraceIDKey),
 		req.AudioLanguage,
+		req.ImageEditURL,
+		req.ImageEditData,
 	)
 	if err != nil {
 		logChannelAdminWarn(c, "test_models", stringField("channel_id", channelID), stringField("reason", err.Error()))

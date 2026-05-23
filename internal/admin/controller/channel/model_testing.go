@@ -32,6 +32,13 @@ import (
 	"gorm.io/gorm"
 )
 
+const defaultChannelImageEditTestURL = "https://webdav.yeying.pub/api/v1/public/share/03fed01d-6f6b-4ffc-9eb0-d53f21fc17d2/blue_blank.png"
+
+type imageEditTestInput struct {
+	URL     string
+	DataURI string
+}
+
 type channelModelTestTargetItem struct {
 	Model    string `json:"model"`
 	Endpoint string `json:"endpoint,omitempty"`
@@ -224,11 +231,11 @@ func buildChannelModelTestResult(row model.ChannelModel, execution channelModelT
 }
 
 func runSingleChannelModelTest(channel *model.Channel, row model.ChannelModel) (model.ChannelTest, channelModelTestExecution) {
-	return runSingleChannelModelTestWithContextAndStream(context.Background(), channel, row, nil, "")
+	return runSingleChannelModelTestWithContextAndStream(context.Background(), channel, row, nil, "", imageEditTestInput{})
 }
 
 func runSingleChannelModelTestWithContext(ctx context.Context, channel *model.Channel, row model.ChannelModel) (model.ChannelTest, channelModelTestExecution) {
-	return runSingleChannelModelTestWithContextAndStream(ctx, channel, row, nil, "")
+	return runSingleChannelModelTestWithContextAndStream(ctx, channel, row, nil, "", imageEditTestInput{})
 }
 
 func resolveChannelModelTestRequestURL(baseURL string, path string, adaptor relayadaptor.Adaptor, relayMeta *meta.Meta) string {
@@ -337,7 +344,7 @@ func resolveChannelModelTestEndpointForRow(row model.ChannelModel) (string, erro
 	return "", fmt.Errorf("模型 %s 未声明支持测试端点 %s", strings.TrimSpace(row.Model), endpoint)
 }
 
-func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel *model.Channel, row model.ChannelModel, requestedStream *bool, requestedAudioLanguage string) (model.ChannelTest, channelModelTestExecution) {
+func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel *model.Channel, row model.ChannelModel, requestedStream *bool, requestedAudioLanguage string, imageEditInput imageEditTestInput) (model.ChannelTest, channelModelTestExecution) {
 	modelType := resolveSelectionModelType(row)
 	endpoint, endpointErr := resolveChannelModelTestEndpointForRow(row)
 	if endpointErr != nil {
@@ -404,7 +411,7 @@ func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel 
 			Endpoint:      endpoint,
 		}, execution), execution
 	case channelModelTestKindImageEdit:
-		execution := executeChannelImageEditModelTest(ctx, channel, row.Model)
+		execution := executeChannelImageEditModelTest(ctx, channel, row.Model, imageEditInput)
 		return buildChannelModelTestResult(model.ChannelModel{
 			Model:         row.Model,
 			UpstreamModel: row.UpstreamModel,
@@ -946,8 +953,6 @@ func parseTextModelTestResponseByEndpoint(path string, resp string) (string, err
 	}
 }
 
-const tinyPNGBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WnSUs8AAAAASUVORK5CYII="
-
 func executeChannelImageResponsesModelTest(ctx context.Context, channel *model.Channel, modelName string) channelModelTestExecution {
 	execution := channelModelTestExecution{}
 	request := map[string]any{
@@ -1113,7 +1118,63 @@ func executeChannelImageModelTest(ctx context.Context, channel *model.Channel, m
 	return execution
 }
 
-func executeChannelImageEditModelTest(ctx context.Context, channel *model.Channel, modelName string) channelModelTestExecution {
+func resolveChannelImageEditTestImage(ctx context.Context, input imageEditTestInput) ([]byte, string, error) {
+	dataURI := strings.TrimSpace(input.DataURI)
+	if dataURI != "" {
+		comma := strings.Index(dataURI, ",")
+		if comma < 0 {
+			return nil, "", fmt.Errorf("图片测试上传数据无效")
+		}
+		header := strings.ToLower(strings.TrimSpace(dataURI[:comma]))
+		payload := strings.TrimSpace(dataURI[comma+1:])
+		if !strings.Contains(header, ";base64") {
+			return nil, "", fmt.Errorf("图片测试上传数据必须是 base64 data URL")
+		}
+		imageBytes, err := base64.StdEncoding.DecodeString(payload)
+		if err != nil {
+			return nil, "", err
+		}
+		return imageBytes, "uploaded-image.png", nil
+	}
+
+	imageURL := strings.TrimSpace(input.URL)
+	if imageURL == "" {
+		imageURL = defaultChannelImageEditTestURL
+	}
+	parsedURL, err := url.Parse(imageURL)
+	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+		return nil, "", fmt.Errorf("图片测试原图地址无效")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
+	if err != nil {
+		return nil, "", err
+	}
+	resp, err := client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, "", fmt.Errorf("图片测试原图下载失败: http status %d", resp.StatusCode)
+	}
+	imageBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", err
+	}
+	filename := strings.TrimSpace(parsedURL.Path)
+	if idx := strings.LastIndex(filename, "/"); idx >= 0 {
+		filename = filename[idx+1:]
+	}
+	if filename == "" {
+		filename = "source-image.png"
+	}
+	return imageBytes, filename, nil
+}
+
+func executeChannelImageEditModelTest(ctx context.Context, channel *model.Channel, modelName string, imageEditInput imageEditTestInput) channelModelTestExecution {
 	execution := channelModelTestExecution{}
 	actualModelName := resolveChannelUpstreamModelName(channel, modelName)
 	if actualModelName == "" {
@@ -1121,7 +1182,7 @@ func executeChannelImageEditModelTest(ctx context.Context, channel *model.Channe
 		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
 		return execution
 	}
-	imageBytes, err := base64.StdEncoding.DecodeString(tinyPNGBase64)
+	imageBytes, imageFilename, err := resolveChannelImageEditTestImage(ctx, imageEditInput)
 	if err != nil {
 		execution.Err = err
 		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
@@ -1139,7 +1200,7 @@ func executeChannelImageEditModelTest(ctx context.Context, channel *model.Channe
 		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
 		return execution
 	}
-	part, err := writer.CreateFormFile("image", "test.png")
+	part, err := writer.CreateFormFile("image", imageFilename)
 	if err != nil {
 		execution.Err = err
 		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})

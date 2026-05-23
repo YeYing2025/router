@@ -44,6 +44,9 @@ import {
 } from '../../router-ui';
 import { CHANNEL_DETAIL_MODEL_COLUMN_WIDTHS } from '../../constants/tableWidthPresets';
 
+const DEFAULT_IMAGE_EDIT_TEST_URL =
+  'https://webdav.yeying.pub/api/v1/public/share/03fed01d-6f6b-4ffc-9eb0-d53f21fc17d2/blue_blank.png';
+
 const normalizeModelId = (model) => {
   if (typeof model === 'string') return model;
   if (model && typeof model === 'object') {
@@ -1810,6 +1813,33 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const [channelTasks, setChannelTasks] = useState([]);
   const [modelTestError, setModelTestError] = useState('');
   const [audioTestLanguage, setAudioTestLanguage] = useState('zh-CN');
+  const [imageEditTestURL, setImageEditTestURL] = useState(
+    DEFAULT_IMAGE_EDIT_TEST_URL,
+  );
+  const [imageEditTestData, setImageEditTestData] = useState('');
+  const [imageEditTestFileName, setImageEditTestFileName] = useState('');
+  const handleImageEditTestFileChange = useCallback(
+    (event) => {
+      const file = event?.target?.files?.[0];
+      if (!file) {
+        setImageEditTestData('');
+        setImageEditTestFileName('');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImageEditTestData((reader.result || '').toString());
+        setImageEditTestFileName(file.name || '');
+      };
+      reader.onerror = () => {
+        setImageEditTestData('');
+        setImageEditTestFileName('');
+        showError(t('channel.edit.model_tester.image_edit_file_failed'));
+      };
+      reader.readAsDataURL(file);
+    },
+    [t],
+  );
   const openChannelTaskView = useCallback(
     (extraParams = {}) => {
       const targetChannelId = (channelId || '')
@@ -3775,6 +3805,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             target_models: normalizedTargets,
             target_configs: targetConfigs,
             audio_language: audioTestLanguage,
+            image_edit_url: imageEditTestURL,
+            image_edit_data: imageEditTestData,
           },
         );
         const { success, message, data, meta } = res.data || {};
@@ -3819,6 +3851,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       t,
       visibleChannelModels,
       audioTestLanguage,
+      imageEditTestURL,
+      imageEditTestData,
     ],
   );
 
@@ -5334,6 +5368,13 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 normalizeChannelModelType={normalizeChannelModelType}
                 audioTestLanguage={audioTestLanguage}
                 setAudioTestLanguage={setAudioTestLanguage}
+                imageEditTestURL={imageEditTestURL}
+                setImageEditTestURL={setImageEditTestURL}
+                imageEditTestFileName={imageEditTestFileName}
+                imageEditTestData={imageEditTestData}
+                setImageEditTestData={setImageEditTestData}
+                setImageEditTestFileName={setImageEditTestFileName}
+                handleImageEditTestFileChange={handleImageEditTestFileChange}
               />
             )}
             {showDetailBillingTab && (
