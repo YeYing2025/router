@@ -11,14 +11,7 @@ import {
   AppModal,
   AppSelect,
   AppTable,
-  AppTag,
 } from '../../../router-ui';
-
-const formatCapabilities = (capabilities, t) =>
-  (Array.isArray(capabilities) ? capabilities : []).map((item) => ({
-    key: item,
-    text: t(`channel.edit.billing.capabilities.${item}`, { defaultValue: item }),
-  }));
 
 const buildManualQuotaItem = () => ({
   quota_type: 'total',
@@ -84,10 +77,6 @@ const ChannelDetailBillingTab = ({
   const [manualItems, setManualItems] = useState([buildManualQuotaItem()]);
   const [manualModalOpen, setManualModalOpen] = useState(false);
 
-  const capabilityItems = useMemo(
-    () => formatCapabilities(billingSummary?.action_capabilities, t),
-    [billingSummary?.action_capabilities, t],
-  );
   const purchaseRecords = useMemo(
     () =>
       (Array.isArray(billingSnapshots) ? billingSnapshots : []).filter(
@@ -269,19 +258,6 @@ const ChannelDetailBillingTab = ({
           className='router-section-message'
           title={t('channel.edit.billing.hint')}
         />
-        <div className='router-block-gap-sm'>
-          {capabilityItems.length > 0 ? (
-            capabilityItems.map((item) => (
-              <AppTag key={item.key} color='grey'>
-                {item.text}
-              </AppTag>
-            ))
-          ) : (
-            <AppTag color='grey'>
-              {t('channel.edit.billing.no_capabilities')}
-            </AppTag>
-          )}
-        </div>
         <AppDetailSection
           title={t('channel.edit.billing.current_quotas_title')}
           titleTag='span'
