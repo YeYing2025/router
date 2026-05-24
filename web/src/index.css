@@ -3765,6 +3765,21 @@ body,
     max-width: 180px;
 }
 
+.router-billing-snapshot-time {
+    color: var(--router-text-muted, rgba(0, 0, 0, 0.5));
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.router-billing-quota-status-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    white-space: nowrap;
+}
+
 .router-row-clickable {
     cursor: pointer;
 }

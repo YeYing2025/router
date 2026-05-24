@@ -120,20 +120,6 @@ const ChannelDetailBillingTab = ({
     <AppDetailSection
       title={t('channel.edit.billing.title')}
       titleTag='span'
-      headerEnd={
-        billingSummary?.refresh_supported ? (
-          <AppButton
-            type='button'
-            className='router-page-button'
-            color='blue'
-            loading={billingSubmitting}
-            disabled={billingSubmitting}
-            onClick={onRefreshBilling}
-          >
-            {t('channel.edit.billing.refresh_now')}
-          </AppButton>
-        ) : null
-      }
     >
       <div>
         <AppAlert
@@ -142,19 +128,6 @@ const ChannelDetailBillingTab = ({
           className='router-section-message'
           title={t('channel.edit.billing.hint')}
         />
-        <AppFormRow>
-          <AppField label={t('channel.edit.billing.updated_at')} readOnly>
-            <AppInput
-              className='router-section-input'
-              value={
-                billingSummary?.latest_snapshot_at
-                  ? timestamp2string(billingSummary.latest_snapshot_at)
-                  : '-'
-              }
-              readOnly
-            />
-          </AppField>
-        </AppFormRow>
         <div className='router-block-gap-sm'>
           {capabilityItems.length > 0 ? (
             capabilityItems.map((item) => (
@@ -171,6 +144,27 @@ const ChannelDetailBillingTab = ({
         <AppDetailSection
           title={t('channel.edit.billing.current_quotas_title')}
           titleTag='span'
+          headerEnd={
+            <div className='router-billing-quota-status-actions'>
+              <span className='router-billing-snapshot-time'>
+                {billingSummary?.latest_snapshot_at
+                  ? timestamp2string(billingSummary.latest_snapshot_at)
+                  : '-'}
+              </span>
+              {billingSummary?.refresh_supported ? (
+                <AppButton
+                  type='button'
+                  className='router-page-button'
+                  color='blue'
+                  loading={billingSubmitting}
+                  disabled={billingSubmitting}
+                  onClick={onRefreshBilling}
+                >
+                  {t('channel.edit.billing.refresh_now')}
+                </AppButton>
+              ) : null}
+            </div>
+          }
         >
           <AppTable
             className='router-detail-table'
