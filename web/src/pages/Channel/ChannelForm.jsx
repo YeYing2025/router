@@ -3273,7 +3273,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     async ({ items, message }) => {
       const targetChannelId = (channelId || '').toString().trim();
       if (targetChannelId === '') {
-        return;
+        return false;
       }
       const normalizedItems = (Array.isArray(items) ? items : [])
         .map((item) => ({
@@ -3291,7 +3291,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         );
       if (normalizedItems.length === 0) {
         showInfo(t('channel.edit.billing.manual_snapshot_invalid'));
-        return;
+        return false;
       }
       setChannelBillingSubmitting(true);
       try {
@@ -3307,14 +3307,16 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
           showError(
             responseMessage || t('channel.edit.billing.manual_snapshot_failed'),
           );
-          return;
+          return false;
         }
         await refreshChannelBillingState(targetChannelId);
         showSuccess(t('channel.edit.billing.manual_snapshot_success'));
+        return true;
       } catch (error) {
         showError(
           error?.message || t('channel.edit.billing.manual_snapshot_failed'),
         );
+        return false;
       } finally {
         setChannelBillingSubmitting(false);
       }

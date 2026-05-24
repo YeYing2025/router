@@ -4,9 +4,11 @@ import {
   AppButton,
   AppDetailSection,
   AppField,
+  AppFormActions,
   AppFormRow,
   AppInput,
   AppInputNumber,
+  AppModal,
   AppSelect,
   AppTable,
   AppTag,
@@ -70,7 +72,6 @@ const ChannelDetailBillingTab = ({
   billingLoading,
   billingError,
   billingSnapshots,
-  billingActions,
   billingReadonly,
   billingSubmitting,
   onRefreshBilling,
@@ -81,10 +82,18 @@ const ChannelDetailBillingTab = ({
   const [cdk, setCDK] = useState('');
   const [manualMessage, setManualMessage] = useState('');
   const [manualItems, setManualItems] = useState([buildManualQuotaItem()]);
+  const [manualModalOpen, setManualModalOpen] = useState(false);
 
   const capabilityItems = useMemo(
     () => formatCapabilities(billingSummary?.action_capabilities, t),
     [billingSummary?.action_capabilities, t],
+  );
+  const purchaseRecords = useMemo(
+    () =>
+      (Array.isArray(billingSnapshots) ? billingSnapshots : []).filter(
+        (snapshot) => (snapshot?.source_type || '').toString().trim() === 'manual',
+      ),
+    [billingSnapshots],
   );
   const quotaItems = Array.isArray(billingSummary?.quota_items)
     ? billingSummary.quota_items
@@ -115,6 +124,138 @@ const ChannelDetailBillingTab = ({
       ),
     );
   };
+
+  const closeManualModal = () => {
+    if (!billingSubmitting) {
+      setManualModalOpen(false);
+    }
+  };
+
+  const submitManualSnapshot = async () => {
+    const saved = await onManualSnapshotUpdate({
+      items: manualItems.map((manualItem) => ({
+        quota_type: manualItem.quota_type,
+        quota_label: manualItem.quota_label,
+        amount: manualItem.amount,
+        currency: manualItem.currency,
+        expires_at: toUnixTimestamp(manualItem.expires_at_input),
+      })),
+      message: manualMessage,
+    });
+    if (saved) {
+      setManualModalOpen(false);
+      setManualMessage('');
+      setManualItems([buildManualQuotaItem()]);
+    }
+  };
+
+  const renderManualSnapshotForm = () => (
+    <div>
+      {manualItems.map((item, index) => (
+        <AppFormRow key={`manual-quota-${index}`}>
+          <AppField label={t('channel.edit.billing.manual_quota_type')}>
+            <AppSelect
+              className='router-section-input'
+              options={quotaTypeOptions(t)}
+              value={item.quota_type}
+              onChange={(e, { value }) =>
+                updateManualItem(index, {
+                  quota_type: (value || 'custom').toString(),
+                })
+              }
+              disabled={billingReadonly || billingSubmitting}
+            />
+          </AppField>
+          <AppField label={t('channel.edit.billing.manual_quota_label')} required>
+            <AppInput
+              className='router-section-input'
+              value={item.quota_label}
+              onChange={(e, { value }) =>
+                updateManualItem(index, {
+                  quota_label: (value || '').toString(),
+                })
+              }
+              readOnly={billingReadonly || billingSubmitting}
+            />
+          </AppField>
+          <AppField label={t('channel.edit.billing.manual_quota_amount')} required>
+            <AppInputNumber
+              className='router-section-input'
+              fluid
+              value={item.amount}
+              min={0}
+              onChange={(e, { value }) =>
+                updateManualItem(index, {
+                  amount: value,
+                })
+              }
+              disabled={billingReadonly || billingSubmitting}
+            />
+          </AppField>
+          <AppField label={t('channel.edit.billing.currency')}>
+            <AppInput
+              className='router-section-input'
+              value={item.currency}
+              onChange={(e, { value }) =>
+                updateManualItem(index, {
+                  currency: (value || '').toString(),
+                })
+              }
+              readOnly={billingReadonly || billingSubmitting}
+            />
+          </AppField>
+          <AppField label={t('channel.edit.billing.manual_quota_expires_at')}>
+            <AppInput
+              className='router-section-input'
+              type='datetime-local'
+              value={item.expires_at_input}
+              onChange={(e, { value }) =>
+                updateManualItem(index, {
+                  expires_at_input: (value || '').toString(),
+                })
+              }
+              readOnly={billingReadonly || billingSubmitting}
+            />
+          </AppField>
+          <AppField label={t('channel.edit.billing.row_action')}>
+            <AppButton
+              type='button'
+              className='router-page-button'
+              basic
+              danger
+              disabled={billingReadonly || billingSubmitting}
+              onClick={() => removeManualItem(index)}
+            >
+              {t('channel.edit.billing.remove_quota_item')}
+            </AppButton>
+          </AppField>
+        </AppFormRow>
+      ))}
+      <AppFormRow>
+        <AppField label={t('channel.edit.billing.message')}>
+          <AppInput
+            className='router-section-input'
+            value={manualMessage}
+            onChange={(e, { value }) =>
+              setManualMessage((value || '').toString())
+            }
+            readOnly={billingReadonly || billingSubmitting}
+          />
+        </AppField>
+      </AppFormRow>
+      <div className='router-detail-actions'>
+        <AppButton
+          type='button'
+          className='router-page-button'
+          basic
+          disabled={billingReadonly || billingSubmitting}
+          onClick={appendManualItem}
+        >
+          {t('channel.edit.billing.add_quota_item')}
+        </AppButton>
+      </div>
+    </div>
+  );
 
   return (
     <AppDetailSection
@@ -230,146 +371,28 @@ const ChannelDetailBillingTab = ({
             </AppButton>
           </AppDetailSection>
         )}
-        {billingSummary?.manual_update_supported && (
-          <AppDetailSection
-            title={t('channel.edit.billing.manual_update_title')}
-            titleTag='span'
-          >
-            {manualItems.map((item, index) => (
-              <AppFormRow key={`manual-quota-${index}`}>
-                <AppField label={t('channel.edit.billing.manual_quota_type')}>
-                  <AppSelect
-                    className='router-section-input'
-                    options={quotaTypeOptions(t)}
-                    value={item.quota_type}
-                    onChange={(e, { value }) =>
-                      updateManualItem(index, {
-                        quota_type: (value || 'custom').toString(),
-                      })
-                    }
-                    disabled={billingReadonly || billingSubmitting}
-                  />
-                </AppField>
-                <AppField label={t('channel.edit.billing.manual_quota_label')} required>
-                  <AppInput
-                    className='router-section-input'
-                    value={item.quota_label}
-                    onChange={(e, { value }) =>
-                      updateManualItem(index, {
-                        quota_label: (value || '').toString(),
-                      })
-                    }
-                    readOnly={billingReadonly || billingSubmitting}
-                  />
-                </AppField>
-                <AppField label={t('channel.edit.billing.manual_quota_amount')} required>
-                  <AppInputNumber
-                    className='router-section-input'
-                    fluid
-                    value={item.amount}
-                    min={0}
-                    onChange={(e, { value }) =>
-                      updateManualItem(index, {
-                        amount: value,
-                      })
-                    }
-                    disabled={billingReadonly || billingSubmitting}
-                  />
-                </AppField>
-                <AppField label={t('channel.edit.billing.currency')}>
-                  <AppInput
-                    className='router-section-input'
-                    value={item.currency}
-                    onChange={(e, { value }) =>
-                      updateManualItem(index, {
-                        currency: (value || '').toString(),
-                      })
-                    }
-                    readOnly={billingReadonly || billingSubmitting}
-                  />
-                </AppField>
-                <AppField label={t('channel.edit.billing.manual_quota_expires_at')}>
-                  <AppInput
-                    className='router-section-input'
-                    type='datetime-local'
-                    value={item.expires_at_input}
-                    onChange={(e, { value }) =>
-                      updateManualItem(index, {
-                        expires_at_input: (value || '').toString(),
-                      })
-                    }
-                    readOnly={billingReadonly || billingSubmitting}
-                  />
-                </AppField>
-                <AppField label={t('channel.edit.billing.row_action')}>
-                  <AppButton
-                    type='button'
-                    className='router-page-button'
-                    basic
-                    danger
-                    disabled={billingReadonly || billingSubmitting}
-                    onClick={() => removeManualItem(index)}
-                  >
-                    {t('channel.edit.billing.remove_quota_item')}
-                  </AppButton>
-                </AppField>
-              </AppFormRow>
-            ))}
-            <AppFormRow>
-              <AppField label={t('channel.edit.billing.message')}>
-                <AppInput
-                  className='router-section-input'
-                  value={manualMessage}
-                  onChange={(e, { value }) =>
-                    setManualMessage((value || '').toString())
-                  }
-                  readOnly={billingReadonly || billingSubmitting}
-                />
-              </AppField>
-            </AppFormRow>
-            <div className='router-detail-actions'>
-              <AppButton
-                type='button'
-                className='router-page-button'
-                basic
-                disabled={billingReadonly || billingSubmitting}
-                onClick={appendManualItem}
-              >
-                {t('channel.edit.billing.add_quota_item')}
-              </AppButton>
+        <AppDetailSection
+          title={t('channel.edit.billing.snapshots_title')}
+          titleTag='span'
+          headerEnd={
+            billingSummary?.manual_update_supported ? (
               <AppButton
                 type='button'
                 className='router-page-button'
                 color='blue'
-                loading={billingSubmitting}
                 disabled={billingReadonly || billingSubmitting}
-                onClick={() =>
-                  onManualSnapshotUpdate({
-                    items: manualItems.map((manualItem) => ({
-                      quota_type: manualItem.quota_type,
-                      quota_label: manualItem.quota_label,
-                      amount: manualItem.amount,
-                      currency: manualItem.currency,
-                      expires_at: toUnixTimestamp(manualItem.expires_at_input),
-                    })),
-                    message: manualMessage,
-                  })
-                }
+                onClick={() => setManualModalOpen(true)}
               >
-                {t('channel.edit.billing.confirm_manual_snapshot')}
+                {t('channel.edit.billing.add_purchase_record')}
               </AppButton>
-            </div>
-          </AppDetailSection>
-        )}
-        <AppDetailSection
-          title={t('channel.edit.billing.snapshots_title')}
-          titleTag='span'
+            ) : null
+          }
         >
           <AppTable
             className='router-detail-table'
             pagination={false}
             loading={billingLoading}
-            dataSource={billingSnapshots}
+            dataSource={purchaseRecords}
             rowKey={(row) => row.id}
             columns={[
               {
@@ -378,12 +401,6 @@ const ChannelDetailBillingTab = ({
                 key: 'created_at',
                 width: 180,
                 render: (value) => (value ? timestamp2string(value) : '-'),
-              },
-              {
-                title: t('channel.edit.billing.snapshot_table.source_type'),
-                dataIndex: 'source_type',
-                key: 'source_type',
-                width: 120,
               },
               {
                 title: t('channel.edit.billing.snapshot_table.quota_items'),
@@ -403,45 +420,34 @@ const ChannelDetailBillingTab = ({
             ]}
           />
         </AppDetailSection>
-        <AppDetailSection
-          title={t('channel.edit.billing.actions_title')}
-          titleTag='span'
+        <AppModal
+          size='large'
+          open={manualModalOpen}
+          onClose={closeManualModal}
+          title={t('channel.edit.billing.manual_update_title')}
+          footer={
+            <AppFormActions>
+              <AppButton
+                type='button'
+                disabled={billingSubmitting}
+                onClick={closeManualModal}
+              >
+                {t('common.cancel')}
+              </AppButton>
+              <AppButton
+                type='button'
+                color='blue'
+                loading={billingSubmitting}
+                disabled={billingReadonly || billingSubmitting}
+                onClick={submitManualSnapshot}
+              >
+                {t('channel.edit.billing.confirm_manual_snapshot')}
+              </AppButton>
+            </AppFormActions>
+          }
         >
-          <AppTable
-            className='router-detail-table'
-            pagination={false}
-            loading={billingLoading}
-            dataSource={billingActions}
-            rowKey={(row) => row.id}
-            columns={[
-              {
-                title: t('channel.edit.billing.action_table.created_at'),
-                dataIndex: 'created_at',
-                key: 'created_at',
-                width: 180,
-                render: (value) => (value ? timestamp2string(value) : '-'),
-              },
-              {
-                title: t('channel.edit.billing.action_table.action_type'),
-                dataIndex: 'action_type',
-                key: 'action_type',
-                width: 180,
-              },
-              {
-                title: t('channel.edit.billing.action_table.status'),
-                dataIndex: 'status',
-                key: 'status',
-                width: 120,
-              },
-              {
-                title: t('channel.edit.billing.action_table.message'),
-                dataIndex: 'message',
-                key: 'message',
-                render: (value) => value || '-',
-              },
-            ]}
-          />
-        </AppDetailSection>
+          {renderManualSnapshotForm()}
+        </AppModal>
         {billingError && (
           <div className='router-error-text router-error-text-top'>
             {billingError}
