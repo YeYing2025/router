@@ -19,6 +19,13 @@ const Setting = () => {
   if (!isAdminWorkspace) {
     return (
       <div className='dashboard-container'>
+        <AppFilterHeader
+          breadcrumbs={[
+            { key: 'mine', label: t('header.mine') },
+            { key: 'account', label: t('header.account'), active: true },
+          ]}
+          title={t('header.account')}
+        />
         <AppSection>
           <PersonalSetting />
         </AppSection>
