@@ -185,10 +185,10 @@ const LogDetail = () => {
       <AppFilterHeader
         breadcrumbs={[
           {
-            key: 'workspace',
+            key: 'section',
             label: isAdminPage
-              ? t('header.admin_workspace')
-              : t('header.user_workspace'),
+              ? t('header.platform_operation')
+              : t('header.records'),
           },
           {
             key: 'log-list',
