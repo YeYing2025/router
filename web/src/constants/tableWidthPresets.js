@@ -30,10 +30,11 @@ export const TOPUP_PLAN_LIST_COLUMN_WIDTHS = {
   group: 140,
   payAmount: 120,
   creditedAmount: 120,
-  sortOrder: 100,
   enabled: 100,
   publicVisible: 100,
   validityDays: 100,
+  createdAt: 148,
+  updatedAt: 148,
   actions: 176,
 };
 
@@ -42,10 +43,11 @@ export const TOPUP_PLAN_LIST_TABLE_MIN_WIDTH =
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.group +
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.payAmount +
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.creditedAmount +
-  TOPUP_PLAN_LIST_COLUMN_WIDTHS.sortOrder +
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.enabled +
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.publicVisible +
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.validityDays +
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.createdAt +
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.updatedAt +
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.actions;
 
 export const PACKAGE_LIST_COLUMN_WIDTHS = {
@@ -55,7 +57,8 @@ export const PACKAGE_LIST_COLUMN_WIDTHS = {
   dailyQuota: 120,
   emergencyQuota: 120,
   durationDays: 80,
-  status: 92,
+  status: 100,
+  publicVisible: 100,
   createdAt: 148,
   updatedAt: 148,
   actions: 176,
@@ -69,6 +72,7 @@ export const PACKAGE_LIST_TABLE_MIN_WIDTH =
   PACKAGE_LIST_COLUMN_WIDTHS.emergencyQuota +
   PACKAGE_LIST_COLUMN_WIDTHS.durationDays +
   PACKAGE_LIST_COLUMN_WIDTHS.status +
+  PACKAGE_LIST_COLUMN_WIDTHS.publicVisible +
   PACKAGE_LIST_COLUMN_WIDTHS.createdAt +
   PACKAGE_LIST_COLUMN_WIDTHS.updatedAt +
   PACKAGE_LIST_COLUMN_WIDTHS.actions;
@@ -212,20 +216,20 @@ export const LOG_LIST_TABLE_MIN_WIDTH =
   LOG_LIST_COLUMN_WIDTHS.quota;
 
 export const BUSINESS_FLOW_COLUMN_WIDTHS = {
-  user: 140,
-  userCompact: 120,
-  status: 92,
-  type: 88,
-  source: 180,
-  amount: 140,
-  quota: 140,
-  datetime: 148,
-  group: 140,
-  packageName: 180,
-  model: 180,
-  order: 220,
+  user: 120,
+  userCompact: 100,
+  status: 64,
+  type: 64,
+  source: 92,
+  amount: 80,
+  quota: 80,
+  datetime: 128,
+  group: 100,
+  packageName: 100,
+  model: 120,
+  order: 160,
   message: 180,
-  tokenCount: 96,
+  tokenCount: 64,
   actions: 120,
 };
 

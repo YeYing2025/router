@@ -503,7 +503,6 @@ const createEmptyRow = () => ({
   base_url: '',
   official_url: '',
   model_details: [],
-  sort_order: 0,
   source: 'manual',
   created_at: 0,
   updated_at: 0,
@@ -518,7 +517,6 @@ const toEditableRows = (items) => {
     base_url: item?.base_url || '',
     official_url: item?.official_url || '',
     model_details: detailsFromCatalogItem(item),
-    sort_order: Number(item?.sort_order || 0),
     source: item?.source || 'manual',
     created_at: item?.created_at || 0,
     updated_at: item?.updated_at || 0,
@@ -1307,7 +1305,6 @@ const ProvidersManager = () => {
         '',
       official_url: (row.official_url || '').trim(),
       model_details: normalizeModelDetails(row.model_details || []),
-      sort_order: Number(row.sort_order || 0),
       source: row.source || 'manual',
       updated_at: row.updated_at || 0,
     };
@@ -1402,7 +1399,6 @@ const ProvidersManager = () => {
         '',
       official_url: (sourceRow.official_url || '').trim(),
       model_details: normalizeModelDetails(sourceRow.model_details || []),
-      sort_order: Number(sourceRow.sort_order || 0),
       source: sourceRow.source || 'manual',
       updated_at: Math.floor(Date.now() / 1000),
     };
@@ -1453,7 +1449,6 @@ const ProvidersManager = () => {
         '',
       official_url: (createRow.official_url || '').trim(),
       model_details: normalizeModelDetails(createRow.model_details || []),
-      sort_order: Number(createRow.sort_order || 0),
       source: createRow.source || 'manual',
       updated_at: Math.floor(Date.now() / 1000),
     };
@@ -2970,6 +2965,8 @@ const ProvidersManager = () => {
             key: 'created_at',
             className: 'router-table-col-datetime',
             width: PROVIDER_LIST_COLUMN_WIDTHS.createdAt,
+            sorter: (a, b) => Number(a.created_at || 0) - Number(b.created_at || 0),
+            defaultSortOrder: 'descend',
             render: (value) => (value ? timestamp2string(value) : '-'),
           },
           {
@@ -2978,6 +2975,7 @@ const ProvidersManager = () => {
             key: 'updated_at',
             className: 'router-table-col-datetime',
             width: PROVIDER_LIST_COLUMN_WIDTHS.updatedAt,
+            sorter: (a, b) => Number(a.updated_at || 0) - Number(b.updated_at || 0),
             render: (value) => (value ? timestamp2string(value) : '-'),
           },
           {
