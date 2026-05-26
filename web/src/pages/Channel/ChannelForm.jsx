@@ -37,7 +37,6 @@ import {
   AppFormRow,
   AppIcon,
   AppInput,
-  AppModal,
   AppSelect,
   AppSpin,
   AppTabs,
@@ -1895,11 +1894,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     useState(false);
   const [channelEndpointPoliciesError, setChannelEndpointPoliciesError] =
     useState('');
-  const [endpointEnableConfirmOpen, setEndpointEnableConfirmOpen] =
-    useState(false);
-  const [endpointEnableConfirmLoading, setEndpointEnableConfirmLoading] =
-    useState(false);
-  const [pendingEndpointEnableRow, setPendingEndpointEnableRow] = useState(null);
   const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
   const [policyEditorSaving, setPolicyEditorSaving] = useState(false);
   const [selectedPolicyTemplate, setSelectedPolicyTemplate] = useState('');
@@ -4237,8 +4231,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   );
 
   const updateChannelEndpointCapability = useCallback(
-    async (row, nextValues = {}, options = {}) => {
-      const { skipConfirm = false } = options;
+    async (row, nextValues = {}) => {
       if (!isDetailMode || endpointCapabilityReadonly) {
         return;
       }
@@ -4256,13 +4249,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
           : row?.enabled === true;
       const baseURL = normalizeBaseURL(nextValues.base_url ?? row?.base_url);
       const endpointKey = buildChannelEndpointKey(modelName, endpoint);
-      const latestStatusKey = (row?.last_test_status || '').toString().trim();
-      const hasSuccessfulTest = latestStatusKey === 'success';
-      if (enabled && !skipConfirm && !hasSuccessfulTest) {
-        setPendingEndpointEnableRow(row);
-        setEndpointEnableConfirmOpen(true);
-        return;
-      }
       setEndpointMutatingKey(endpointKey);
       try {
         const res = await API.put(
@@ -4305,39 +4291,10 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       channelId,
       endpointCapabilityReadonly,
       isDetailMode,
-      modelTestResultsByKey,
       loadChannelEndpointsFromServer,
       t,
     ],
   );
-
-  const closeEndpointEnableConfirm = useCallback(() => {
-    if (endpointEnableConfirmLoading) {
-      return;
-    }
-    setEndpointEnableConfirmOpen(false);
-    setPendingEndpointEnableRow(null);
-  }, [endpointEnableConfirmLoading]);
-
-  const confirmEnableEndpointWithoutSuccessfulTest = useCallback(async () => {
-    if (!pendingEndpointEnableRow) {
-      return;
-    }
-    setEndpointEnableConfirmLoading(true);
-    try {
-      await updateChannelEndpointCapability(
-        pendingEndpointEnableRow,
-        { enabled: true },
-        {
-          skipConfirm: true,
-        },
-      );
-      setEndpointEnableConfirmOpen(false);
-      setPendingEndpointEnableRow(null);
-    } finally {
-      setEndpointEnableConfirmLoading(false);
-    }
-  }, [pendingEndpointEnableRow, updateChannelEndpointCapability]);
 
   const openEndpointPolicyEditor = useCallback(
     (row) => {
@@ -5374,44 +5331,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         setPolicyDraft={setPolicyDraft}
         saveEndpointPolicy={saveEndpointPolicy}
       />
-      <AppModal
-        size='tiny'
-        open={endpointEnableConfirmOpen}
-        onClose={closeEndpointEnableConfirm}
-        title={t('channel.edit.endpoint_capabilities.enable_confirm_title')}
-        footer={
-          <AppFormActions>
-            <AppButton
-              type='button'
-              onClick={closeEndpointEnableConfirm}
-              disabled={endpointEnableConfirmLoading}
-            >
-              {t('common.cancel')}
-            </AppButton>
-            <AppButton
-              type='button'
-              color='blue'
-              loading={endpointEnableConfirmLoading}
-              disabled={endpointEnableConfirmLoading}
-              onClick={confirmEnableEndpointWithoutSuccessfulTest}
-            >
-              {t('channel.edit.endpoint_capabilities.enable_confirm_action')}
-            </AppButton>
-          </AppFormActions>
-        }
-      >
-        <div>
-          <p>{t('channel.edit.endpoint_capabilities.enable_confirm_content')}</p>
-          <p className='router-muted-text'>
-            {pendingEndpointEnableRow
-              ? t('channel.edit.endpoint_capabilities.enable_confirm_target', {
-                  model: pendingEndpointEnableRow.model || '-',
-                  endpoint: pendingEndpointEnableRow.endpoint || '-',
-                })
-              : ''}
-          </p>
-        </div>
-      </AppModal>
       <ChannelAppendProviderModal
         t={t}
         open={appendProviderModalOpen}
