@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yeying-community/router/common/ctxkey"
+	"github.com/yeying-community/router/internal/admin/model"
+	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"gorm.io/gorm"
 )
 
@@ -265,6 +267,24 @@ func TestRetrieveModelSharesListOwnedByLogic(t *testing.T) {
 		if _, ok := payload["error"]; !ok {
 			t.Fatalf("expected error field in payload, got %v", payload)
 		}
+	}
+}
+
+func TestLoadDashboardProtocolModels_UsesProviderCatalogForDeepSeek(t *testing.T) {
+	original := loadProviderProtocolModelsFn
+	defer func() {
+		loadProviderProtocolModelsFn = original
+	}()
+
+	model.DB = nil
+	loadProviderProtocolModelsFn = loadDashboardProtocolModels
+
+	got, err := loadDashboardProtocolModels(relaychannel.DeepSeek)
+	if err == nil {
+		t.Fatalf("expected error when database handle is nil")
+	}
+	if got != nil {
+		t.Fatalf("models = %#v, want nil on db error", got)
 	}
 }
 

@@ -229,12 +229,14 @@ func googleProviderModelDescription(modelName string) string {
 
 func deepSeekProviderModelDescription(modelName string) string {
 	switch modelName {
+	case "deepseek-v4-flash":
+		return "DeepSeek V4 Flash 是 DeepSeek 当前的高吞吐通用模型，支持非思考和思考模式。"
+	case "deepseek-v4-pro":
+		return "DeepSeek V4 Pro 是 DeepSeek 当前的高能力通用模型，支持非思考和思考模式。"
 	case "deepseek-chat":
-		return "DeepSeek Chat 是 DeepSeek 的通用对话模型别名，适合日常生成与编码任务。"
+		return "DeepSeek Chat 是 DeepSeek V4 Flash 非思考模式的兼容别名，将于 2026-07-24 15:59 UTC 后退役。"
 	case "deepseek-reasoner":
-		return "DeepSeek Reasoner 是 DeepSeek 的推理模型别名，适合数学、代码和复杂问题求解。"
-	case "deepseek-v3.1":
-		return "DeepSeek V3.1 是 DeepSeek 的通用模型，适合对话、生成与编程任务。"
+		return "DeepSeek Reasoner 是 DeepSeek V4 Flash 思考模式的兼容别名，将于 2026-07-24 15:59 UTC 后退役。"
 	default:
 		return ""
 	}

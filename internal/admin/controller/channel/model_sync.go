@@ -46,12 +46,15 @@ type channelModelFetchTrace struct {
 
 func resolveModelsURL(baseURL string, protocol string) string {
 	resolvedBaseURL := strings.TrimRight(strings.TrimSpace(baseURL), "/")
-	if relaychannel.NormalizeProtocolName(protocol) == "ali" {
+	switch relaychannel.NormalizeProtocolName(protocol) {
+	case "ali":
 		lower := strings.ToLower(resolvedBaseURL)
 		if strings.HasSuffix(lower, "/compatible-mode/v1") {
 			return resolvedBaseURL + "/models"
 		}
 		return resolvedBaseURL + "/compatible-mode/v1/models"
+	case "deepseek":
+		return resolvedBaseURL + "/models"
 	}
 	lower := strings.ToLower(resolvedBaseURL)
 	if strings.HasSuffix(lower, "/v1") ||

@@ -82,7 +82,6 @@ type OpenAIModels struct {
 	Parent             *string                 `json:"parent"`
 }
 
-var channelId2Models map[int][]string
 var defaultModelPermissions = []OpenAIModelPermission{
 	{
 		Id:                 "modelperm-LwHkVFn8AcMItP432fKKDIKJ",
@@ -100,24 +99,10 @@ var defaultModelPermissions = []OpenAIModelPermission{
 	},
 }
 
-func init() {
-	channelId2Models = make(map[int][]string)
-	for i := 1; i < relaychannel.Dummy; i++ {
-		if i == relaychannel.OpenAICompatible {
-			continue
-		}
-		adaptor := relay.GetAdaptor(relaychannel.ToAPIType(i))
-		meta := &meta.Meta{
-			ChannelProtocol: i,
-		}
-		adaptor.Init(meta)
-		channelId2Models[i] = adaptor.GetModelList()
-	}
-}
-
 var loadGroupModelProvidersFn = model.ListGroupModelProviderMapByModels
 var loadGroupModelSupportedEndpointsFn = listGroupModelSupportedEndpoints
 var loadProviderModelTagsFn = model.LoadProviderModelTagMapByModelsWithDB
+var loadProviderProtocolModelsFn = loadDashboardProtocolModels
 
 var endpointSortOrder = map[string]int{
 	model.ChannelModelEndpointChat:      10,
@@ -221,6 +206,46 @@ func resolveOwnedByFromProvider(provider string) (string, error) {
 	return normalizedProvider, nil
 }
 
+func resolveProviderForDashboardProtocol(channelProtocol int) string {
+	if channelProtocol <= 0 || channelProtocol >= len(relaychannel.ChannelProtocolNames) {
+		return ""
+	}
+	switch relaychannel.NormalizeProtocolName(relaychannel.ChannelProtocolNames[channelProtocol]) {
+	case "openai", "anthropic", "zhipu", "ali", "gemini", "moonshot", "baichuan", "minimax", "mistral", "groq", "lingyiwanwu", "stepfun", "cohere", "deepseek", "togetherai", "doubao", "novita", "siliconflow", "xai", "baidu-v2", "gemini-openai-compatible":
+		return commonutils.NormalizeProvider(relaychannel.ChannelProtocolNames[channelProtocol])
+	default:
+		return ""
+	}
+}
+
+func loadDashboardProtocolModels(channelProtocol int) ([]string, error) {
+	provider := resolveProviderForDashboardProtocol(channelProtocol)
+	if provider != "" {
+		return model.ListActiveProviderModelsWithDB(model.DB, provider)
+	}
+	adaptor := relay.GetAdaptor(relaychannel.ToAPIType(channelProtocol))
+	meta := &meta.Meta{
+		ChannelProtocol: channelProtocol,
+	}
+	adaptor.Init(meta)
+	return adaptor.GetModelList(), nil
+}
+
+func buildDashboardChannelModelMap() map[int][]string {
+	result := make(map[int][]string)
+	for i := 1; i < relaychannel.Dummy; i++ {
+		if i == relaychannel.OpenAICompatible {
+			continue
+		}
+		models, err := loadProviderProtocolModelsFn(i)
+		if err != nil {
+			models = []string{}
+		}
+		result[i] = models
+	}
+	return result
+}
+
 func resolveRequestAvailableModels(c *gin.Context) ([]string, string, error) {
 	userID := strings.TrimSpace(c.GetString(ctxkey.Id))
 	availableModelsRaw := strings.TrimSpace(c.GetString(ctxkey.AvailableModels))
@@ -299,11 +324,12 @@ func DashboardListModels(c *gin.Context) {
 	// optional filter: channel name, case-insensitive
 	channelFilter := strings.ToLower(strings.TrimSpace(c.Query("channel")))
 	providerFilter := commonutils.NormalizeProvider(c.Query("provider"))
+	channelModelMap := buildDashboardChannelModelMap()
 
 	// Keep the established map-shaped payload and include metadata for the admin UI.
-	metaList := make([]gin.H, 0, len(channelId2Models))
-	filteredMap := make(map[int][]string, len(channelId2Models))
-	for id, models := range channelId2Models {
+	metaList := make([]gin.H, 0, len(channelModelMap))
+	filteredMap := make(map[int][]string, len(channelModelMap))
+	for id, models := range channelModelMap {
 		name := ""
 		if id >= 0 && id < len(relaychannel.ChannelProtocolNames) {
 			name = relaychannel.ChannelProtocolNames[id]

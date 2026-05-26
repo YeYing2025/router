@@ -24,6 +24,7 @@ type StreamOptions struct {
 type GeneralOpenAIRequest struct {
 	Messages            []Message       `json:"messages,omitempty"`
 	Model               string          `json:"model,omitempty"`
+	Thinking            any             `json:"thinking,omitempty"`
 	Store               *bool           `json:"store,omitempty"`
 	ReasoningEffort     *string         `json:"reasoning_effort,omitempty"`
 	Metadata            any             `json:"metadata,omitempty"`

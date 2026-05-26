@@ -35,6 +35,10 @@ func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 	if meta.UpstreamMode != 0 {
 		upstreamMode = meta.UpstreamMode
 	}
+	if meta.ChannelProtocol == relaychannel.DeepSeek && upstreamMode == relaymode.Messages {
+		baseURL := strings.TrimRight(strings.TrimSpace(meta.BaseURL), "/")
+		return baseURL + "/anthropic/v1/messages", nil
+	}
 	requestURLPath := meta.RequestURLPath
 	if strings.TrimSpace(meta.UpstreamRequestPath) != "" {
 		requestURLPath = meta.UpstreamRequestPath
@@ -79,6 +83,12 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Request, meta *me
 		req.Header.Set("Accept", "text/event-stream")
 	} else {
 		req.Header.Set("Accept", "application/json")
+	}
+	if meta.ChannelProtocol == relaychannel.DeepSeek && meta != nil && meta.UpstreamMode == relaymode.Messages {
+		req.Header.Del("Authorization")
+		req.Header.Set("x-api-key", meta.APIKey)
+		req.Header.Set("anthropic-version", "2023-06-01")
+		return nil
 	}
 	if meta.ChannelProtocol == relaychannel.Azure {
 		req.Header.Set("api-key", meta.APIKey)

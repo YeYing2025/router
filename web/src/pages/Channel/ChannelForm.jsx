@@ -145,6 +145,22 @@ const validateChannelIdentifier = (value, t) => {
   return '';
 };
 
+const validateProtocolSpecificChannelConfig = (inputs, config) => {
+  const protocol = (inputs?.protocol || '').toString().trim().toLowerCase();
+  if (protocol !== 'deepseek') {
+    return '';
+  }
+  const baseURL = normalizeBaseURL(inputs?.base_url || '');
+  if (baseURL.toLowerCase().endsWith('/v1')) {
+    return 'DeepSeek 渠道 base_url 不能追加 /v1，请使用 https://api.deepseek.com 或 https://api.deepseek.com/beta';
+  }
+  const apiBaseURL = normalizeBaseURL(config?.api_base_url || '');
+  if (apiBaseURL.toLowerCase().endsWith('/v1')) {
+    return 'DeepSeek 渠道 API Base URL 不能追加 /v1，请使用 https://api.deepseek.com 或 https://api.deepseek.com/beta';
+  }
+  return '';
+};
+
 const parseJSONObject = (value) => {
   if (typeof value !== 'string') {
     return {};
@@ -2925,6 +2941,14 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
           return false;
         }
       }
+      const protocolConfigError = validateProtocolSpecificChannelConfig(
+        inputs,
+        config,
+      );
+      if (protocolConfigError !== '') {
+        showError(protocolConfigError);
+        return false;
+      }
       if (includeModelState) {
         const blockedMessage = buildBlockedSelectedModelsMessage(
           inputs.channel_models,
@@ -4971,6 +4995,14 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     }
     if (isCreateMode && effectiveKey.trim() === '') {
       showInfo(t('channel.edit.messages.key_required'));
+      return;
+    }
+    const protocolConfigError = validateProtocolSpecificChannelConfig(
+      inputs,
+      config,
+    );
+    if (protocolConfigError !== '') {
+      showError(protocolConfigError);
       return;
     }
     let localInputs = buildChannelPayload();

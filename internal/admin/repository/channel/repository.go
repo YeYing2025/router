@@ -145,6 +145,9 @@ func prepareChannelForCreate(channel *model.Channel) error {
 		return err
 	}
 	channel.NormalizeProtocol()
+	if err := channel.ValidateProtocolConfiguration(); err != nil {
+		return err
+	}
 	channel.NormalizeChannelModelState()
 	if channel.CreatedTime == 0 {
 		channel.CreatedTime = helper.GetTimestamp()
@@ -228,7 +231,19 @@ func Update(channel *model.Channel) error {
 		if !channel.NameProvided || strings.TrimSpace(channel.Name) == "" {
 			channel.Name = existing.Name
 		}
+		if channel.Protocol == "" {
+			channel.Protocol = existing.Protocol
+		}
+		if channel.BaseURL == nil {
+			channel.BaseURL = existing.BaseURL
+		}
+		if strings.TrimSpace(channel.Config) == "" {
+			channel.Config = existing.Config
+		}
 		if err := channel.ValidateIdentifier(); err != nil {
+			return err
+		}
+		if err := channel.ValidateProtocolConfiguration(); err != nil {
 			return err
 		}
 		if err := ensureChannelIdentifierUniqueWithDB(tx, channel); err != nil {

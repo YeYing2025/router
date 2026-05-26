@@ -1163,19 +1163,52 @@
     "Provider": "deepseek",
     "Name": "DeepSeek",
     "BaseURL": "https://api.deepseek.com",
-    "OfficialURL": "https://api-docs.deepseek.com/quick_start/pricing/",
+    "OfficialURL": "https://api-docs.deepseek.com/quick_start/pricing",
     "SortOrder": 115,
     "ModelDetails": [
+      {
+        "model": "deepseek-v4-flash",
+        "type": "text",
+        "status": "active",
+        "description": "DeepSeek V4 Flash 是 DeepSeek 当前的高吞吐通用模型，支持非思考和思考模式。",
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/messages"
+        ],
+        "input_price": 0.00014,
+        "output_price": 0.00028,
+        "price_unit": "per_1k_tokens",
+        "currency": "USD",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
+        "model": "deepseek-v4-pro",
+        "type": "text",
+        "status": "active",
+        "description": "DeepSeek V4 Pro 是 DeepSeek 当前的高能力通用模型，支持非思考和思考模式。",
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/messages"
+        ],
+        "input_price": 0.000435,
+        "output_price": 0.00087,
+        "price_unit": "per_1k_tokens",
+        "currency": "USD",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
       {
         "model": "deepseek-chat",
         "type": "text",
         "status": "active",
-        "description": "DeepSeek Chat 是 DeepSeek 的通用对话模型别名，适合日常生成与编码任务。",
+        "description": "DeepSeek Chat 是 DeepSeek V4 Flash 非思考模式的兼容别名，将于 2026-07-24 15:59 UTC 后退役。",
         "supported_endpoints": [
-          "/v1/chat/completions"
+          "/v1/chat/completions",
+          "/v1/messages"
         ],
-        "input_price": 0.00028,
-        "output_price": 0.00042,
+        "input_price": 0.00014,
+        "output_price": 0.00028,
         "price_unit": "per_1k_tokens",
         "currency": "USD",
         "source": "migration",
@@ -1185,27 +1218,13 @@
         "model": "deepseek-reasoner",
         "type": "text",
         "status": "active",
-        "description": "DeepSeek Reasoner 是 DeepSeek 的推理模型别名，适合数学、代码和复杂问题求解。",
+        "description": "DeepSeek Reasoner 是 DeepSeek V4 Flash 思考模式的兼容别名，将于 2026-07-24 15:59 UTC 后退役。",
         "supported_endpoints": [
-          "/v1/chat/completions"
+          "/v1/chat/completions",
+          "/v1/messages"
         ],
-        "input_price": 0.00028,
-        "output_price": 0.00042,
-        "price_unit": "per_1k_tokens",
-        "currency": "USD",
-        "source": "migration",
-        "updated_at": 1700000000
-      },
-      {
-        "model": "deepseek-v3.1",
-        "type": "text",
-        "status": "active",
-        "description": "DeepSeek V3.1 是 DeepSeek 的通用模型，适合对话、生成与编程任务。",
-        "supported_endpoints": [
-          "/v1/chat/completions"
-        ],
-        "input_price": 0.00056,
-        "output_price": 0.00168,
+        "input_price": 0.00014,
+        "output_price": 0.00028,
         "price_unit": "per_1k_tokens",
         "currency": "USD",
         "source": "migration",

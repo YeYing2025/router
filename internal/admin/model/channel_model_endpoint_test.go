@@ -40,6 +40,15 @@ func TestDefaultProviderModelSupportedEndpointsByProvider(t *testing.T) {
 		t.Fatalf("anthropic default endpoints = %#v, want messages", anthropic)
 	}
 
+	deepSeek := NormalizeProviderModelSupportedEndpointsForModel(
+		ProviderModelTypeText,
+		"deepseek-v4-pro",
+		[]string{ChannelModelEndpointChat, ChannelModelEndpointMessages},
+	)
+	if len(deepSeek) != 2 || deepSeek[0] != ChannelModelEndpointChat || deepSeek[1] != ChannelModelEndpointMessages {
+		t.Fatalf("deepseek normalized endpoints = %#v, want chat+messages", deepSeek)
+	}
+
 	embedding := DefaultProviderModelSupportedEndpoints("volcengine", ProviderModelTypeEmbedding, "Seed1.6-Embedding")
 	if len(embedding) != 1 || embedding[0] != ChannelModelEndpointEmbeddings {
 		t.Fatalf("embedding default endpoints = %#v, want embeddings", embedding)

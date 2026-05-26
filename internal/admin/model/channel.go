@@ -70,6 +70,11 @@ func normalizeConfiguredBaseURL(raw string) string {
 	return strings.TrimRight(strings.TrimSpace(raw), "/")
 }
 
+func baseURLHasVersionSuffix(raw string, suffix string) bool {
+	normalized := strings.ToLower(normalizeConfiguredBaseURL(raw))
+	return normalized != "" && strings.HasSuffix(normalized, strings.ToLower(strings.TrimSpace(suffix)))
+}
+
 func (config ChannelConfig) GetAPIBaseURL() string {
 	return normalizeConfiguredBaseURL(config.APIBaseURL)
 }
@@ -126,6 +131,26 @@ func (channel *Channel) ValidateIdentifier() error {
 		return fmt.Errorf("渠道不能为空")
 	}
 	return ValidateChannelIdentifier(channel.Name)
+}
+
+func (channel *Channel) ValidateProtocolConfiguration() error {
+	if channel == nil {
+		return fmt.Errorf("渠道不能为空")
+	}
+	switch channel.GetChannelProtocol() {
+	case relaychannel.DeepSeek:
+		if baseURLHasVersionSuffix(channel.GetBaseURL(), "/v1") {
+			return fmt.Errorf("DeepSeek 渠道 base_url 不能追加 /v1，请使用 https://api.deepseek.com 或 https://api.deepseek.com/beta")
+		}
+		cfg, err := channel.LoadConfig()
+		if err != nil {
+			return nil
+		}
+		if baseURLHasVersionSuffix(cfg.GetAPIBaseURL(), "/v1") {
+			return fmt.Errorf("DeepSeek 渠道 config.api_base_url 不能追加 /v1，请使用 https://api.deepseek.com 或 https://api.deepseek.com/beta")
+		}
+	}
+	return nil
 }
 
 func (channel *Channel) DisplayName() string {

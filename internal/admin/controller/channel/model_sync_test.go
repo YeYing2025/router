@@ -25,3 +25,11 @@ func TestResolveModelsURL_OpenAIRootBaseURLUsesV1ModelsEndpoint(t *testing.T) {
 		t.Fatalf("resolveModelsURL() = %q, want %q", got, want)
 	}
 }
+
+func TestResolveModelsURL_DeepSeekRootBaseURLUsesModelsEndpoint(t *testing.T) {
+	got := resolveModelsURL("https://api.deepseek.com", "deepseek")
+	want := "https://api.deepseek.com/models"
+	if got != want {
+		t.Fatalf("resolveModelsURL() = %q, want %q", got, want)
+	}
+}

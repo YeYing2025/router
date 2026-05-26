@@ -746,6 +746,12 @@ func TestBuildProviderMigrationSeeds_OfficialPricingBackfillForPreviouslyUnprice
 		"xai": {
 			"grok-2-image-1212": {modelType: ProviderModelTypeImage, input: 0.07, priceUnit: ProviderPriceUnitPerImage, currency: ProviderPriceCurrencyUSD},
 		},
+		"deepseek": {
+			"deepseek-v4-flash": {modelType: ProviderModelTypeText, input: 0.00014, output: 0.00028, priceUnit: ProviderPriceUnitPer1KTokens, currency: ProviderPriceCurrencyUSD},
+			"deepseek-v4-pro":   {modelType: ProviderModelTypeText, input: 0.000435, output: 0.00087, priceUnit: ProviderPriceUnitPer1KTokens, currency: ProviderPriceCurrencyUSD},
+			"deepseek-chat":     {modelType: ProviderModelTypeText, input: 0.00014, output: 0.00028, priceUnit: ProviderPriceUnitPer1KTokens, currency: ProviderPriceCurrencyUSD},
+			"deepseek-reasoner": {modelType: ProviderModelTypeText, input: 0.00014, output: 0.00028, priceUnit: ProviderPriceUnitPer1KTokens, currency: ProviderPriceCurrencyUSD},
+		},
 		"stepfun": {
 			"step-1o-turbo-vision": {modelType: ProviderModelTypeImage, input: 0.0025, output: 0.008, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
 			"step-1o-audio":        {modelType: ProviderModelTypeAudio, input: 0.025, output: 0.06, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
@@ -887,6 +893,39 @@ func TestBuildProviderMigrationSeeds_ComplexPricingComponentsForLiveAndOmniModel
 	for provider, providerChecks := range checks {
 		for modelName := range providerChecks {
 			t.Fatalf("expected %s seed to include complex pricing model %s", provider, modelName)
+		}
+	}
+}
+
+func TestBuildProviderMigrationSeeds_DeepSeekTextModelsSupportChatAndMessages(t *testing.T) {
+	seeds := mustLoadProviderMigrationSeeds(t)
+	expectedModels := map[string]bool{
+		"deepseek-v4-flash": false,
+		"deepseek-v4-pro":   false,
+		"deepseek-chat":     false,
+		"deepseek-reasoner": false,
+	}
+
+	for _, seed := range seeds {
+		if seed.Provider != "deepseek" {
+			continue
+		}
+		for _, detail := range seed.ModelDetails {
+			if _, ok := expectedModels[detail.Model]; !ok {
+				continue
+			}
+			if len(detail.SupportedEndpoints) != 2 ||
+				detail.SupportedEndpoints[0] != ChannelModelEndpointChat ||
+				detail.SupportedEndpoints[1] != ChannelModelEndpointMessages {
+				t.Fatalf("%s supported_endpoints=%#v, want [chat messages]", detail.Model, detail.SupportedEndpoints)
+			}
+			expectedModels[detail.Model] = true
+		}
+	}
+
+	for modelName, found := range expectedModels {
+		if !found {
+			t.Fatalf("expected deepseek seed to include %s", modelName)
 		}
 	}
 }
