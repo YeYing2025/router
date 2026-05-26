@@ -79,6 +79,15 @@ func UpsertChannelModelEndpointTestResultsWithDB(db *gorm.DB, channelID string, 
 			if row.LastTestedAt == 0 {
 				row.LastTestedAt = now
 			}
+			existing := ChannelModelEndpointTestResult{}
+			err := tx.Where("channel_id = ? AND model = ? AND endpoint = ?", row.ChannelId, row.Model, row.Endpoint).
+				First(&existing).Error
+			if err == nil && existing.LastTestedAt > row.LastTestedAt {
+				continue
+			}
+			if err != nil && err != gorm.ErrRecordNotFound {
+				return err
+			}
 			if err := tx.Where("channel_id = ? AND model = ? AND endpoint = ?", row.ChannelId, row.Model, row.Endpoint).
 				Assign(map[string]any{
 					"upstream_model":    row.UpstreamModel,
