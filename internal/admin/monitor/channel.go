@@ -171,3 +171,19 @@ func EnableChannel(channelId string, channelName string) {
 	)
 	_ = notifyRootUser(subject, content)
 }
+
+func RecoverMetricDisabledChannel(channelId string, channelName string) {
+	model.UpdateChannelStatusById(channelId, model.ChannelStatusEnabled)
+	logger.SysLog(fmt.Sprintf("channel #%s has been recovered after metric circuit break", channelId))
+	subject := "渠道熔断恢复提醒"
+	content := message.EmailTemplate(
+		subject,
+		fmt.Sprintf(`
+			<p>您好！</p>
+			<p>渠道「<strong>%s</strong>」（#%s）已从低成功率熔断中自动恢复。</p>
+			<p>恢复原因：</p>
+			<p style="background-color: #f8f8f8; padding: 10px; border-radius: 4px;">熔断等待时间已结束，渠道已重新进入运行态路由候选，后续真实请求会继续验证该渠道健康状态。</p>
+		`, notificationValue(channelName), notificationValue(channelId)),
+	)
+	_ = notifyRootUser(subject, content)
+}

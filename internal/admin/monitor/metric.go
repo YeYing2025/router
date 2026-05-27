@@ -124,5 +124,5 @@ func recoverMetricDisabledChannel(channelId string) {
 	if channel.Status != model.ChannelStatusAutoDisabled {
 		return
 	}
-	EnableChannel(channel.Id, channel.DisplayName())
+	RecoverMetricDisabledChannel(channel.Id, channel.DisplayName())
 }
