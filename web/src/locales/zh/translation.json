@@ -912,6 +912,11 @@
           "source_url": "来源链接"
         }
       },
+      "capability_disable": {
+        "by": "摘除来源：{{value}}",
+        "at": "摘除时间：{{value}}",
+        "reason": "摘除原因：{{value}}"
+      },
       "model_tester": {
         "title": "模型测试",
         "hint": "这里展示已选模型，并为每个模型确认测试端点。支持单条测试和批量测试，建议仅发布测试通过的模型端点。",
