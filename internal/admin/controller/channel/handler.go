@@ -50,6 +50,10 @@ type channelCircuitBreakerListItem struct {
 	UpdatedAt    int64   `json:"updated_at"`
 }
 
+type channelCircuitBreakerEventsData struct {
+	Items []model.ChannelCircuitBreakerEvent `json:"items"`
+}
+
 type channelListPageData struct {
 	Items    []channelListItem `json:"items"`
 	Total    int64             `json:"total"`
@@ -309,6 +313,31 @@ func GetChannels(c *gin.Context) {
 		"success": true,
 		"message": "",
 		"data":    data,
+	})
+}
+
+func GetChannelCircuitBreakerEvents(c *gin.Context) {
+	channelID := strings.TrimSpace(c.Param("id"))
+	limit := 20
+	if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	rows, err := model.ListChannelCircuitBreakerEventsWithDB(model.DB, channelID, limit)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data": channelCircuitBreakerEventsData{
+			Items: rows,
+		},
 	})
 }
 

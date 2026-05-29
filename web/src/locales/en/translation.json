@@ -313,7 +313,8 @@
         "canceled": "Canceled"
       },
       "actions": {
-        "refresh": "Sync Now"
+        "refresh": "Sync Now",
+        "fulfill": "Fulfill"
       },
       "detail": {
         "sections": {
@@ -739,6 +740,19 @@
           "test_status": "Test Status",
           "enable_block_reason": "Blocked Reason",
           "updated_at": "Updated At"
+        }
+      },
+      "circuit_breaker": {
+        "title": "Circuit Events",
+        "hint": "This records low-success-rate circuit opens, half-open probes, automatic recovery, and canceled recovery events for channel troubleshooting.",
+        "empty": "No circuit events.",
+        "load_failed": "Failed to load circuit events",
+        "columns": {
+          "event": "Event",
+          "reason": "Reason",
+          "success_rate": "Success Rate",
+          "recover_after": "Recover After",
+          "created_at": "Time"
         }
       },
       "endpoint_policies": {
@@ -1346,7 +1360,7 @@
       "raw": "Copy Raw Token",
       "ama": "Copy AMA Link",
       "opencat": "Copy OpenCat Link",
-      "next": "Copy NextChat Link",
+      "next": "Copy Chat Link",
       "lobe": "Copy LobeChat Link"
     },
     "messages": {
@@ -2506,7 +2520,7 @@
         "topup_link": "Top-up Link",
         "topup_link_placeholder": "e.g.: Card selling website purchase link",
         "chat_link": "Chat Page Link",
-        "chat_link_placeholder": "e.g.: ChatGPT Next Web deployment address",
+        "chat_link_placeholder": "e.g.: Chat Web deployment URL",
         "quota_per_unit": "USD -> YYC Conversion Rate",
         "quota_per_unit_placeholder": "How many YYC 1 USD converts to",
         "channel_billing_auto_refresh": {

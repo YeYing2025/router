@@ -36,6 +36,8 @@ import {
   AppToolbar,
 } from '../router-ui';
 
+const DEFAULT_CHAT_LINK = 'https://chat.yeying.pub';
+
 const compareTextValue = (left, right) =>
   String(left || '').localeCompare(String(right || ''));
 
@@ -206,7 +208,7 @@ const TokensTable = () => {
       nextUrl =
         nextLink + `/#/?settings={"key":"sk-${key}","url":"${serverAddress}"}`;
     } else {
-      nextUrl = `https://app.nextchat.dev/#/?settings={"key":"sk-${key}","url":"${serverAddress}"}`;
+      nextUrl = `${DEFAULT_CHAT_LINK}/#/?settings={"key":"sk-${key}","url":"${serverAddress}"}`;
     }
 
     let url;
@@ -254,7 +256,7 @@ const TokensTable = () => {
       defaultUrl =
         chatLink + `/#/?settings={"key":"sk-${key}","url":"${serverAddress}"}`;
     } else {
-      defaultUrl = `https://app.nextchat.dev/#/?settings={"key":"sk-${key}","url":"${serverAddress}"}`;
+      defaultUrl = `${DEFAULT_CHAT_LINK}/#/?settings={"key":"sk-${key}","url":"${serverAddress}"}`;
     }
     let url;
     switch (type) {

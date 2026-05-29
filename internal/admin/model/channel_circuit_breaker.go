@@ -26,8 +26,23 @@ type ChannelCircuitBreakerState struct {
 	UpdatedAt    int64   `json:"updated_at" gorm:"bigint;index"`
 }
 
+type ChannelCircuitBreakerEvent struct {
+	ID           uint    `json:"id" gorm:"primaryKey"`
+	ChannelId    string  `json:"channel_id" gorm:"type:varchar(64);not null;index"`
+	Event        string  `json:"event" gorm:"type:varchar(32);not null;index"`
+	State        string  `json:"state" gorm:"type:varchar(32);not null;default:'';index"`
+	Reason       string  `json:"reason" gorm:"type:text"`
+	SuccessRate  float64 `json:"success_rate" gorm:"type:double precision;default:0"`
+	RecoverAfter int64   `json:"recover_after" gorm:"bigint;index"`
+	CreatedAt    int64   `json:"created_at" gorm:"bigint;index"`
+}
+
 func (ChannelCircuitBreakerState) TableName() string {
 	return "channel_circuit_breaker_states"
+}
+
+func (ChannelCircuitBreakerEvent) TableName() string {
+	return "channel_circuit_breaker_events"
 }
 
 func RecordChannelCircuitBreakerOpen(channelID string, reason string, successRate float64, recoverAfter int64) error {
@@ -83,6 +98,28 @@ func ListChannelCircuitBreakerStatesByChannelIDsWithDB(db *gorm.DB, channelIDs [
 	return rows, err
 }
 
+func ListChannelCircuitBreakerEventsWithDB(db *gorm.DB, channelID string, limit int) ([]ChannelCircuitBreakerEvent, error) {
+	if db == nil {
+		return nil, fmt.Errorf("database handle is nil")
+	}
+	normalizedChannelID := strings.TrimSpace(channelID)
+	if normalizedChannelID == "" {
+		return nil, fmt.Errorf("channel id is empty")
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	rows := make([]ChannelCircuitBreakerEvent, 0, limit)
+	err := db.Where("channel_id = ?", normalizedChannelID).
+		Order("created_at desc, id desc").
+		Limit(limit).
+		Find(&rows).Error
+	return rows, err
+}
+
 func recordChannelCircuitBreakerOpenWithDB(db *gorm.DB, channelID string, reason string, successRate float64, recoverAfter int64) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
@@ -102,7 +139,20 @@ func recordChannelCircuitBreakerOpenWithDB(db *gorm.DB, channelID string, reason
 		RecoveredAt:  0,
 		UpdatedAt:    now,
 	}
-	return db.Save(&row).Error
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&row).Error; err != nil {
+			return err
+		}
+		return createChannelCircuitBreakerEventWithDB(tx, ChannelCircuitBreakerEvent{
+			ChannelId:    normalizedChannelID,
+			Event:        ChannelCircuitBreakerStateOpen,
+			State:        ChannelCircuitBreakerStateOpen,
+			Reason:       row.Reason,
+			SuccessRate:  successRate,
+			RecoverAfter: recoverAfter,
+			CreatedAt:    now,
+		})
+	})
 }
 
 func updateChannelCircuitBreakerStateWithDB(db *gorm.DB, channelID string, state string, reason string) error {
@@ -125,9 +175,41 @@ func updateChannelCircuitBreakerStateWithDB(db *gorm.DB, channelID string, state
 	if normalizedReason := strings.TrimSpace(reason); normalizedReason != "" {
 		updates["reason"] = normalizedReason
 	}
-	return db.Model(&ChannelCircuitBreakerState{}).
-		Where("channel_id = ? AND state IN ?", normalizedChannelID, []string{ChannelCircuitBreakerStateOpen, ChannelCircuitBreakerStateHalfOpen}).
-		Updates(updates).Error
+	return db.Transaction(func(tx *gorm.DB) error {
+		updateResult := tx.Model(&ChannelCircuitBreakerState{}).
+			Where("channel_id = ? AND state IN ?", normalizedChannelID, []string{ChannelCircuitBreakerStateOpen, ChannelCircuitBreakerStateHalfOpen}).
+			Updates(updates)
+		if updateResult.Error != nil {
+			return updateResult.Error
+		}
+		if updateResult.RowsAffected == 0 {
+			return nil
+		}
+		return createChannelCircuitBreakerEventWithDB(tx, ChannelCircuitBreakerEvent{
+			ChannelId: normalizedChannelID,
+			Event:     normalizedState,
+			State:     normalizedState,
+			Reason:    strings.TrimSpace(reason),
+			CreatedAt: now,
+		})
+	})
+}
+
+func createChannelCircuitBreakerEventWithDB(db *gorm.DB, event ChannelCircuitBreakerEvent) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	event.ChannelId = strings.TrimSpace(event.ChannelId)
+	event.Event = strings.TrimSpace(event.Event)
+	event.State = strings.TrimSpace(event.State)
+	event.Reason = strings.TrimSpace(event.Reason)
+	if event.ChannelId == "" || event.Event == "" {
+		return nil
+	}
+	if event.CreatedAt <= 0 {
+		event.CreatedAt = helper.GetTimestamp()
+	}
+	return db.Create(&event).Error
 }
 
 func getChannelCircuitBreakerStateWithDB(db *gorm.DB, channelID string) (ChannelCircuitBreakerState, error) {

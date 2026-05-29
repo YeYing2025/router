@@ -1297,6 +1297,20 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return tx.AutoMigrate(&ChannelCircuitBreakerState{})
 			},
 		},
+		{
+			Version:     "202605291030_channel_circuit_breaker_events",
+			Description: "add channel circuit breaker event history",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&ChannelCircuitBreakerEvent{})
+			},
+		},
+		{
+			Version:     "202605291100_redemption_issue_audit_logs",
+			Description: "add redemption issue audit logs",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&RedemptionIssueAuditLog{})
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

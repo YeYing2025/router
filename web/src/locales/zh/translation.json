@@ -313,7 +313,8 @@
         "canceled": "已取消"
       },
       "actions": {
-        "refresh": "立即查单"
+        "refresh": "立即查单",
+        "fulfill": "补发放"
       },
       "detail": {
         "sections": {
@@ -739,6 +740,19 @@
           "test_status": "测试状态",
           "enable_block_reason": "不能启用原因",
           "updated_at": "更新时间"
+        }
+      },
+      "circuit_breaker": {
+        "title": "熔断事件",
+        "hint": "这里记录渠道低成功率熔断、半开探测、自动恢复和取消恢复的历史事件，用于排查渠道为什么被摘除或恢复。",
+        "empty": "当前没有熔断事件。",
+        "load_failed": "加载熔断事件失败",
+        "columns": {
+          "event": "事件",
+          "reason": "原因",
+          "success_rate": "成功率",
+          "recover_after": "预计恢复",
+          "created_at": "时间"
         }
       },
       "endpoint_policies": {
@@ -1346,7 +1360,7 @@
       "raw": "复制原始令牌",
       "ama": "复制 AMA 链接",
       "opencat": "复制 OpenCat 链接",
-      "next": "复制 NextChat 链接",
+      "next": "复制 Chat 链接",
       "lobe": "复制 LobeChat 链接"
     },
     "messages": {
@@ -2504,7 +2518,7 @@
         "topup_link": "充值链接",
         "topup_link_placeholder": "例如发卡网站的购买链接",
         "chat_link": "聊天页面链接",
-        "chat_link_placeholder": "例如 ChatGPT Next Web 的部署地址",
+        "chat_link_placeholder": "例如 Chat Web 的部署地址",
         "quota_per_unit": "USD -> YYC 折算比率",
         "quota_per_unit_placeholder": "1 USD 折算为多少 YYC",
         "channel_billing_auto_refresh": {

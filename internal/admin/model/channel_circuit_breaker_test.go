@@ -13,10 +13,38 @@ func newChannelCircuitBreakerTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&ChannelCircuitBreakerState{}); err != nil {
+	if err := db.AutoMigrate(&ChannelCircuitBreakerState{}, &ChannelCircuitBreakerEvent{}); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
 	return db
+}
+
+func TestRecordChannelCircuitBreakerWritesEvents(t *testing.T) {
+	db := newChannelCircuitBreakerTestDB(t)
+
+	if err := recordChannelCircuitBreakerOpenWithDB(db, "channel-1", "low_success_rate", 0.25, 12345); err != nil {
+		t.Fatalf("record open: %v", err)
+	}
+	if err := updateChannelCircuitBreakerStateWithDB(db, "channel-1", ChannelCircuitBreakerStateHalfOpen, ""); err != nil {
+		t.Fatalf("record half-open: %v", err)
+	}
+	if err := updateChannelCircuitBreakerStateWithDB(db, "channel-1", ChannelCircuitBreakerStateRecovered, ""); err != nil {
+		t.Fatalf("record recovered: %v", err)
+	}
+
+	rows, err := ListChannelCircuitBreakerEventsWithDB(db, "channel-1", 10)
+	if err != nil {
+		t.Fatalf("list events: %v", err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("event count = %d, want 3: %+v", len(rows), rows)
+	}
+	if rows[2].Event != ChannelCircuitBreakerStateOpen || rows[2].SuccessRate != 0.25 || rows[2].RecoverAfter != 12345 {
+		t.Fatalf("open event = %+v", rows[2])
+	}
+	if rows[0].Event != ChannelCircuitBreakerStateRecovered {
+		t.Fatalf("latest event = %+v, want recovered", rows[0])
+	}
 }
 
 func TestRecordChannelCircuitBreakerOpenAndRecovered(t *testing.T) {

@@ -190,6 +190,7 @@ func createRedemptionsWithDB(tx *gorm.DB, template model.Redemption, creatorID s
 	if codeGenerator == nil {
 		codeGenerator = random.GetUUID
 	}
+	batchID := random.GetUUID()
 	codes := make([]string, 0, template.Count)
 	for i := 0; i < template.Count; i++ {
 		code := codeGenerator()
@@ -212,6 +213,28 @@ func createRedemptionsWithDB(tx *gorm.DB, template model.Redemption, creatorID s
 			return nil, err
 		}
 		codes = append(codes, code)
+	}
+	firstCode := ""
+	lastCode := ""
+	if len(codes) > 0 {
+		firstCode = codes[0]
+		lastCode = codes[len(codes)-1]
+	}
+	if err := model.RecordRedemptionIssueAuditLogWithDB(tx, model.RedemptionIssueAuditLog{
+		BatchID:            batchID,
+		CreatedByUserID:    creatorID,
+		Name:               template.Name,
+		GroupID:            template.GroupID,
+		Count:              len(codes),
+		FaceValueAmount:    template.FaceValueAmount,
+		FaceValueUnit:      template.FaceValueUnit,
+		Quota:              template.Quota,
+		CodeValidityDays:   template.CodeValidityDays,
+		CreditValidityDays: template.CreditValidityDays,
+		FirstCode:          firstCode,
+		LastCode:           lastCode,
+	}); err != nil {
+		return nil, err
 	}
 	return codes, nil
 }
