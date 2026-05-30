@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/yeying-community/router/common/helper"
-	"github.com/yeying-community/router/common/message"
 	"github.com/yeying-community/router/internal/admin/model"
 	"github.com/yeying-community/router/internal/admin/monitor"
 
@@ -357,6 +356,25 @@ func buildChannelBillingAlertKey(item model.ChannelBillingSnapshotItem) string {
 	return strings.Join(base, "::")
 }
 
+func isPlanBillingAlertItem(item model.ChannelBillingSnapshotItem) bool {
+	return strings.TrimSpace(strings.ToLower(item.ResourceType)) == model.ChannelBillingResourceTypePlan
+}
+
+func formatBillingAlertAmount(amount float64, currency string) string {
+	currency = strings.TrimSpace(strings.ToUpper(currency))
+	if currency == "" {
+		return fmt.Sprintf("%.2f", amount)
+	}
+	return fmt.Sprintf("%.2f %s", amount, currency)
+}
+
+func formatBillingAlertTime(unixTime int64) string {
+	if unixTime <= 0 {
+		return "-"
+	}
+	return time.Unix(unixTime, 0).Format("2006-01-02 15:04:05")
+}
+
 func createBillingAlertContent(channel *model.Channel, item model.ChannelBillingSnapshotItem, eventType string) (string, string) {
 	channelName := ""
 	channelID := ""
@@ -368,19 +386,30 @@ func createBillingAlertContent(channel *model.Channel, item model.ChannelBilling
 	if label == "" {
 		label = strings.TrimSpace(item.QuotaType)
 	}
+	channelText := channelName
+	if channelID != "" {
+		channelText = fmt.Sprintf("%s (#%s)", channelName, channelID)
+	}
 	switch eventType {
 	case model.ChannelBillingAlertTypeExpiringSoon:
 		subject := "渠道额度到期提醒"
-		content := message.EmailTemplate(
-			subject,
-			fmt.Sprintf(`
-				<p>您好！</p>
-				<p>渠道「<strong>%s</strong>」（#%s）的额度项「<strong>%s</strong>」即将到期。</p>
-				<p>剩余额度：<strong>%.4f %s</strong></p>
-				<p>到期时间：<strong>%s</strong></p>
-				<p>请提前一周内完成续费、升级或充值安排。</p>
-			`, channelName, channelID, label, item.RemainingAmount, item.Currency, time.Unix(item.ExpiresAt, 0).Format(time.RFC3339)),
-		)
+		var content string
+		if isPlanBillingAlertItem(item) {
+			content = fmt.Sprintf(`
+				<p><strong>套餐即将到期</strong>：%s</p>
+				<p>渠道：%s</p>
+				<p>权益：%s</p>
+				<p>处理：续费、切换备用渠道或主动下线，避免到期后继续路由。</p>
+			`, formatBillingAlertTime(item.ExpiresAt), channelText, label)
+		} else {
+			content = fmt.Sprintf(`
+				<p><strong>额度即将到期</strong>：%s</p>
+				<p>渠道：%s</p>
+				<p>额度：%s</p>
+				<p>剩余：%s</p>
+				<p>处理：续费、升级或充值，避免额度到期后不可用。</p>
+			`, formatBillingAlertTime(item.ExpiresAt), channelText, label, formatBillingAlertAmount(item.RemainingAmount, item.Currency))
+		}
 		return subject, content
 	case model.ChannelBillingAlertTypeLowRemaining:
 		ratioText := "-"
@@ -388,17 +417,12 @@ func createBillingAlertContent(channel *model.Channel, item model.ChannelBilling
 			ratioText = fmt.Sprintf("%.2f%%", item.RemainingAmount/item.LimitAmount*100)
 		}
 		subject := "渠道额度不足提醒"
-		content := message.EmailTemplate(
-			subject,
-			fmt.Sprintf(`
-				<p>您好！</p>
-				<p>渠道「<strong>%s</strong>」（#%s）的额度项「<strong>%s</strong>」余额偏低。</p>
-				<p>剩余额度：<strong>%.4f %s</strong></p>
-				<p>总额度：<strong>%.4f %s</strong></p>
-				<p>剩余比例：<strong>%s</strong></p>
-				<p>请及时升级套餐或充值。</p>
-			`, channelName, channelID, label, item.RemainingAmount, item.Currency, item.LimitAmount, item.Currency, ratioText),
-		)
+		content := fmt.Sprintf(`
+			<p><strong>额度余额偏低</strong>：%s</p>
+			<p>渠道：%s</p>
+			<p>剩余：%s / %s（%s）</p>
+			<p>处理：充值、升级套餐或切换备用渠道。</p>
+		`, label, channelText, formatBillingAlertAmount(item.RemainingAmount, item.Currency), formatBillingAlertAmount(item.LimitAmount, item.Currency), ratioText)
 		return subject, content
 	default:
 		return "", ""

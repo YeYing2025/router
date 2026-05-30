@@ -87,7 +87,7 @@ export const CHANNEL_LIST_COLUMN_WIDTHS = {
   capabilities: 160,
   circuitBreaker: 152,
   priority: 92,
-  actions: 192,
+  actions: 72,
 };
 
 export const CHANNEL_LIST_TABLE_MIN_WIDTH =
@@ -110,7 +110,7 @@ export const GROUP_LIST_COLUMN_WIDTHS = {
   status: 92,
   createdAt: 148,
   updatedAt: 148,
-  actions: 192,
+  actions: 72,
 };
 
 export const GROUP_LIST_TABLE_MIN_WIDTH =

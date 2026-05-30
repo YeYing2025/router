@@ -2203,6 +2203,15 @@ body,
     font-size: 11px !important;
 }
 
+.router-channel-status-switch,
+.router-group-status-switch,
+.router-token-status-switch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
 .router-ui-table.router-provider-model-detail-table .ant-table {
     width: 100%;
     table-layout: fixed;
