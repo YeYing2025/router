@@ -1457,6 +1457,13 @@ func runLogVersionedMigrations(db *gorm.DB) error {
 				return tx.AutoMigrate(&Log{})
 			},
 		},
+		{
+			Version:     "202605300830_log_token_estimate_observability_columns",
+			Description: "add missing token estimate estimator fields to consume logs",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&Log{})
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeLog, migrations)
 }

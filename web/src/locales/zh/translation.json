@@ -673,11 +673,37 @@
           "credit": "信用额度",
           "plan": "套餐"
         },
+        "entitlement_kinds": {
+          "metered": "按量",
+          "periodic": "周期额度",
+          "package": "套餐",
+          "plan": "套餐有效期",
+          "custom": "自定义"
+        },
+        "entitlement_kind_descriptions": {
+          "metered": "按余额或总额度扣减",
+          "periodic": "按日/周/月周期重置",
+          "plan": "控制套餐是否仍有效",
+          "custom": "人工维护的权益项"
+        },
+        "mode_summary": {
+          "package_title": "套餐渠道",
+          "package_description": "该渠道存在套餐有效期或周期额度，运营判断可用性时优先看有效期、日/周/月剩余额度和重置时间。",
+          "metered_title": "按量渠道",
+          "metered_description": "该渠道主要按余额或总额度扣减，余额耗尽后会影响自动禁用判断。",
+          "unknown_title": "未识别",
+          "unknown_description": "当前快照没有可识别的按量或套餐权益项。"
+        },
         "quota_table": {
+          "entitlement_kind": "计费形态",
           "resource_type": "权益类型",
           "quota_label": "额度项",
-          "amount": "剩余/总量",
+          "amount": "剩余/状态",
+          "used_amount": "已使用",
           "remaining_ratio": "剩余比例",
+          "validity": "有效期/重置",
+          "valid_until": "有效至",
+          "next_reset": "下次重置",
           "reset_at": "重置时间",
           "expires_at": "到期时间",
           "status": "状态",

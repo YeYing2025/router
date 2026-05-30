@@ -673,11 +673,37 @@
           "credit": "Credit",
           "plan": "Plan"
         },
+        "entitlement_kinds": {
+          "metered": "Metered",
+          "periodic": "Periodic Quota",
+          "package": "Package",
+          "plan": "Plan Validity",
+          "custom": "Custom"
+        },
+        "entitlement_kind_descriptions": {
+          "metered": "Deducts from balance or total credit",
+          "periodic": "Resets by day, week, or month",
+          "plan": "Controls whether the plan is still valid",
+          "custom": "Manually maintained entitlement"
+        },
+        "mode_summary": {
+          "package_title": "Package Channel",
+          "package_description": "This channel has plan validity or periodic quota. Check expiration, daily/weekly/monthly remaining quota, and reset time before judging availability.",
+          "metered_title": "Metered Channel",
+          "metered_description": "This channel mainly deducts from balance or total credit. Exhausted credit can affect auto-disable decisions.",
+          "unknown_title": "Unknown",
+          "unknown_description": "The current snapshot has no recognizable metered or package entitlement items."
+        },
         "quota_table": {
+          "entitlement_kind": "Billing Type",
           "resource_type": "Entitlement Type",
           "quota_label": "Quota Item",
-          "amount": "Remaining / Limit",
+          "amount": "Remaining / Status",
+          "used_amount": "Used",
           "remaining_ratio": "Remaining Ratio",
+          "validity": "Validity / Reset",
+          "valid_until": "Valid Until",
+          "next_reset": "Next Reset",
           "reset_at": "Reset At",
           "expires_at": "Expires At",
           "status": "Status",
