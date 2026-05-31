@@ -532,7 +532,7 @@ const TokensTable = () => {
                 <span
                   role='button'
                   tabIndex={0}
-                  className='router-text-link'
+                  className='router-text-link router-token-key-link'
                   onClick={() =>
                     navigate(`/token/${token.id}`, {
                       state: {

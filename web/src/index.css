@@ -2223,6 +2223,14 @@ body,
     width: 100%;
 }
 
+.router-token-key-link {
+    display: inline-block;
+    width: 17ch;
+    font-family: 'JetBrains Mono', Consolas, 'Courier New', monospace !important;
+    font-variant-ligatures: none;
+    white-space: nowrap;
+}
+
 .router-ui-table.router-provider-model-detail-table .ant-table {
     width: 100%;
     table-layout: fixed;
