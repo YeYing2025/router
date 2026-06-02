@@ -493,10 +493,6 @@ func createBillingAlertContent(channel *model.Channel, item model.ChannelBilling
 	if label == "" {
 		label = strings.TrimSpace(item.QuotaType)
 	}
-	channelText := channelName
-	if channelID != "" {
-		channelText = fmt.Sprintf("%s (#%s)", channelName, channelID)
-	}
 	switch eventType {
 	case model.ChannelBillingAlertTypeExpiringSoon:
 		var content string
@@ -506,9 +502,10 @@ func createBillingAlertContent(channel *model.Channel, item model.ChannelBilling
 				<p><strong>套餐即将到期</strong>：%s</p>
 				<p>类别：套餐到期</p>
 				<p>渠道：%s</p>
+				<p>标识：%s</p>
 				<p>权益：%s</p>
 				<p>处理：续费、切换备用渠道或主动下线，避免到期后继续路由。</p>
-			`, formatBillingAlertTime(item.ExpiresAt), channelText, label)
+			`, formatBillingAlertTime(item.ExpiresAt), channelName, channelID, label)
 			return subject, content
 		} else {
 			subject := "渠道额度即将到期"
@@ -516,10 +513,11 @@ func createBillingAlertContent(channel *model.Channel, item model.ChannelBilling
 				<p><strong>额度即将到期</strong>：%s</p>
 				<p>类别：额度到期</p>
 				<p>渠道：%s</p>
+				<p>标识：%s</p>
 				<p>额度：%s</p>
 				<p>剩余：%s</p>
 				<p>处理：续费、升级或充值，避免额度到期后不可用。</p>
-			`, formatBillingAlertTime(item.ExpiresAt), channelText, label, formatBillingAlertAmount(item.RemainingAmount, item.Currency))
+			`, formatBillingAlertTime(item.ExpiresAt), channelName, channelID, label, formatBillingAlertAmount(item.RemainingAmount, item.Currency))
 			return subject, content
 		}
 	case model.ChannelBillingAlertTypeLowRemaining:
@@ -532,9 +530,10 @@ func createBillingAlertContent(channel *model.Channel, item model.ChannelBilling
 			<p><strong>额度余额偏低</strong>：%s</p>
 			<p>类别：余额偏低</p>
 			<p>渠道：%s</p>
+			<p>标识：%s</p>
 			<p>剩余：%s / %s（%s）</p>
 			<p>处理：充值、升级套餐或切换备用渠道。</p>
-		`, label, channelText, formatBillingAlertAmount(item.RemainingAmount, item.Currency), formatBillingAlertAmount(item.LimitAmount, item.Currency), ratioText)
+		`, label, channelName, channelID, formatBillingAlertAmount(item.RemainingAmount, item.Currency), formatBillingAlertAmount(item.LimitAmount, item.Currency), ratioText)
 		return subject, content
 	default:
 		return "", ""

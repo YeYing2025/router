@@ -182,6 +182,7 @@ func formatRobotText(title string, description string, content string) string {
 	return strings.TrimSpace(title) + "\n" + text
 }
 
+var htmlBlockTagPattern = regexp.MustCompile(`(?si)</?p[^>]*>`)
 var htmlTagPattern = regexp.MustCompile(`(?s)<[^>]*>`)
 
 func normalizeTextContent(description string, content string) string {
@@ -189,7 +190,8 @@ func normalizeTextContent(description string, content string) string {
 	if plain == "" {
 		plain = strings.TrimSpace(content)
 	}
-	plain = html.UnescapeString(htmlTagPattern.ReplaceAllString(plain, "\n"))
+	plain = htmlBlockTagPattern.ReplaceAllString(plain, "\n")
+	plain = html.UnescapeString(htmlTagPattern.ReplaceAllString(plain, ""))
 	lines := strings.Split(plain, "\n")
 	normalized := make([]string, 0, len(lines))
 	for _, line := range lines {
