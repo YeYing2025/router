@@ -3003,6 +3003,14 @@ body,
     margin-bottom: 1rem;
 }
 
+.router-ui-modal .router-ui-form-row {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.router-ui-modal .router-ui-form-row > .router-ui-field {
+    min-width: 0;
+}
+
 .router-ui-field-label {
     display: flex;
     align-items: center;
