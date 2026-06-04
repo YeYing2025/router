@@ -1,5 +1,6 @@
 export { default as AppButton } from './primitives/AppButton';
 export { default as AppAlert } from './primitives/AppAlert';
+export { default as AppCompact } from './primitives/AppCompact';
 export { default as AppDivider } from './primitives/AppDivider';
 export { default as AppDrawer } from './primitives/AppDrawer';
 export { default as AppIcon } from './primitives/AppIcon';
@@ -16,6 +17,7 @@ export { default as AppSider } from './primitives/AppSider';
 export { default as AppSpin } from './primitives/AppSpin';
 export { default as AppStatistic } from './primitives/AppStatistic';
 export { default as AppSwitch } from './primitives/AppSwitch';
+export { default as AppTableActionButton } from './primitives/AppTableActionButton';
 export { default as AppTag } from './primitives/AppTag';
 export { default as AppTabs } from './primitives/AppTabs';
 export { default as AppTextarea } from './primitives/AppTextarea';

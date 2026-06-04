@@ -761,12 +761,12 @@ func summarizeUsageRanking(items []usageRankingItem) usageRankSummary {
 }
 
 func buildUsageRankingWithKeyword(startAt int64, endAt int64, totalConsumeQuota int64, limit int, userKeyword string) ([]usageRankingItem, error) {
-	if startAt <= 0 || endAt <= 0 || endAt < startAt || limit <= 0 {
+	if startAt <= 0 || endAt <= 0 || endAt < startAt {
 		return []usageRankingItem{}, nil
 	}
 	keyword := strings.TrimSpace(userKeyword)
-	rows := make([]usageRankingRow, 0, limit)
-	query := model.LOG_DB.Table(model.EventLogsTableName).
+	usageRows := make([]usageRankingRow, 0)
+	usageQuery := model.LOG_DB.Table(model.EventLogsTableName).
 		Select(`
 			COALESCE(NULLIF(TRIM(user_id), ''), '') AS user_id,
 			COALESCE(NULLIF(MAX(TRIM(username)), ''), COALESCE(NULLIF(TRIM(user_id), ''), '-')) AS username,
@@ -776,35 +776,100 @@ func buildUsageRankingWithKeyword(startAt int64, endAt int64, totalConsumeQuota 
 			COALESCE(SUM(quota), 0) AS spend_quota,
 			COALESCE(MAX(created_at), 0) AS last_used_at
 		`).
-		Where("type = ? AND created_at BETWEEN ? AND ? AND COALESCE(NULLIF(TRIM(user_id), ''), '') <> ''", model.LogTypeConsume, startAt, endAt)
-	if keyword != "" {
-		like := "%" + keyword + "%"
-		query = query.Where("(user_id ILIKE ? OR username ILIKE ?)", like, like)
-	}
-	err := query.Group("user_id").
-		Order("spend_quota DESC, request_count DESC, last_used_at DESC").
-		Limit(limit).
-		Scan(&rows).Error
-	if err != nil {
+		Where("type = ? AND created_at BETWEEN ? AND ? AND COALESCE(NULLIF(TRIM(user_id), ''), '') <> ''", model.LogTypeConsume, startAt, endAt).
+		Group("user_id")
+	if err := usageQuery.Scan(&usageRows).Error; err != nil {
 		return nil, err
 	}
-	items := make([]usageRankingItem, 0, len(rows))
-	for _, row := range rows {
-		totalTokens := row.PromptTokens + row.CompletionTs
-		shareRate := 0.0
-		if totalConsumeQuota > 0 && row.SpendQuota > 0 {
-			shareRate = float64(row.SpendQuota) / float64(totalConsumeQuota)
+	usageByUserID := make(map[string]usageRankingRow, len(usageRows))
+	for _, row := range usageRows {
+		userID := strings.TrimSpace(row.UserID)
+		if userID == "" {
+			continue
 		}
-		items = append(items, usageRankingItem{
-			UserID:       strings.TrimSpace(row.UserID),
-			Username:     strings.TrimSpace(row.Username),
-			RequestCount: row.RequestCount,
-			TotalTokens:  totalTokens,
-			SpendQuota:   row.SpendQuota,
-			SpendYYC:     row.SpendQuota,
-			ShareRate:    clamp01(shareRate),
-			LastUsedAt:   row.LastUsedAt,
+		row.UserID = userID
+		usageByUserID[userID] = row
+	}
+
+	type dashboardUserRow struct {
+		UserID    string `gorm:"column:user_id"`
+		Username  string `gorm:"column:username"`
+		CreatedAt int64  `gorm:"column:created_at"`
+	}
+	userRows := make([]dashboardUserRow, 0)
+	userQuery := model.DB.Table("users AS u").
+		Select("u.id AS user_id, COALESCE(NULLIF(TRIM(u.display_name), ''), NULLIF(TRIM(u.username), ''), u.id) AS username, COALESCE(u.created_at, 0) AS created_at").
+		Where("u.status != ?", model.UserStatusDeleted)
+	if keyword != "" {
+		like := "%" + keyword + "%"
+		userQuery = userQuery.Where("(u.id = ? OR u.username ILIKE ? OR u.display_name ILIKE ? OR u.email ILIKE ? OR u.wallet_address ILIKE ?)", keyword, like, like, like, like)
+	}
+	if err := userQuery.Scan(&userRows).Error; err != nil {
+		return nil, err
+	}
+
+	type usageRankingCandidate struct {
+		usageRankingItem
+		CreatedAt int64
+	}
+	candidates := make([]usageRankingCandidate, 0, len(userRows))
+	selectedConsumeQuota := int64(0)
+	for _, userRow := range userRows {
+		userID := strings.TrimSpace(userRow.UserID)
+		if userID == "" {
+			continue
+		}
+		row := usageByUserID[userID]
+		row.UserID = userID
+		if strings.TrimSpace(row.Username) == "" {
+			row.Username = strings.TrimSpace(userRow.Username)
+		}
+		selectedConsumeQuota += row.SpendQuota
+		totalTokens := row.PromptTokens + row.CompletionTs
+		candidates = append(candidates, usageRankingCandidate{
+			usageRankingItem: usageRankingItem{
+				UserID:       strings.TrimSpace(row.UserID),
+				Username:     strings.TrimSpace(row.Username),
+				RequestCount: row.RequestCount,
+				TotalTokens:  totalTokens,
+				SpendQuota:   row.SpendQuota,
+				SpendYYC:     row.SpendQuota,
+				LastUsedAt:   row.LastUsedAt,
+			},
+			CreatedAt: userRow.CreatedAt,
 		})
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		left := candidates[i]
+		right := candidates[j]
+		if left.SpendQuota != right.SpendQuota {
+			return left.SpendQuota > right.SpendQuota
+		}
+		if left.RequestCount != right.RequestCount {
+			return left.RequestCount > right.RequestCount
+		}
+		if left.LastUsedAt != right.LastUsedAt {
+			return left.LastUsedAt > right.LastUsedAt
+		}
+		if left.CreatedAt != right.CreatedAt {
+			return left.CreatedAt > right.CreatedAt
+		}
+		return left.UserID < right.UserID
+	})
+	shareDenominator := totalConsumeQuota
+	if keyword != "" || shareDenominator <= 0 {
+		shareDenominator = selectedConsumeQuota
+	}
+	if limit > 0 && len(candidates) > limit {
+		candidates = candidates[:limit]
+	}
+	items := make([]usageRankingItem, 0, len(candidates))
+	for _, candidate := range candidates {
+		item := candidate.usageRankingItem
+		if shareDenominator > 0 && item.SpendQuota > 0 {
+			item.ShareRate = clamp01(float64(item.SpendQuota) / float64(shareDenominator))
+		}
+		items = append(items, item)
 	}
 	return items, nil
 }
@@ -1245,7 +1310,7 @@ func GetDashboard(c *gin.Context) {
 				c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
 				return
 			}
-			usageRank, err := buildUsageRankingWithKeyword(startAt, endAt, usageTotals.SpendQuota, 10, userKeyword)
+			usageRank, err := buildUsageRankingWithKeyword(startAt, endAt, usageTotals.SpendQuota, 0, userKeyword)
 			if err != nil {
 				c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
 				return

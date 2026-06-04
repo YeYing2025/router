@@ -846,10 +846,15 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		return openai.ErrorWrapper(err, classifyImageRequestErrorCode(err), http.StatusInternalServerError)
 	}
 
+	responseSettled := false
 	defer func(ctx context.Context) {
 		if resp != nil &&
 			resp.StatusCode != http.StatusCreated && // replicate returns 201
 			resp.StatusCode != http.StatusOK {
+			releasePackageQuotaReservation(ctx, packageReservation)
+			return
+		}
+		if !responseSettled {
 			releasePackageQuotaReservation(ctx, packageReservation)
 			return
 		}
@@ -920,6 +925,7 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		logger.Errorf(ctx, "image relay response failed user_id=%s group=%s channel_id=%s model=%s endpoint=%s err=%+v", strings.TrimSpace(meta.UserId), strings.TrimSpace(meta.Group), strings.TrimSpace(meta.ChannelId), strings.TrimSpace(imageRequest.Model), c.Request.URL.Path, respErr)
 		return respErr
 	}
+	responseSettled = true
 	if outputCount, ok := aliadaptor.QwenImageOutputCount(c); ok && billing.ResolveImageBillingMode(pricing) == billing.ImageBillingModePerImage {
 		finalSnapshot, snapshotErr := billing.ComputeImageBillingSnapshot(outputCount, 1, pricing, groupRatio)
 		if snapshotErr != nil {

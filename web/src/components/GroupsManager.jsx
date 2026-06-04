@@ -22,6 +22,7 @@ import {
   AppSelect,
   AppSwitch,
   AppTable,
+  AppTableActionButton,
   AppTag,
   AppTabs,
   AppTooltip,
@@ -1351,17 +1352,16 @@ const GroupsManager = ({ detailGroupId = '' }) => {
             width: 72,
             render: (_, row) => (
               <div className='router-action-group-tight router-table-actions-icon-compact'>
-                <AppButton
-                  className='router-inline-button'
+                <AppTableActionButton
+                  icon='trash'
+                  title={t('group_manage.buttons.delete')}
                   color='red'
                   disabled={submitting || loading}
                   onClick={(e) => {
                     e.stopPropagation();
                     openDeleteModal(row);
                   }}
-                >
-                  {t('group_manage.buttons.delete')}
-                </AppButton>
+                />
               </div>
             ),
           },
@@ -1504,28 +1504,23 @@ const GroupsManager = ({ detailGroupId = '' }) => {
             {
               title: t('group_manage.table.actions'),
               key: 'actions',
-              width: GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.actions,
+              width: 84,
               render: (_, item) => {
                 const channelID = (item?.id || '').toString().trim();
                 return (
-                  <div className='router-inline-actions'>
-                    <AppButton
-                      type='button'
-                      className='router-inline-button'
-                      basic
+                  <div className='router-inline-actions router-table-actions-icon-compact'>
+                    <AppTableActionButton
+                      icon='eye'
+                      title={t('group_manage.buttons.view_channel')}
                       onClick={() => openChannelDetailFromCurrentPage(channelID)}
-                    >
-                      {t('group_manage.buttons.view_channel')}
-                    </AppButton>
-                    <AppButton
-                      type='button'
-                      className='router-inline-button'
-                      basic
+                    />
+                    <AppTableActionButton
+                      icon='trash'
+                      title={t('group_manage.buttons.remove_channel')}
+                      color='red'
                       disabled={submitting || detailChannelsEditLocked || detailChannelModalOpen}
                       onClick={() => removeDetailChannel(item)}
-                    >
-                      {t('group_manage.buttons.remove_channel')}
-                    </AppButton>
+                    />
                   </div>
                 );
               },
@@ -1654,15 +1649,13 @@ const GroupsManager = ({ detailGroupId = '' }) => {
               key: 'actions',
               className: 'router-group-supported-models-col-actions',
               render: (_, entry) => (
-                <div className='router-action-group-tight'>
-                  <AppButton
-                    type='button'
-                    className='router-inline-button'
+                <div className='router-action-group-tight router-table-actions-icon-compact'>
+                  <AppTableActionButton
+                    icon='edit'
+                    title={t('group_manage.buttons.edit')}
                     disabled={submitting || detailModelsEditLocked}
                     onClick={() => openDetailModelEdit(entry)}
-                  >
-                    {t('group_manage.buttons.edit')}
-                  </AppButton>
+                  />
                   <AppPopconfirm
                     title={t('group_manage.modal.model_delete_confirm', {
                       model: entry?.model || '-',
@@ -1670,14 +1663,14 @@ const GroupsManager = ({ detailGroupId = '' }) => {
                     onConfirm={() => deleteDetailModel(entry?.model || '')}
                     disabled={submitting || detailModelsEditLocked}
                   >
-                    <AppButton
-                      type='button'
-                      className='router-inline-button'
-                      color='red'
-                      disabled={submitting || detailModelsEditLocked}
-                    >
-                      {t('group_manage.buttons.delete')}
-                    </AppButton>
+                    <span>
+                      <AppTableActionButton
+                        icon='trash'
+                        title={t('group_manage.buttons.delete')}
+                        color='red'
+                        disabled={submitting || detailModelsEditLocked}
+                      />
+                    </span>
                   </AppPopconfirm>
                 </div>
               ),
@@ -2213,17 +2206,15 @@ const GroupsManager = ({ detailGroupId = '' }) => {
           {
             title: t('group_manage.table.actions'),
             key: 'actions',
-            width: 120,
+            width: 52,
             render: (_, record) => (
-              <AppButton
-                type='button'
-                className='router-inline-button'
+              <AppTableActionButton
+                icon='trash'
+                title={t('group_manage.buttons.delete')}
                 color='red'
                 disabled={submitting}
                 onClick={() => removeModelRow(record.index)}
-              >
-                {t('group_manage.buttons.delete')}
-              </AppButton>
+              />
             ),
           },
         ]}

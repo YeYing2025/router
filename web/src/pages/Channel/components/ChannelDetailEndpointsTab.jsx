@@ -8,6 +8,7 @@ import {
   AppSelect,
   AppSwitch,
   AppTable,
+  AppTableActionButton,
   AppTag,
   AppTooltip,
 } from '../../../router-ui';
@@ -303,28 +304,15 @@ const ChannelDetailEndpointsTab = ({
             {
               title: t('channel.edit.endpoint_policies.table.actions'),
               key: 'actions',
-              width: columnWidths[6],
-              render: (_, row) => {
-                const endpointKey = buildChannelEndpointKey(row.model, row.endpoint);
-                const policyRow = policyByKey.get(endpointKey) || null;
-                return (
-                  <AppButton
-                    type='button'
-                    className='router-inline-button'
-                    disabled={endpointPolicyReadonly}
-                    onClick={() => openEndpointPolicyEditor(row)}
-                    title={
-                      policyRow?.updated_at > 0
-                        ? timestamp2string(policyRow.updated_at)
-                        : row.updated_at > 0
-                          ? timestamp2string(row.updated_at)
-                          : undefined
-                    }
-                  >
-                    {t('channel.edit.endpoint_policies.action')}
-                  </AppButton>
-                );
-              },
+              width: 52,
+              render: (_, row) => (
+                <AppTableActionButton
+                  icon='setting'
+                  title={t('channel.edit.endpoint_policies.action')}
+                  disabled={endpointPolicyReadonly}
+                  onClick={() => openEndpointPolicyEditor(row)}
+                />
+              ),
             },
           ]}
         />

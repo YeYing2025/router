@@ -9,6 +9,7 @@ import {
   AppPopconfirm,
   AppSelect,
   AppTable,
+  AppTableActionButton,
   AppTag,
   AppTooltip,
 } from '../../../router-ui';
@@ -369,23 +370,21 @@ const ChannelDetailModelsTab = ({
             {
               title: t('channel.table.actions'),
               key: 'actions',
-              className: 'router-table-col-actions-compact',
-              width: columnWidths.actions,
+              className: 'router-table-col-actions-icon',
+              width: 84,
               render: (_, row) => {
                 const rowEditActionDisabled =
                   detailModelsEditLocked || detailModelMutating || detailModelsEditing;
                 const rowDeleteDisabled =
                   detailModelMutating || detailModelsEditing;
                 return (
-                  <div className='router-inline-actions router-table-actions-compact'>
-                    <AppButton
-                      type='button'
-                      className='router-inline-button'
+                  <div className='router-inline-actions router-table-actions-icon-compact'>
+                    <AppTableActionButton
+                      icon='edit'
+                      title={t('common.edit')}
                       disabled={rowEditActionDisabled}
                       onClick={() => startDetailModelEdit(row.upstream_model)}
-                    >
-                      {t('common.edit')}
-                    </AppButton>
+                    />
                     <AppPopconfirm
                       title={t('channel.edit.model_selector.delete_confirm')}
                       onConfirm={() => handleDeleteDetailModel(row)}
@@ -393,14 +392,14 @@ const ChannelDetailModelsTab = ({
                       cancelText={t('common.cancel')}
                       disabled={rowDeleteDisabled}
                     >
-                      <AppButton
-                        type='button'
-                        color='red'
-                        className='router-inline-button'
-                        disabled={rowDeleteDisabled}
-                      >
-                        {t('common.delete')}
-                      </AppButton>
+                      <span>
+                        <AppTableActionButton
+                          icon='trash'
+                          title={t('common.delete')}
+                          color='red'
+                          disabled={rowDeleteDisabled}
+                        />
+                      </span>
                     </AppPopconfirm>
                   </div>
                 );

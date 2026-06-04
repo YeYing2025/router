@@ -14,6 +14,7 @@ import {
 } from '../helpers/billing';
 import {
   AppButton,
+  AppCompact,
   AppField,
   AppFilterHeader,
   AppFormActions,
@@ -24,6 +25,7 @@ import {
   AppSelect,
   AppSwitch,
   AppTable,
+  AppTableActionButton,
 } from '../router-ui';
 
 const createEmptyPlan = () => ({
@@ -39,6 +41,15 @@ const createEmptyPlan = () => ({
   enabled: true,
   public_visible: true,
 });
+
+const ensureUnitOption = (options, value) => {
+  const normalized = (value || '').toString().trim().toUpperCase();
+  const items = Array.isArray(options) ? options : [];
+  if (!normalized || items.some((item) => item?.value === normalized)) {
+    return items;
+  }
+  return [...items, { value: normalized, label: normalized }];
+};
 
 const appendGroupOptionIfMissing = (options, groupID, groupName) => {
   const normalizedGroupID = (groupID || '').toString().trim();
@@ -57,6 +68,55 @@ const appendGroupOptionIfMissing = (options, groupID, groupName) => {
       text: (groupName || '').toString().trim() || normalizedGroupID,
     },
   ];
+};
+
+const mergeGroupOptions = (currentOptions, nextOptions) => {
+  const merged = new Map();
+  const appendOption = (option) => {
+    const value = (option?.value || '').toString().trim();
+    if (!value) {
+      return;
+    }
+    const current = merged.get(value);
+    const nextText = (option?.text || option?.label || '').toString().trim();
+    if (!current) {
+      merged.set(value, {
+        key: option?.key || value,
+        value,
+        text: nextText || value,
+      });
+      return;
+    }
+    merged.set(value, {
+      ...current,
+      key: option?.key || current.key || value,
+      value,
+      text: nextText || current.text || value,
+    });
+  };
+  (Array.isArray(currentOptions) ? currentOptions : []).forEach(appendOption);
+  (Array.isArray(nextOptions) ? nextOptions : []).forEach(appendOption);
+  return Array.from(merged.values()).sort((a, b) =>
+    (a.text || '').localeCompare(b.text || '', 'zh-Hans-CN', {
+      sensitivity: 'base',
+      numeric: true,
+    }),
+  );
+};
+
+const resolveGroupOptionLabel = (options, groupID, fallbackName = '') => {
+  const normalizedGroupID = (groupID || '').toString().trim();
+  if (!normalizedGroupID) {
+    return '';
+  }
+  const matchedOption = (Array.isArray(options) ? options : []).find(
+    (item) => (item?.value || '').toString().trim() === normalizedGroupID,
+  );
+  return (
+    (matchedOption?.text || matchedOption?.label || fallbackName || normalizedGroupID)
+      .toString()
+      .trim()
+  );
 };
 
 const TopupPlansManager = () => {
@@ -80,6 +140,27 @@ const TopupPlansManager = () => {
     () => buildDisplayUnitOptions(currencyIndex, { order: 'yyc-first' }),
     [currencyIndex]
   );
+
+  const payCurrencyOptions = useMemo(
+    () => ensureUnitOption(displayUnitOptions, form.amount_currency || 'CNY'),
+    [displayUnitOptions, form.amount_currency]
+  );
+
+  const quotaCurrencyOptions = useMemo(
+    () => ensureUnitOption(displayUnitOptions, form.quota_currency || 'USD'),
+    [displayUnitOptions, form.quota_currency]
+  );
+
+  const selectedGroupValue = useMemo(() => {
+    const groupID = (form.group_id || '').toString().trim();
+    if (!groupID) {
+      return undefined;
+    }
+    return {
+      value: groupID,
+      label: resolveGroupOptionLabel(groupOptions, groupID, form.group_name),
+    };
+  }, [form.group_id, form.group_name, groupOptions]);
 
   const loadPlans = useCallback(async () => {
     setLoading(true);
@@ -127,12 +208,15 @@ const TopupPlansManager = () => {
         }
         page += 1;
       }
-      setGroupOptions(
-        items.map((item) => ({
-          key: item.id,
-          value: item.id,
-          text: item.name || item.id,
-        })),
+      setGroupOptions((current) =>
+        mergeGroupOptions(
+          current,
+          items.map((item) => ({
+            key: item.id,
+            value: item.id,
+            text: item.name || item.id,
+          })),
+        ),
       );
     } catch (error) {
       showError(error?.message || t('topup.manage.load_failed'));
@@ -510,27 +594,23 @@ const TopupPlansManager = () => {
             {
               title: t('common.operation'),
               key: 'action',
-              className: 'router-table-col-actions-compact router-topup-plan-action-cell',
-              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.actions,
+              className: 'router-table-col-actions-icon router-topup-plan-action-cell',
+              width: 84,
               render: (_, row) => (
-                <div className='router-action-group-tight router-table-actions-compact'>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
+                <div className='router-action-group-tight router-table-actions-icon-compact'>
+                  <AppTableActionButton
+                    icon='edit'
+                    title={t('common.edit')}
                     onClick={() => openEdit(row)}
-                  >
-                    {t('common.edit')}
-                  </AppButton>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
+                  />
+                  <AppTableActionButton
+                    icon='trash'
+                    title={t('common.delete')}
                     onClick={() => {
                       setActiveRow(row);
                       setDeleteOpen(true);
                     }}
-                  >
-                    {t('common.delete')}
-                  </AppButton>
+                  />
                 </div>
               ),
             },
@@ -539,6 +619,7 @@ const TopupPlansManager = () => {
       </div>
 
       <AppModal
+        className='router-topup-plan-editor-modal'
         open={editOpen}
         size='tiny'
         onClose={() => setEditOpen(false)}
@@ -546,7 +627,7 @@ const TopupPlansManager = () => {
         footer={null}
       >
         <div className='router-page-stack'>
-          <AppFormRow>
+          <AppFormRow className='router-topup-plan-form-row'>
             <AppField label={t('topup.manage.columns.name')} required>
               <AppInput
                 value={form.name}
@@ -556,59 +637,102 @@ const TopupPlansManager = () => {
               />
             </AppField>
           </AppFormRow>
-          <AppFormRow>
+          <AppFormRow className='router-topup-plan-form-row'>
             <AppField label={t('topup.manage.columns.group')}>
               <AppSelect
+                labelInValue
                 search
                 loading={groupLoading}
                 options={groupOptions}
                 placeholder={t('topup.manage.group_placeholder')}
-                value={form.group_id}
+                value={selectedGroupValue}
                 onChange={(_, data) => {
-                  const value = (data?.value || '').toString();
-                  const option = groupOptions.find((item) => item.value === value);
+                  const value =
+                    typeof data?.value === 'object'
+                      ? (data?.value?.value || '').toString()
+                      : (data?.value || '').toString();
+                  const label =
+                    typeof data?.value === 'object'
+                      ? (data?.value?.label || '').toString().trim()
+                      : '';
                   setForm((current) => ({
                     ...current,
                     group_id: value,
-                    group_name: option?.text || '',
+                    group_name:
+                      (
+                        label ||
+                        resolveGroupOptionLabel(groupOptions, value, current.group_name)
+                      )
+                        .toString()
+                        .trim(),
                   }));
                 }}
               />
             </AppField>
           </AppFormRow>
-          <AppFormRow>
+          <AppFormRow className='router-topup-plan-form-row'>
             <AppField label={t('topup.manage.columns.pay_amount')}>
-              <AppInputNumber
-                min={0}
-                step={0.01}
-                precision={2}
-                fluid
-                value={form.amount}
-                onChange={(_, { value }) =>
-                  setForm((current) => ({
-                    ...current,
-                    amount: Number(value || 0),
-                  }))
-                }
-              />
+              <AppCompact className='router-section-input-with-unit' block>
+                <AppInputNumber
+                  className='router-section-input router-section-input-with-unit-field'
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  fluid
+                  value={form.amount}
+                  onChange={(_, { value }) =>
+                    setForm((current) => ({
+                      ...current,
+                      amount: Number(value || 0),
+                    }))
+                  }
+                />
+                <UnitDropdown
+                  variant='inputUnit'
+                  options={payCurrencyOptions}
+                  value={form.amount_currency || 'CNY'}
+                  onChange={(_, { value }) =>
+                    setForm((current) => ({
+                      ...current,
+                      amount_currency: (value || 'CNY').toString().trim().toUpperCase(),
+                    }))
+                  }
+                  aria-label={t('topup.manage.columns.pay_amount')}
+                />
+              </AppCompact>
             </AppField>
             <AppField label={t('topup.manage.columns.credited_amount')}>
-              <AppInputNumber
-                min={0}
-                step={0.01}
-                precision={2}
-                fluid
-                value={form.quota_amount}
-                onChange={(_, { value }) =>
-                  setForm((current) => ({
-                    ...current,
-                    quota_amount: Number(value || 0),
-                  }))
-                }
-              />
+              <AppCompact className='router-section-input-with-unit' block>
+                <AppInputNumber
+                  className='router-section-input router-section-input-with-unit-field'
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  fluid
+                  value={form.quota_amount}
+                  onChange={(_, { value }) =>
+                    setForm((current) => ({
+                      ...current,
+                      quota_amount: Number(value || 0),
+                    }))
+                  }
+                />
+                <UnitDropdown
+                  variant='inputUnit'
+                  options={quotaCurrencyOptions}
+                  value={form.quota_currency || 'USD'}
+                  onChange={(_, { value }) =>
+                    setForm((current) => ({
+                      ...current,
+                      quota_currency: (value || 'USD').toString().trim().toUpperCase(),
+                    }))
+                  }
+                  aria-label={t('topup.manage.columns.credited_amount')}
+                />
+              </AppCompact>
             </AppField>
           </AppFormRow>
-          <AppFormRow>
+          <AppFormRow className='router-topup-plan-form-row'>
             <AppField label={t('topup.manage.columns.validity_days')}>
               <AppInputNumber
                 min={0}
@@ -624,9 +748,8 @@ const TopupPlansManager = () => {
                 }
               />
             </AppField>
-            <AppField />
           </AppFormRow>
-          <AppFormRow>
+          <AppFormRow className='router-topup-plan-form-row'>
             <AppField label={t('topup.manage.columns.enabled')}>
               <AppSwitch
                 checked={form.enabled}

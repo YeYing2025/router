@@ -20,6 +20,7 @@ import {
 import UnitDropdown from './UnitDropdown';
 import {
   AppButton,
+  AppCompact,
   AppField,
   AppFilterHeader,
   AppFormActions,
@@ -31,6 +32,7 @@ import {
   AppSelect,
   AppSwitch,
   AppTable,
+  AppTableActionButton,
   AppTextarea,
 } from '../router-ui';
 import {
@@ -184,6 +186,15 @@ const resolvePackageYYCAmount = (row, type) => {
   return Number(row?.package_emergency_quota_limit ?? 0);
 };
 
+const ensureUnitOption = (options, value) => {
+  const normalized = (value || '').toString().trim().toUpperCase();
+  const items = Array.isArray(options) ? options : [];
+  if (!normalized || items.some((item) => item?.value === normalized)) {
+    return items;
+  }
+  return [...items, { value: normalized, label: normalized }];
+};
+
 const renderPackageAmountFieldValue = (row, type, displayUnit, currencyIndex) => {
   const normalizedYYCAmount = resolvePackageYYCAmount(row, type);
   if (!Number.isFinite(normalizedYYCAmount)) {
@@ -228,6 +239,11 @@ const PackagesManager = () => {
   const billingUnitOptions = useMemo(
     () => buildBillingUnitOptions(currencyIndex),
     [currencyIndex]
+  );
+
+  const saleCurrencyOptions = useMemo(
+    () => ensureUnitOption(displayUnitOptions, form.sale_currency || 'CNY'),
+    [displayUnitOptions, form.sale_currency]
   );
 
   const selectedVisibleUsers = useMemo(
@@ -908,26 +924,24 @@ const PackagesManager = () => {
             {
               title: t('package_manage.table.actions'),
               key: 'actions',
-              className: 'router-table-col-actions-compact router-package-action-cell',
-              width: PACKAGE_LIST_COLUMN_WIDTHS.actions,
+              className: 'router-table-col-actions-icon router-package-action-cell',
+              width: 52,
               render: (_, row) => (
                 <div
-                  className='router-action-group-tight router-table-actions-compact router-nowrap'
+                  className='router-action-group-tight router-table-actions-icon-compact router-nowrap'
                   onClick={(e) => {
                     e.stopPropagation();
                   }}
                 >
-                  <AppButton
-                    type='button'
-                    className='router-inline-button'
+                  <AppTableActionButton
+                    icon='trash'
+                    title={t('package_manage.buttons.delete')}
                     color='red'
                     disabled={submitting}
                     onClick={() => {
                       openDeleteModal(row);
                     }}
-                  >
-                    {t('package_manage.buttons.delete')}
-                  </AppButton>
+                  />
                 </div>
               ),
             },
@@ -953,7 +967,7 @@ const PackagesManager = () => {
 
   const renderFormFields = () => (
     <div>
-      <AppFormRow>
+      <AppFormRow className='router-modal-form-row'>
         <AppField label={t('package_manage.form.name')} required>
           <AppInput
             className='router-section-input'
@@ -978,7 +992,7 @@ const PackagesManager = () => {
         </AppField>
       </AppFormRow>
 
-      <AppFormRow>
+      <AppFormRow className='router-modal-form-row'>
         <AppField label={t('package_manage.form.description')}>
           <AppTextarea
             className='router-section-input'
@@ -990,34 +1004,40 @@ const PackagesManager = () => {
         </AppField>
       </AppFormRow>
 
-      <AppFormRow>
+      <AppFormRow className='router-modal-form-row'>
         <AppField label={t('package_manage.form.sale_price')}>
-          <AppInputNumber
-            className='router-section-input'
-            min={0}
-            step={0.01}
-            precision={2}
-            fluid
-            value={form.sale_price}
-            onChange={(e, { value }) =>
-              setForm((prev) => ({ ...prev, sale_price: value ?? '0' }))
-            }
-          />
+          <AppCompact className='router-section-input-with-unit' block>
+            <AppInputNumber
+              className='router-section-input router-section-input-with-unit-field'
+              min={0}
+              step={0.01}
+              precision={2}
+              fluid
+              value={form.sale_price}
+              onChange={(e, { value }) =>
+                setForm((prev) => ({ ...prev, sale_price: value ?? '0' }))
+              }
+            />
+            <UnitDropdown
+              variant='inputUnit'
+              options={saleCurrencyOptions}
+              value={form.sale_currency || 'CNY'}
+              onChange={(_, { value }) =>
+                setForm((prev) => ({
+                  ...prev,
+                  sale_currency: (value || 'CNY').toString().trim().toUpperCase(),
+                }))
+              }
+              aria-label={t('package_manage.form.sale_currency')}
+            />
+          </AppCompact>
         </AppField>
-        <AppField label={t('package_manage.form.sale_currency')}>
-          <AppInput
-            className='router-section-input'
-            value={form.sale_currency}
-            onChange={(e, { value }) =>
-              setForm((prev) => ({ ...prev, sale_currency: (value || 'CNY').toUpperCase() }))
-            }
-          />
-        </AppField>
+        <AppField />
       </AppFormRow>
 
-      <AppFormRow>
+      <AppFormRow className='router-modal-form-row'>
         <AppField label={t('package_manage.form.daily_quota_limit')}>
-          <div className='router-section-input-with-unit'>
+          <AppCompact className='router-section-input-with-unit' block>
             <AppInputNumber
               className='router-section-input router-section-input-with-unit-field'
               value={form.daily_amount}
@@ -1049,10 +1069,10 @@ const PackagesManager = () => {
               }}
               aria-label={t('package_manage.form.daily_quota_limit')}
             />
-          </div>
+          </AppCompact>
         </AppField>
         <AppField label={t('package_manage.form.package_emergency_quota_limit')}>
-          <div className='router-section-input-with-unit'>
+          <AppCompact className='router-section-input-with-unit' block>
             <AppInputNumber
               className='router-section-input router-section-input-with-unit-field'
               value={form.emergency_amount}
@@ -1090,11 +1110,11 @@ const PackagesManager = () => {
               }}
               aria-label={t('package_manage.form.package_emergency_quota_limit')}
             />
-          </div>
+          </AppCompact>
         </AppField>
       </AppFormRow>
 
-      <AppFormRow>
+      <AppFormRow className='router-modal-form-row'>
         <AppField label={t('package_manage.form.duration_days')}>
           <AppInputNumber
             className='router-section-input'
@@ -1119,7 +1139,7 @@ const PackagesManager = () => {
         </AppField>
       </AppFormRow>
 
-      <AppFormRow>
+      <AppFormRow className='router-modal-form-row'>
         <AppField label={t('package_manage.form.enabled')}>
           <AppSwitch
             checked={Boolean(form.enabled)}
@@ -1131,7 +1151,7 @@ const PackagesManager = () => {
         <AppField />
       </AppFormRow>
 
-      <AppFormRow>
+      <AppFormRow className='router-modal-form-row'>
         <AppField label={t('package_manage.form.source')}>
           <AppInput
             className='router-section-input'

@@ -22,6 +22,7 @@ import {
 import {
   AppButton,
   AppFilterHeader,
+  AppIcon,
   AppInput,
   AppSegmented,
   AppSection,
@@ -43,8 +44,6 @@ const PERIOD_OPTIONS = [
   'this_year',
   'all_time',
 ];
-
-const USAGE_RANK_PERIOD_OPTIONS = ['today', 'last_7_days', 'this_month', 'all_time'];
 
 const TREND_METRIC_OPTIONS = [
   'spend_amount',
@@ -282,15 +281,6 @@ const AdminDashboard = () => {
         key: value,
         value,
         text: t(`dashboard.spending.period.${value}`),
-      })),
-    [t],
-  );
-
-  const usageRankPeriodOptions = useMemo(
-    () =>
-      USAGE_RANK_PERIOD_OPTIONS.map((value) => ({
-        value,
-        label: t(`dashboard.spending.period.${value}`),
       })),
     [t],
   );
@@ -603,20 +593,6 @@ const AdminDashboard = () => {
     [formatUsd, navigate, t],
   );
 
-  const primaryUsageUser = useMemo(() => {
-    const rankedRows = Array.isArray(dashboard.usage_rank) ? dashboard.usage_rank : [];
-    const topUsername = String(dashboard.usage_summary.top_username || '').trim();
-    if (topUsername !== '') {
-      const matched = rankedRows.find(
-        (item) => String(item?.username || '').trim() === topUsername,
-      );
-      if (matched) {
-        return matched;
-      }
-    }
-    return rankedRows[0] || null;
-  }, [dashboard.usage_rank, dashboard.usage_summary.top_username]);
-
   const modelHealthDistribution = useMemo(
     () => [
       {
@@ -670,148 +646,6 @@ const AdminDashboard = () => {
       };
     });
   }, [formatCount, formatUsd, modelSort, sortedModels, t]);
-
-  const usageInsightData = useMemo(() => {
-    const rows = Array.isArray(dashboard.usage_rank) ? dashboard.usage_rank : [];
-    if (rows.length === 0) {
-      return {
-        distribution: [],
-        shareChart: [],
-      };
-    }
-    const requestAvg =
-      rows.reduce((sum, item) => sum + Number(item.request_count || 0), 0) /
-      rows.length;
-    const tokenAvg =
-      rows.reduce((sum, item) => sum + Number(item.total_tokens || 0), 0) /
-      rows.length;
-    const highSpendUsers = rows.filter((item) => toPercent(item.share_rate) >= 10);
-    const activeUsers = rows.filter(
-      (item) => Number(item.request_count || 0) >= requestAvg,
-    );
-    const longTailUsers = rows.filter(
-      (item) =>
-        toPercent(item.share_rate) < 3 &&
-        Number(item.total_tokens || 0) <= tokenAvg,
-    );
-    return {
-      distribution: [
-        {
-          key: 'high_spend',
-          label: t('dashboard.admin.users.insights.high_spend'),
-          count: highSpendUsers.length,
-          hint: t('dashboard.admin.users.insights.high_spend_hint'),
-          color: '#dc2626',
-          userIds: highSpendUsers
-            .map((item) => (item?.user_id || '').toString().trim())
-            .filter(Boolean),
-        },
-        {
-          key: 'active',
-          label: t('dashboard.admin.users.insights.active'),
-          count: activeUsers.length,
-          hint: t('dashboard.admin.users.insights.active_hint'),
-          color: '#2563eb',
-          userIds: activeUsers
-            .map((item) => (item?.user_id || '').toString().trim())
-            .filter(Boolean),
-        },
-        {
-          key: 'long_tail',
-          label: t('dashboard.admin.users.insights.long_tail'),
-          count: longTailUsers.length,
-          hint: t('dashboard.admin.users.insights.long_tail_hint'),
-          color: '#64748b',
-          userIds: longTailUsers
-            .map((item) => (item?.user_id || '').toString().trim())
-            .filter(Boolean),
-        },
-      ],
-      shareChart: rows.slice(0, 8).map((item) => ({
-        user: item.username || item.user_id || '-',
-        short_user: String(item.username || item.user_id || '-').slice(0, 16),
-        share_percent: Number(toPercent(item.share_rate).toFixed(1)),
-      })),
-    };
-  }, [dashboard.usage_rank, t]);
-
-  const openUserFocusList = useCallback((item) => {
-    const userIDs = [...new Set(
-      (Array.isArray(item?.userIds) ? item.userIds : [])
-        .map((entry) => (entry || '').toString().trim())
-        .filter(Boolean),
-    )];
-    if (userIDs.length === 0) {
-      return;
-    }
-    const params = new URLSearchParams();
-    params.set('focus_ids', userIDs.join(','));
-    params.set('focus_name', item?.label || t('header.user'));
-    navigate(`/admin/user?${params.toString()}`);
-  }, [navigate, t]);
-
-  const usageFocusData = useMemo(() => {
-    const rankedRows = Array.isArray(dashboard.usage_rank) ? dashboard.usage_rank : [];
-    const matchedUserCount = Number(dashboard.usage_totals.user_count || 0);
-    const totalSpendYyc = Number(dashboard.usage_totals.spend_yyc || 0);
-    const avgSpendPerUserYyc =
-      matchedUserCount > 0 ? totalSpendYyc / matchedUserCount : 0;
-    const topUserSharePercent = toPercent(dashboard.usage_summary.top_user_share);
-    const top3SharePercent = rankedRows
-      .slice(0, 3)
-      .reduce((sum, item) => sum + toPercent(item.share_rate), 0);
-    const highSpendBucket =
-      usageInsightData.distribution.find((item) => item.key === 'high_spend') || null;
-    const longTailBucket =
-      usageInsightData.distribution.find((item) => item.key === 'long_tail') || null;
-
-    let concentrationTone = 'stable';
-    if (top3SharePercent >= 60) {
-      concentrationTone = 'high';
-    } else if (top3SharePercent >= 35) {
-      concentrationTone = 'medium';
-    }
-
-    return [
-      {
-        key: 'top_user',
-        label: t('dashboard.admin.users.focus.top_user'),
-        value: dashboard.usage_summary.top_username || '-',
-        hint: t('dashboard.admin.users.focus.top_user_hint', {
-          share: formatPercent(dashboard.usage_summary.top_user_share),
-        }),
-        tone: 'neutral',
-        compact: true,
-        userId: primaryUsageUser?.user_id || '',
-      },
-      {
-        key: 'concentration',
-        label: t('dashboard.admin.users.focus.concentration'),
-        value: `${top3SharePercent.toFixed(1)}%`,
-        hint: t(`dashboard.admin.users.focus.concentration_${concentrationTone}`),
-        tone: concentrationTone,
-      },
-      {
-        key: 'avg_spend',
-        label: t('dashboard.admin.users.focus.avg_spend'),
-        value: formatUsd(avgSpendPerUserYyc),
-        hint: t('dashboard.admin.users.focus.avg_spend_hint', {
-          count: formatCount(matchedUserCount),
-        }),
-        tone: 'neutral',
-      },
-      {
-        key: 'long_tail',
-        label: t('dashboard.admin.users.focus.long_tail'),
-        value: formatCount(longTailBucket?.count || 0),
-        hint: t('dashboard.admin.users.focus.long_tail_hint', {
-          count: formatCount(highSpendBucket?.count || 0),
-          topShare: `${topUserSharePercent.toFixed(1)}%`,
-        }),
-        tone: longTailBucket?.count > (highSpendBucket?.count || 0) ? 'positive' : 'neutral',
-      },
-    ];
-  }, [dashboard.usage_rank, dashboard.usage_summary, dashboard.usage_totals, formatUsd, primaryUsageUser?.user_id, t, usageInsightData]);
 
   const channelInsightData = useMemo(() => {
     const rows = Array.isArray(channelHealthData) ? channelHealthData : [];
@@ -915,33 +749,44 @@ const AdminDashboard = () => {
         { key: activeSection, label: activeSectionTitle, active: true },
       ]}
       title={activeSectionTitle}
-      picker={
-        <div className='admin-dashboard-period'>
-          <AppSelect
-            className='router-section-dropdown'
-            options={periodOptions}
-            value={period}
-            onChange={(e, { value }) => setPeriod(value)}
-          />
-        </div>
-      }
-      actions={
-        <>
-          <span className='admin-dashboard-generated-at'>
-            {formatUpdatedAt(dashboard.generated_at)}
-          </span>
-          <AppButton
-            className='router-inline-button'
-            type='button'
-            loading={loading}
-            onClick={loadData}
-          >
-            {t('dashboard.admin.buttons.refresh')}
-          </AppButton>
-        </>
-      }
-      endClassName='admin-dashboard-toolbar-end'
     />
+  );
+
+  const renderPeriodControl = () => (
+    <div className='admin-dashboard-period-control'>
+      <AppSelect
+        className='router-section-dropdown'
+        options={periodOptions}
+        value={period}
+        onChange={(e, { value }) => setPeriod(value)}
+      />
+    </div>
+  );
+
+  const renderRefreshControls = () => (
+    <div className='admin-dashboard-refresh-controls'>
+      <span className='admin-dashboard-generated-at'>
+        {formatUpdatedAt(dashboard.generated_at)}
+      </span>
+      <AppTooltip title={t('dashboard.admin.buttons.refresh')}>
+        <AppButton
+          className='router-inline-button admin-dashboard-refresh-button'
+          type='button'
+          aria-label={t('dashboard.admin.buttons.refresh')}
+          loading={loading}
+          onClick={loadData}
+          icon={<AppIcon name='exchange' />}
+        />
+      </AppTooltip>
+    </div>
+  );
+
+  const renderSectionControls = (extra = null) => (
+    <div className='admin-dashboard-section-controls'>
+      {renderPeriodControl()}
+      {extra}
+      {renderRefreshControls()}
+    </div>
   );
 
   const applyUsageKeyword = useCallback(() => {
@@ -954,7 +799,18 @@ const AdminDashboard = () => {
   }, []);
 
   const renderSpendingSection = () => (
-    <AppSection>
+    <AppSection className='admin-dashboard-section'>
+      <div className='admin-dashboard-subsection-header'>
+        <div className='admin-dashboard-subsection-header-main'>
+          <div className='admin-dashboard-subsection-title admin-dashboard-subsection-title-strong'>
+            {t('dashboard.admin.sections.spending')}
+          </div>
+        </div>
+        <AppToolbar
+          className='admin-dashboard-section-toolbar'
+          end={renderSectionControls()}
+        />
+      </div>
       <div className='admin-dashboard-kpi-grid'>
         <div className='admin-dashboard-kpi-item'>
           <div className='admin-dashboard-kpi-label'>
@@ -1125,6 +981,17 @@ const AdminDashboard = () => {
 
   const renderChannelsSection = () => (
     <AppSection className='admin-dashboard-section'>
+      <div className='admin-dashboard-subsection-header'>
+        <div className='admin-dashboard-subsection-header-main'>
+          <div className='admin-dashboard-subsection-title admin-dashboard-subsection-title-strong'>
+            {t('dashboard.admin.sections.channels')}
+          </div>
+        </div>
+        <AppToolbar
+          className='admin-dashboard-section-toolbar'
+          end={renderSectionControls()}
+        />
+      </div>
       <div className='admin-dashboard-kpi-grid admin-dashboard-kpi-grid-compact'>
         <div className='admin-dashboard-kpi-item'>
           <div className='admin-dashboard-kpi-label'>
@@ -1365,238 +1232,63 @@ const AdminDashboard = () => {
 
   const renderUsersSection = () => (
     <AppSection className='admin-dashboard-section'>
-      <div className='admin-dashboard-subsection-header'>
-        <div className='admin-dashboard-subsection-header-main'>
+      <div className='admin-dashboard-subsection-header admin-dashboard-usage-rank-header'>
+        <div className='admin-dashboard-usage-rank-title-row'>
           <div className='admin-dashboard-subsection-title admin-dashboard-subsection-title-strong'>
             {t('dashboard.admin.usage_rank.title')}
           </div>
+          {renderRefreshControls()}
+        </div>
+        <div className='admin-dashboard-usage-rank-filter-row'>
           <div className='admin-dashboard-subsection-description'>
             {t('dashboard.admin.usage_rank.description')}
           </div>
-        </div>
-        <AppToolbar
-          className='admin-dashboard-usage-rank-toolbar'
-          end={
-            <>
-              <AppSegmented
-                className='admin-dashboard-segmented'
-                options={usageRankPeriodOptions}
-                value={period}
-                onChange={(e, { value }) => setPeriod(value)}
+          <div className='admin-dashboard-usage-rank-filters'>
+            {renderPeriodControl()}
+            <div className='router-list-toolbar-query router-list-toolbar-query-compact'>
+              <AppInput
+                className='admin-dashboard-usage-rank-search'
+                value={usageKeywordInput}
+                placeholder={t('dashboard.admin.usage_rank.search.placeholder')}
+                onChange={(e, { value }) => setUsageKeywordInput(value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    applyUsageKeyword();
+                  }
+                }}
               />
-              <div className='router-list-toolbar-query router-list-toolbar-query-compact'>
-                <AppInput
-                  className='admin-dashboard-usage-rank-search'
-                  value={usageKeywordInput}
-                  placeholder={t('dashboard.admin.usage_rank.search.placeholder')}
-                  onChange={(e, { value }) => setUsageKeywordInput(value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      applyUsageKeyword();
-                    }
-                  }}
-                />
-                <AppButton color='blue' type='button' onClick={applyUsageKeyword}>
-                  {t('dashboard.admin.usage_rank.search.submit')}
+              <AppButton color='blue' type='button' onClick={applyUsageKeyword}>
+                {t('dashboard.admin.usage_rank.search.submit')}
+              </AppButton>
+              {usageKeyword ? (
+                <AppButton
+                  type='button'
+                  className='router-inline-button'
+                  onClick={clearUsageKeyword}
+                >
+                  {t('dashboard.admin.usage_rank.search.reset')}
                 </AppButton>
-                {usageKeyword ? (
-                  <AppButton
-                    type='button'
-                    className='router-inline-button'
-                    onClick={clearUsageKeyword}
-                  >
-                    {t('dashboard.admin.usage_rank.search.reset')}
-                  </AppButton>
-                ) : null}
-              </div>
-            </>
-          }
-        />
+              ) : null}
+            </div>
+          </div>
+        </div>
       </div>
       {dashboard.usage_rank.length === 0 ? (
         <div className='admin-dashboard-empty'>
           {t('dashboard.admin.empty.usage_rank')}
         </div>
       ) : (
-        <>
-          <div className='admin-dashboard-kpi-grid admin-dashboard-kpi-grid-compact'>
-            <div className='admin-dashboard-kpi-item'>
-              <div className='admin-dashboard-kpi-label'>
-                {t('dashboard.admin.users.summary.user_count')}
-              </div>
-              <div className='admin-dashboard-kpi-value'>
-                {formatCount(dashboard.usage_totals.user_count)}
-              </div>
-            </div>
-            <div className='admin-dashboard-kpi-item'>
-              <div className='admin-dashboard-kpi-label'>
-                {t('dashboard.admin.users.summary.request_count')}
-              </div>
-              <div className='admin-dashboard-kpi-value'>
-                {formatCount(dashboard.usage_totals.request_count)}
-              </div>
-            </div>
-            <div className='admin-dashboard-kpi-item'>
-              <div className='admin-dashboard-kpi-label'>
-                {t('dashboard.admin.users.summary.total_tokens')}
-              </div>
-              <div className='admin-dashboard-kpi-value'>
-                {formatCount(dashboard.usage_totals.total_tokens)}
-              </div>
-            </div>
-            <div className='admin-dashboard-kpi-item'>
-              <div className='admin-dashboard-kpi-label'>
-                {t('dashboard.admin.users.summary.total_spend')}
-              </div>
-              <div className='admin-dashboard-kpi-value'>
-                {formatUsd(dashboard.usage_totals.spend_yyc)}
-              </div>
-            </div>
-          </div>
-          <div className='admin-dashboard-user-focus-grid'>
-            {usageFocusData.map((item) => (
-              <div
-                key={item.key}
-                className={`admin-dashboard-user-focus-card admin-dashboard-user-focus-card-${item.tone}`}
-              >
-                <div className='admin-dashboard-user-focus-label'>{item.label}</div>
-                <div
-                  className={`admin-dashboard-user-focus-value ${
-                    item.compact ? 'admin-dashboard-user-focus-value-compact' : ''
-                  }`.trim()}
-                  title={item.value}
-                >
-                  {item.userId ? (
-                    <button
-                      type='button'
-                      className='admin-dashboard-user-link admin-dashboard-user-focus-link'
-                      onClick={() =>
-                        navigate(`/admin/user/detail/${encodeURIComponent(item.userId)}`)
-                      }
-                    >
-                      {item.value}
-                    </button>
-                  ) : (
-                    item.value
-                  )}
-                </div>
-                <div className='admin-dashboard-user-focus-hint'>{item.hint}</div>
-              </div>
-            ))}
-          </div>
-          <div className='admin-dashboard-user-overview-grid'>
-            <div className='admin-dashboard-user-panel'>
-              <div className='admin-dashboard-card-title'>
-                {t('dashboard.admin.users.insights.title')}
-              </div>
-              <div className='admin-dashboard-user-distribution-list'>
-                {usageInsightData.distribution.map((item) => (
-                  <div
-                    key={item.key}
-                    className='admin-dashboard-user-distribution-item'
-                  >
-                    <div className='admin-dashboard-user-distribution-main'>
-                      <span
-                        className='admin-dashboard-user-distribution-dot'
-                        style={{ background: item.color }}
-                      />
-                      <div className='admin-dashboard-user-distribution-copy'>
-                        <div className='admin-dashboard-user-distribution-label'>
-                          {item.label}
-                        </div>
-                        <div className='admin-dashboard-user-distribution-hint'>
-                          {item.hint}
-                        </div>
-                      </div>
-                    </div>
-                    <div className='admin-dashboard-user-distribution-side'>
-                      <div className='admin-dashboard-user-distribution-value'>
-                        {formatCount(item.count)}
-                      </div>
-                      {item.userIds?.length > 0 ? (
-                        <AppButton
-                          type='button'
-                          className='router-inline-button'
-                          onClick={() => openUserFocusList(item)}
-                        >
-                          {t('common.view')}
-                        </AppButton>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-                <div className='admin-dashboard-user-distribution-footnote'>
-                  {t('dashboard.admin.users.insights.footnote')}
-                </div>
-              </div>
-            </div>
-            <div className='admin-dashboard-user-panel'>
-              <div className='admin-dashboard-card-title'>
-                {t('dashboard.admin.users.share_chart.title')}
-              </div>
-              <div className='admin-dashboard-user-chart'>
-                <ResponsiveContainer width='100%' height={240}>
-                  <BarChart
-                    data={usageInsightData.shareChart}
-                    layout='vertical'
-                    margin={{ top: 0, right: 12, left: 12, bottom: 0 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray='3 3'
-                      horizontal={false}
-                      opacity={0.08}
-                    />
-                    <XAxis
-                      type='number'
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: '#94a3b8' }}
-                    />
-                    <YAxis
-                      type='category'
-                      dataKey='short_user'
-                      width={110}
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: '#475569' }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: '#fff',
-                        border: 'none',
-                        borderRadius: '4px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                      }}
-                      formatter={(value) => [`${Number(value || 0).toFixed(1)}%`, t('dashboard.admin.usage_rank.columns.share')]}
-                      labelFormatter={(_, payload) =>
-                        payload?.[0]?.payload?.user || '-'
-                      }
-                    />
-                    <Bar
-                      dataKey='share_percent'
-                      fill='#2563eb'
-                      radius={[0, 4, 4, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-          <div className='admin-dashboard-usage-rank-section-title'>
-            {t('dashboard.admin.users.table_title')}
-          </div>
-          <AppTable
-            className='admin-dashboard-rank-table'
-            columns={usageRankColumns}
-            dataSource={dashboard.usage_rank}
-            pagination={false}
-            rowKey={(record) =>
-              record.user_id ||
-              `${record.username || 'unknown'}-${record.last_used_at || 0}`
-            }
-            scroll={{ x: 980 }}
-          />
-        </>
+        <AppTable
+          className='admin-dashboard-rank-table'
+          columns={usageRankColumns}
+          dataSource={dashboard.usage_rank}
+          pagination={false}
+          rowKey={(record) =>
+            record.user_id ||
+            `${record.username || 'unknown'}-${record.last_used_at || 0}`
+          }
+          scroll={{ x: 980 }}
+        />
       )}
     </AppSection>
   );
@@ -1613,15 +1305,15 @@ const AdminDashboard = () => {
           </div>
         </div>
         <AppToolbar
-          className='admin-dashboard-trend-toolbar'
-          end={
+          className='admin-dashboard-section-toolbar'
+          end={renderSectionControls(
             <AppSegmented
               className='admin-dashboard-segmented'
               options={modelSortOptions}
               value={modelSort}
               onChange={(e, { value }) => setModelSort(value)}
             />
-          }
+          )}
         />
       </div>
       <div className='admin-dashboard-kpi-grid admin-dashboard-kpi-grid-compact'>

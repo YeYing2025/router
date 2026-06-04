@@ -324,7 +324,7 @@ func detectImageURLPolicyNode(node map[string]any) (string, string, func(media f
 		if rawURL == "" || strings.HasPrefix(strings.ToLower(rawURL), "data:") {
 			return "", "", nil
 		}
-		return "responses.input_image_url", rawURL, func(media fetchedPolicyMedia) {
+		return "openai.input_image", rawURL, func(media fetchedPolicyMedia) {
 			node["image_url"] = media.DataURL
 		}
 	}
