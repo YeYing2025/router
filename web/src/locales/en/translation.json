@@ -1027,6 +1027,7 @@
           "batch_set": "Batch",
           "supported_endpoints": "Supported Endpoints",
           "status": "Success/Fail",
+          "recent_test": "Latest Result",
           "latency": "Min/Avg/Max (ms)",
           "tested_at": "Latest Test Time",
           "actions": "Actions"

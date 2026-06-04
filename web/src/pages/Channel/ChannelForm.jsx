@@ -106,11 +106,12 @@ const CHANNEL_ENDPOINT_COLUMN_WIDTHS = [
 const CHANNEL_MODEL_TEST_GROUP_COLUMN_WIDTHS = [
   '4%',
   '15%',
-  '23%',
+  '22%',
   '8%',
-  '16%',
   '12%',
-  '18%',
+  '15%',
+  '16%',
+  '8%',
 ];
 
 const supportsModelTestStream = (row) =>

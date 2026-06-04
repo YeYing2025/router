@@ -14,6 +14,27 @@ import {
   AppTag,
 } from '../../../router-ui';
 
+const normalizeRecentTestStatus = (value) => {
+  const normalized = (value || '').toString().trim().toLowerCase();
+  if (
+    normalized === 'supported' ||
+    normalized === 'success'
+  ) {
+    return 'success';
+  }
+  if (
+    normalized === 'unsupported' ||
+    normalized === 'skipped' ||
+    normalized === 'failed'
+  ) {
+    return 'failed';
+  }
+  if (normalized === 'pending' || normalized === 'running') {
+    return normalized;
+  }
+  return normalized || 'untested';
+};
+
 const ChannelDetailTestsTab = ({
   t,
   channelId,
@@ -622,9 +643,39 @@ const ChannelDetailTestsTab = ({
               },
             },
             {
+              title: t('channel.edit.model_tester.table.recent_test'),
+              key: 'recent_test',
+              width: displayedColumnWidths[batchSelectionMode ? 4 : 3],
+              render: (_, row) => {
+                const normalizedEndpoint = getEffectiveModelEndpoint(row);
+                const item = modelTestResultsByKey.get(
+                  buildModelTestResultKey(row.model, normalizedEndpoint),
+                );
+                const activeTask = activeChannelTasksByModel.get(row.model) || null;
+                const effectiveStatus = normalizeRecentTestStatus(
+                  activeTask?.status || item?.status || row?.last_test_status,
+                );
+                const tagColor =
+                  effectiveStatus === 'running'
+                    ? 'blue'
+                    : effectiveStatus === 'pending'
+                      ? 'orange'
+                      : effectiveStatus === 'success'
+                        ? 'green'
+                        : effectiveStatus === 'untested'
+                          ? undefined
+                          : 'red';
+                return (
+                  <AppTag color={tagColor} className='router-tag'>
+                    {t(`channel.edit.model_tester.status.${effectiveStatus}`)}
+                  </AppTag>
+                );
+              },
+            },
+            {
               title: t('channel.edit.model_tester.table.latency'),
               key: 'latency',
-              width: displayedColumnWidths[batchSelectionMode ? 4 : 3],
+              width: displayedColumnWidths[batchSelectionMode ? 5 : 4],
               render: (_, row) => {
                 const normalizedEndpoint = getEffectiveModelEndpoint(row);
                 const endpointSummary =
@@ -648,7 +699,7 @@ const ChannelDetailTestsTab = ({
             {
               title: t('channel.edit.model_tester.table.tested_at'),
               key: 'tested_at',
-              width: displayedColumnWidths[batchSelectionMode ? 5 : 4],
+              width: displayedColumnWidths[batchSelectionMode ? 6 : 5],
               render: (_, row) => {
                 const normalizedEndpoint = getEffectiveModelEndpoint(row);
                 const item = modelTestResultsByKey.get(
@@ -664,7 +715,7 @@ const ChannelDetailTestsTab = ({
               {
                 title: t('channel.edit.model_tester.table.actions'),
                 key: 'actions',
-                width: 84,
+                width: displayedColumnWidths[batchSelectionMode ? 7 : 6],
                 render: (_, row) => {
                   const activeTask = activeChannelTasksByModel.get(row.model) || null;
                   return (
