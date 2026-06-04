@@ -70,6 +70,55 @@ const appendGroupOptionIfMissing = (options, groupID, groupName) => {
   ];
 };
 
+const mergeGroupOptions = (currentOptions, nextOptions) => {
+  const merged = new Map();
+  const appendOption = (option) => {
+    const value = (option?.value || '').toString().trim();
+    if (!value) {
+      return;
+    }
+    const current = merged.get(value);
+    const nextText = (option?.text || option?.label || '').toString().trim();
+    if (!current) {
+      merged.set(value, {
+        key: option?.key || value,
+        value,
+        text: nextText || value,
+      });
+      return;
+    }
+    merged.set(value, {
+      ...current,
+      key: option?.key || current.key || value,
+      value,
+      text: nextText || current.text || value,
+    });
+  };
+  (Array.isArray(currentOptions) ? currentOptions : []).forEach(appendOption);
+  (Array.isArray(nextOptions) ? nextOptions : []).forEach(appendOption);
+  return Array.from(merged.values()).sort((a, b) =>
+    (a.text || '').localeCompare(b.text || '', 'zh-Hans-CN', {
+      sensitivity: 'base',
+      numeric: true,
+    }),
+  );
+};
+
+const resolveGroupOptionLabel = (options, groupID, fallbackName = '') => {
+  const normalizedGroupID = (groupID || '').toString().trim();
+  if (!normalizedGroupID) {
+    return '';
+  }
+  const matchedOption = (Array.isArray(options) ? options : []).find(
+    (item) => (item?.value || '').toString().trim() === normalizedGroupID,
+  );
+  return (
+    (matchedOption?.text || matchedOption?.label || fallbackName || normalizedGroupID)
+      .toString()
+      .trim()
+  );
+};
+
 const TopupPlansManager = () => {
   const { t } = useTranslation();
   const [plans, setPlans] = useState([]);
@@ -101,6 +150,17 @@ const TopupPlansManager = () => {
     () => ensureUnitOption(displayUnitOptions, form.quota_currency || 'USD'),
     [displayUnitOptions, form.quota_currency]
   );
+
+  const selectedGroupValue = useMemo(() => {
+    const groupID = (form.group_id || '').toString().trim();
+    if (!groupID) {
+      return undefined;
+    }
+    return {
+      value: groupID,
+      label: resolveGroupOptionLabel(groupOptions, groupID, form.group_name),
+    };
+  }, [form.group_id, form.group_name, groupOptions]);
 
   const loadPlans = useCallback(async () => {
     setLoading(true);
@@ -148,12 +208,15 @@ const TopupPlansManager = () => {
         }
         page += 1;
       }
-      setGroupOptions(
-        items.map((item) => ({
-          key: item.id,
-          value: item.id,
-          text: item.name || item.id,
-        })),
+      setGroupOptions((current) =>
+        mergeGroupOptions(
+          current,
+          items.map((item) => ({
+            key: item.id,
+            value: item.id,
+            text: item.name || item.id,
+          })),
+        ),
       );
     } catch (error) {
       showError(error?.message || t('topup.manage.load_failed'));
@@ -577,18 +640,31 @@ const TopupPlansManager = () => {
           <AppFormRow className='router-topup-plan-form-row'>
             <AppField label={t('topup.manage.columns.group')}>
               <AppSelect
+                labelInValue
                 search
                 loading={groupLoading}
                 options={groupOptions}
                 placeholder={t('topup.manage.group_placeholder')}
-                value={form.group_id}
+                value={selectedGroupValue}
                 onChange={(_, data) => {
-                  const value = (data?.value || '').toString();
-                  const option = groupOptions.find((item) => item.value === value);
+                  const value =
+                    typeof data?.value === 'object'
+                      ? (data?.value?.value || '').toString()
+                      : (data?.value || '').toString();
+                  const label =
+                    typeof data?.value === 'object'
+                      ? (data?.value?.label || '').toString().trim()
+                      : '';
                   setForm((current) => ({
                     ...current,
                     group_id: value,
-                    group_name: option?.text || '',
+                    group_name:
+                      (
+                        label ||
+                        resolveGroupOptionLabel(groupOptions, value, current.group_name)
+                      )
+                        .toString()
+                        .trim(),
                   }));
                 }}
               />
