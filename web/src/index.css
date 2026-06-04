@@ -2191,16 +2191,27 @@ body,
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
+    flex-wrap: nowrap;
 }
 
-.router-table-actions-icon-compact .router-ui-button.router-inline-button {
-    width: 32px;
-    min-width: 32px;
-    min-height: 26px !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    font-size: 11px !important;
+.router-table-action-button-wrap {
+    display: inline-flex;
+}
+
+.router-ui-button.router-table-action-button {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px !important;
+    padding: 0 !important;
     justify-content: center;
+    border-radius: 8px !important;
+}
+
+.router-ui-button.router-table-action-button .anticon {
+    margin: 0 !important;
+    font-size: 13px;
 }
 
 .router-table-actions-wide .router-ui-button.router-inline-button {
@@ -2819,6 +2830,14 @@ body,
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+.router-topup-plan-editor-modal .router-ui-form-row.router-topup-plan-form-row {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.router-topup-plan-editor-modal .router-ui-form-row.router-topup-plan-form-row > .router-ui-field {
+    min-width: 0;
 }
 
 .router-section-stack {

@@ -32,6 +32,7 @@ import {
   AppSelect,
   AppSwitch,
   AppTable,
+  AppTableActionButton,
   AppTextarea,
 } from '../router-ui';
 import {
@@ -923,26 +924,24 @@ const PackagesManager = () => {
             {
               title: t('package_manage.table.actions'),
               key: 'actions',
-              className: 'router-table-col-actions-compact router-package-action-cell',
-              width: PACKAGE_LIST_COLUMN_WIDTHS.actions,
+              className: 'router-table-col-actions-icon router-package-action-cell',
+              width: 52,
               render: (_, row) => (
                 <div
-                  className='router-action-group-tight router-table-actions-compact router-nowrap'
+                  className='router-action-group-tight router-table-actions-icon-compact router-nowrap'
                   onClick={(e) => {
                     e.stopPropagation();
                   }}
                 >
-                  <AppButton
-                    type='button'
-                    className='router-inline-button'
+                  <AppTableActionButton
+                    icon='trash'
+                    title={t('package_manage.buttons.delete')}
                     color='red'
                     disabled={submitting}
                     onClick={() => {
                       openDeleteModal(row);
                     }}
-                  >
-                    {t('package_manage.buttons.delete')}
-                  </AppButton>
+                  />
                 </div>
               ),
             },

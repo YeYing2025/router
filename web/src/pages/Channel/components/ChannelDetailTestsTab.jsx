@@ -10,6 +10,7 @@ import {
   AppSelect,
   AppSwitch,
   AppTable,
+  AppTableActionButton,
   AppTag,
 } from '../../../router-ui';
 
@@ -660,17 +661,17 @@ const ChannelDetailTestsTab = ({
                 );
               },
             },
-            {
-              title: t('channel.edit.model_tester.table.actions'),
-              key: 'actions',
-              width: displayedColumnWidths[batchSelectionMode ? 6 : 5],
-              render: (_, row) => {
-                const activeTask = activeChannelTasksByModel.get(row.model) || null;
-                return (
-                  <div className='router-inline-actions router-table-actions-compact'>
-                    <AppButton
-                      type='button'
-                      className='router-inline-button'
+              {
+                title: t('channel.edit.model_tester.table.actions'),
+                key: 'actions',
+                width: 84,
+                render: (_, row) => {
+                  const activeTask = activeChannelTasksByModel.get(row.model) || null;
+                  return (
+                  <div className='router-inline-actions router-table-actions-icon-compact'>
+                    <AppTableActionButton
+                      icon='exchange'
+                      title={t('channel.edit.model_tester.single')}
                       loading={
                         (modelTesting &&
                           modelTestingScope === 'single' &&
@@ -689,21 +690,17 @@ const ChannelDetailTestsTab = ({
                           scope: 'single',
                         })
                       }
-                    >
-                      {t('channel.edit.model_tester.single')}
-                    </AppButton>
-                    <AppButton
-                      type='button'
-                      className='router-inline-button'
+                    />
+                    <AppTableActionButton
+                      icon='history'
+                      title={t('channel.edit.model_tester.history')}
                       onClick={() =>
                         openChannelTaskView({
                           type: 'channel_model_test',
                           model: row.model,
                         })
                       }
-                    >
-                      {t('channel.edit.model_tester.history')}
-                    </AppButton>
+                    />
                   </div>
                 );
               },

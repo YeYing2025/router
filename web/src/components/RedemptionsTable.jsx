@@ -30,6 +30,7 @@ import {
   AppPagination,
   AppPopconfirm,
   AppTable,
+  AppTableActionButton,
   AppTag,
 } from '../router-ui';
 
@@ -495,17 +496,18 @@ const RedemptionsTable = () => {
           {
             title: t('redemption.table.actions'),
             key: 'actions',
-            className: 'router-table-col-actions-wide',
-            width: REDEMPTION_LIST_COLUMN_WIDTHS.actions,
+            className: 'router-table-col-actions-icon',
+            width: 120,
             render: (_, redemption, idx) => (
               <div
-                className='router-action-group-tight router-table-actions-wide'
+                className='router-action-group-tight router-table-actions-icon-compact'
                 onClick={(e) => {
                   e.stopPropagation();
                 }}
               >
-                <AppButton
-                  className='router-inline-button'
+                <AppTableActionButton
+                  icon='copy outline'
+                  title={t('redemption.buttons.copy')}
                   color='blue'
                   onClick={async () => {
                     if (await copy(redemption.code)) {
@@ -515,21 +517,28 @@ const RedemptionsTable = () => {
                       setSearchKeyword(redemption.code);
                     }
                   }}
-                >
-                  {t('redemption.buttons.copy')}
-                </AppButton>
+                />
                 <AppPopconfirm
                   title={t('redemption.buttons.confirm_delete')}
                   onConfirm={() => {
                     manageRedemption(redemption.id, 'delete', idx);
                   }}
                 >
-                  <AppButton className='router-inline-button' color='red'>
-                    {t('redemption.buttons.delete')}
-                  </AppButton>
+                  <span>
+                    <AppTableActionButton
+                      icon='trash'
+                      title={t('redemption.buttons.delete')}
+                      color='red'
+                    />
+                  </span>
                 </AppPopconfirm>
-                <AppButton
-                  className='router-inline-button'
+                <AppTableActionButton
+                  icon={redemption.status === 1 ? 'close' : 'check'}
+                  title={
+                    redemption.status === 1
+                      ? t('redemption.buttons.disable')
+                      : t('redemption.buttons.enable')
+                  }
                   disabled={redemption.status === 3}
                   onClick={() => {
                     manageRedemption(
@@ -538,11 +547,7 @@ const RedemptionsTable = () => {
                       idx,
                     );
                   }}
-                >
-                  {redemption.status === 1
-                    ? t('redemption.buttons.disable')
-                    : t('redemption.buttons.enable')}
-                </AppButton>
+                />
               </div>
             ),
           },

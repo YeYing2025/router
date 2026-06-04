@@ -15,6 +15,7 @@ import {
   resolvePopupContainer,
   AppSelect,
   AppTable,
+  AppTableActionButton,
   AppTag,
   AppToolbar,
 } from '../../router-ui';
@@ -1168,11 +1169,9 @@ const Task = () => {
                 title: t('task.table.actions'),
                 key: 'actions',
                 className: isUserTaskPage
-                  ? 'router-table-col-actions-compact'
-                  : 'router-table-col-actions-token',
-                width: isUserTaskPage
-                  ? TASK_LIST_COLUMN_WIDTHS.actionsCompact
-                  : TASK_LIST_COLUMN_WIDTHS.actionsWide,
+                  ? 'router-table-col-actions-icon'
+                  : 'router-table-col-actions-icon',
+                width: isUserTaskPage ? 52 : 120,
                 render: (_, item) => {
                   const taskId = getTaskId(item);
                   const rawStatus = (item?.status || '')
@@ -1192,9 +1191,9 @@ const Task = () => {
                     item?.type === 'channel_model_test' &&
                     !!(taskResult?.artifact_name || taskResult?.artifact_path);
                   return isUserTaskPage ? (
-                    <AppButton
-                      type='button'
-                      className='router-inline-button'
+                    <AppTableActionButton
+                      icon='eye'
+                      title={t('task.buttons.view')}
                       onClick={(e) => {
                         e.stopPropagation();
                         navigate(`${detailBasePath}/${taskId}`, {
@@ -1208,46 +1207,38 @@ const Task = () => {
                           },
                         });
                       }}
-                    >
-                      {t('task.buttons.view')}
-                    </AppButton>
+                    />
                   ) : (
                     <div
-                      className='router-inline-actions router-table-actions-wide'
+                      className='router-inline-actions router-table-actions-icon-compact'
                       onClick={(e) => {
                         e.stopPropagation();
                       }}
                     >
-                      <AppButton
-                        type='button'
-                        className='router-inline-button'
+                      <AppTableActionButton
+                        icon='download'
+                        title={t('common.download')}
                         disabled={!canDownloadArtifact}
                         onClick={() => {
                           handleDownloadTaskArtifact(item);
                         }}
-                      >
-                        {t('common.download')}
-                      </AppButton>
-                      <AppButton
-                        type='button'
-                        className='router-inline-button'
+                      />
+                      <AppTableActionButton
+                        icon='exchange'
+                        title={t('task.buttons.retry')}
                         disabled={!canRetry}
                         onClick={() => {
                           handleRetryTask(taskId);
                         }}
-                      >
-                        {t('task.buttons.retry')}
-                      </AppButton>
-                      <AppButton
-                        type='button'
-                        className='router-inline-button'
+                      />
+                      <AppTableActionButton
+                        icon='close'
+                        title={t('task.buttons.cancel')}
                         disabled={!canCancel}
                         onClick={() => {
                           handleCancelTask(taskId);
                         }}
-                      >
-                        {t('task.buttons.cancel')}
-                      </AppButton>
+                      />
                     </div>
                   );
                 },

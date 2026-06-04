@@ -25,6 +25,7 @@ import {
   AppSelect,
   AppSwitch,
   AppTable,
+  AppTableActionButton,
 } from '../router-ui';
 
 const createEmptyPlan = () => ({
@@ -530,27 +531,23 @@ const TopupPlansManager = () => {
             {
               title: t('common.operation'),
               key: 'action',
-              className: 'router-table-col-actions-compact router-topup-plan-action-cell',
-              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.actions,
+              className: 'router-table-col-actions-icon router-topup-plan-action-cell',
+              width: 84,
               render: (_, row) => (
-                <div className='router-action-group-tight router-table-actions-compact'>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
+                <div className='router-action-group-tight router-table-actions-icon-compact'>
+                  <AppTableActionButton
+                    icon='edit'
+                    title={t('common.edit')}
                     onClick={() => openEdit(row)}
-                  >
-                    {t('common.edit')}
-                  </AppButton>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
+                  />
+                  <AppTableActionButton
+                    icon='trash'
+                    title={t('common.delete')}
                     onClick={() => {
                       setActiveRow(row);
                       setDeleteOpen(true);
                     }}
-                  >
-                    {t('common.delete')}
-                  </AppButton>
+                  />
                 </div>
               ),
             },
@@ -559,6 +556,7 @@ const TopupPlansManager = () => {
       </div>
 
       <AppModal
+        className='router-topup-plan-editor-modal'
         open={editOpen}
         size='tiny'
         onClose={() => setEditOpen(false)}
@@ -566,7 +564,7 @@ const TopupPlansManager = () => {
         footer={null}
       >
         <div className='router-page-stack'>
-          <AppFormRow>
+          <AppFormRow className='router-topup-plan-form-row'>
             <AppField label={t('topup.manage.columns.name')} required>
               <AppInput
                 value={form.name}
@@ -576,7 +574,7 @@ const TopupPlansManager = () => {
               />
             </AppField>
           </AppFormRow>
-          <AppFormRow>
+          <AppFormRow className='router-topup-plan-form-row'>
             <AppField label={t('topup.manage.columns.group')}>
               <AppSelect
                 search
@@ -596,7 +594,7 @@ const TopupPlansManager = () => {
               />
             </AppField>
           </AppFormRow>
-          <AppFormRow>
+          <AppFormRow className='router-topup-plan-form-row'>
             <AppField label={t('topup.manage.columns.pay_amount')}>
               <AppCompact className='router-section-input-with-unit' block>
                 <AppInputNumber
@@ -658,7 +656,7 @@ const TopupPlansManager = () => {
               </AppCompact>
             </AppField>
           </AppFormRow>
-          <AppFormRow>
+          <AppFormRow className='router-topup-plan-form-row'>
             <AppField label={t('topup.manage.columns.validity_days')}>
               <AppInputNumber
                 min={0}
@@ -674,9 +672,8 @@ const TopupPlansManager = () => {
                 }
               />
             </AppField>
-            <AppField />
           </AppFormRow>
-          <AppFormRow>
+          <AppFormRow className='router-topup-plan-form-row'>
             <AppField label={t('topup.manage.columns.enabled')}>
               <AppSwitch
                 checked={form.enabled}

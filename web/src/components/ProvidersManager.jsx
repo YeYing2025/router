@@ -27,6 +27,7 @@ import {
   AppPagination,
   AppSelect,
   AppTable,
+  AppTableActionButton,
   AppTabs,
   AppTag,
   AppTextarea,
@@ -1739,11 +1740,11 @@ const ProvidersManager = () => {
           {
             title: t('channel.providers.price_component_table.actions'),
             key: 'actions',
-            width: 120,
+            width: 52,
             render: (_, component, componentIndex) => (
-              <AppButton
-                type='button'
-                className='router-inline-button'
+              <AppTableActionButton
+                icon='trash'
+                title={t('common.delete')}
                 color='red'
                 disabled={isDisabled}
                 onClick={() =>
@@ -1754,9 +1755,7 @@ const ProvidersManager = () => {
                     componentIndex,
                   )
                 }
-              >
-                <AppIcon name='trash' />
-              </AppButton>
+              />
             ),
           },
         ]}
@@ -2076,17 +2075,15 @@ const ProvidersManager = () => {
               key: 'actions',
               width: 56,
               render: (_, { index: detailIndex }) => (
-                <AppButton
-                  type='button'
-                  className='router-inline-button'
+                <AppTableActionButton
+                  icon='trash'
+                  title={t('common.delete')}
                   color='red'
                   disabled={disabled}
                   onClick={() =>
                     removeModelDetailRow(setValueFn, row, detailIndex)
                   }
-                >
-                  <AppIcon name='trash' />
-                </AppButton>
+                />
               ),
             },
           ]}
@@ -2286,33 +2283,29 @@ const ProvidersManager = () => {
             {
               title: t('channel.providers.model_detail_table.actions'),
               key: 'actions',
-              width: 112,
+              width: 84,
               render: (_, { index: detailIndex }) => (
-                <div className='router-provider-model-detail-actions'>
-                  <AppButton
-                    type='button'
-                    className='router-inline-button'
+                <div className='router-provider-model-detail-actions router-table-actions-icon-compact'>
+                  <AppTableActionButton
+                    icon='edit'
+                    title={t('common.edit')}
                     disabled={actionsDisabled}
                     onClick={() =>
                       typeof actions.onStartEdit === 'function'
                         ? actions.onStartEdit(detailIndex)
                         : null
                     }
-                  >
-                    {t('common.edit')}
-                  </AppButton>
-                  <AppButton
-                    type='button'
-                    className='router-inline-button'
+                  />
+                  <AppTableActionButton
+                    icon='trash'
+                    title={t('common.delete')}
                     disabled={actionsDisabled}
                     onClick={() =>
                       typeof actions.onDelete === 'function'
                         ? actions.onDelete(detailIndex)
                         : null
                     }
-                  >
-                    {t('common.delete')}
-                  </AppButton>
+                  />
                 </div>
               ),
             },
@@ -2825,11 +2818,11 @@ const ProvidersManager = () => {
                 {
                   title: t('channel.providers.price_component_table.actions'),
                   key: 'actions',
-                  width: 120,
+                  width: 52,
                   render: (_, component, componentIndex) => (
-                    <AppButton
-                      type='button'
-                      className='router-inline-button'
+                    <AppTableActionButton
+                      icon='trash'
+                      title={t('common.delete')}
                       disabled={saving}
                       onClick={() =>
                         removePriceComponentRow(
@@ -2839,9 +2832,7 @@ const ProvidersManager = () => {
                           componentIndex,
                         )
                       }
-                    >
-                      {t('common.delete')}
-                    </AppButton>
+                    />
                   ),
                 },
               ]}
@@ -2992,9 +2983,9 @@ const ProvidersManager = () => {
             width: PROVIDER_LIST_COLUMN_WIDTHS.actions,
             render: (_, row) => (
               <div className='router-action-group-tight router-table-actions-icon-compact'>
-                <AppButton
-                  type='button'
-                  className='router-inline-button'
+                <AppTableActionButton
+                  icon='edit'
+                  title={t('common.edit')}
                   color='blue'
                   disabled={creating || saving}
                   onClick={(e) => {
@@ -3002,9 +2993,7 @@ const ProvidersManager = () => {
                     openViewer(row);
                     startDetailSectionEdit('basic', row);
                   }}
-                >
-                  <AppIcon name='edit' />
-                </AppButton>
+                />
               </div>
             ),
           },

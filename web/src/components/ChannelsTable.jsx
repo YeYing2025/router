@@ -27,6 +27,7 @@ import {
   AppPagination,
   AppSwitch,
   AppTable,
+  AppTableActionButton,
   AppTooltip,
 } from '../router-ui';
 
@@ -824,15 +825,14 @@ const ChannelsTable = () => {
                 className='router-action-group-tight router-table-actions-icon-compact'
                 onClick={stopRowClick}
               >
-                <AppButton
-                  className='router-inline-button'
+                <AppTableActionButton
+                  icon='trash'
+                  title={t('channel.buttons.delete')}
                   color='red'
                   onClick={() => {
                     manageChannel(channel.id, 'delete', idx);
                   }}
-                >
-                  {t('channel.buttons.delete')}
-                </AppButton>
+                />
               </div>
             ),
           },

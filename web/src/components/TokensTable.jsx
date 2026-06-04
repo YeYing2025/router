@@ -33,6 +33,7 @@ import {
   AppPopconfirm,
   AppSwitch,
   AppTable,
+  AppTableActionButton,
   AppTooltip,
   AppToolbar,
 } from '../router-ui';
@@ -654,8 +655,8 @@ const TokensTable = () => {
           {
             title: t('token.table.actions'),
             key: 'actions',
-            className: 'router-table-col-actions-wide',
-            width: TOKEN_LIST_COLUMN_WIDTHS.actions,
+            className: 'router-table-col-actions-icon',
+            width: 120,
             render: (_, token) => {
               const realIdx = tokens.findIndex((item) => item?.id === token?.id);
               const openLinkOptionsWithHandlers = OPEN_LINK_OPTIONS.map((option) => ({
@@ -667,32 +668,29 @@ const TokensTable = () => {
 
               return (
                 <div
-                  className='router-action-group router-table-actions-wide'
+                  className='router-action-group router-table-actions-icon-compact'
                   onClick={(event) => stopRowClick(event)}
                 >
-                  <div className='router-action-group-tight'>
-                    <AppButton
-                      className='router-inline-button'
-                      color='blue'
-                      type='button'
-                      onClick={() => onOpenLink('', token.key)}
-                    >
-                      {t('token.buttons.chat')}
-                    </AppButton>
-                    <AppMenuDropdown
-                      className='router-token-action-menu'
-                      menuClassName='router-token-action-menu-overlay'
-                      items={openLinkOptionsWithHandlers.map((option) => ({
-                        key: option.value,
-                        label: option.text,
-                        onClick: option.onClick,
-                      }))}
-                    >
-                      <AppButton className='router-inline-button' type='button'>
-                        <AppIcon name='right chevron' />
-                      </AppButton>
-                    </AppMenuDropdown>
-                  </div>
+                  <AppTableActionButton
+                    icon='comments'
+                    title={t('token.buttons.chat')}
+                    color='blue'
+                    onClick={() => onOpenLink('', token.key)}
+                  />
+                  <AppMenuDropdown
+                    className='router-token-action-menu'
+                    menuClassName='router-token-action-menu-overlay'
+                    items={openLinkOptionsWithHandlers.map((option) => ({
+                      key: option.value,
+                      label: option.text,
+                      onClick: option.onClick,
+                    }))}
+                  >
+                    <AppTableActionButton
+                      icon='right chevron'
+                      title={t('common.more')}
+                    />
+                  </AppMenuDropdown>
                   <AppPopconfirm
                     title={`${t('token.buttons.confirm_delete')} ${token.name || ''}`}
                     onConfirm={() => {
@@ -701,9 +699,13 @@ const TokensTable = () => {
                     okText={t('common.confirm')}
                     cancelText={t('common.cancel')}
                   >
-                    <AppButton className='router-inline-button' color='red' type='button'>
-                      {t('token.buttons.delete')}
-                    </AppButton>
+                    <span>
+                      <AppTableActionButton
+                        icon='trash'
+                        title={t('token.buttons.delete')}
+                        color='red'
+                      />
+                    </span>
                   </AppPopconfirm>
                 </div>
               );

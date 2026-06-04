@@ -35,6 +35,7 @@ import {
   AppInput,
   AppPagination,
   AppTable,
+  AppTableActionButton,
   AppTag,
   AppTooltip,
 } from '../router-ui';
@@ -688,18 +689,23 @@ const UsersTable = () => {
           {
             title: t('user.table.actions'),
             key: 'actions',
-            className: 'router-table-col-actions-compact',
-            width: USER_LIST_COLUMN_WIDTHS.actions,
+            className: 'router-table-col-actions-icon',
+            width: 84,
             render: (_, user, idx) => {
               const isAdminUser = Number(user.role) >= 10;
               const canManageAdminUser = !isAdminUser || isRoot();
               return (
                 <div
-                  className='router-action-group router-table-actions-compact'
+                  className='router-action-group router-table-actions-icon-compact'
                   onClick={stopRowClick}
                 >
-                  <AppButton
-                    className='router-inline-button'
+                  <AppTableActionButton
+                    icon={user.status === 1 ? 'close' : 'check'}
+                    title={
+                      user.status === 1
+                        ? t('user.buttons.disable')
+                        : t('user.buttons.enable')
+                    }
                     color={user.status === 1 ? undefined : 'blue'}
                     onClick={() => {
                       manageUser(
@@ -709,21 +715,16 @@ const UsersTable = () => {
                       );
                     }}
                     disabled={!canManageAdminUser}
-                  >
-                    {user.status === 1
-                      ? t('user.buttons.disable')
-                      : t('user.buttons.enable')}
-                  </AppButton>
-                  <AppButton
-                    className='router-inline-button'
+                  />
+                  <AppTableActionButton
+                    icon='trash'
+                    title={t('user.buttons.delete')}
                     color='red'
                     disabled={!canManageAdminUser}
                     onClick={() => {
                       manageUser(user.username, 'delete', idx);
                     }}
-                  >
-                    {t('user.buttons.delete')}
-                  </AppButton>
+                  />
                 </div>
               );
             },

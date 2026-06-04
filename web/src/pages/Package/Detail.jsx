@@ -26,6 +26,7 @@ import {
   AppInputNumber,
   AppModal,
   AppSelect,
+  AppTableActionButton,
   AppSwitch,
   AppTable,
   AppTabs,
@@ -1090,18 +1091,16 @@ const PackageDetail = () => {
                                         {
                                           title: t('redemption.table.actions'),
                                           key: 'actions',
-                                          className: 'router-table-col-actions-compact',
-                                          width: 96,
+                                          className: 'router-table-col-actions-icon',
+                                          width: 52,
                                           render: (_, row) => (
-                                            <AppButton
-                                              type='button'
-                                              className='router-inline-button'
+                                            <AppTableActionButton
+                                              icon='trash'
+                                              title={t('common.delete')}
                                               color='red'
                                               disabled={visibilitySubmitting}
                                               onClick={() => removeVisibleUser(row.id)}
-                                            >
-                                              {t('common.delete')}
-                                            </AppButton>
+                                            />
                                           ),
                                         },
                                       ]}
