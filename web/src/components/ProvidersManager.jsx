@@ -137,6 +137,16 @@ const normalizeProvider = (provider) => {
   }
 };
 
+const buildPriceComponentRowKey = (scope, component) =>
+  [
+    scope || 'model',
+    component?.id || '',
+    component?.component || 'component',
+    component?.condition || 'condition',
+    component?.currency || '',
+    component?.price || component?.value || '',
+  ].join('-');
+
 const inferModelType = (model) => {
   if (typeof model !== 'string') return 'text';
   const lower = model.trim().toLowerCase();
@@ -1509,8 +1519,8 @@ const ProvidersManager = () => {
         className='router-detail-subtable'
         size='small'
         pagination={false}
-        rowKey={(component, componentIndex) =>
-          `${detail.model || 'model'}-${component.component || 'component'}-${component.condition || 'condition'}-${componentIndex}`
+        rowKey={(component) =>
+          buildPriceComponentRowKey(detail.model, component)
         }
         dataSource={detail.price_components || []}
         locale={{
@@ -2587,8 +2597,8 @@ const ProvidersManager = () => {
               className='router-detail-subtable'
               size='small'
               pagination={false}
-              rowKey={(component, componentIndex) =>
-                `${detail.model || 'model'}-${component.component || 'component'}-${component.condition || 'condition'}-${componentIndex}`
+              rowKey={(component) =>
+                buildPriceComponentRowKey(detail.model, component)
               }
               dataSource={detail.price_components || []}
               locale={{
@@ -3475,8 +3485,8 @@ const ProvidersManager = () => {
           className='router-detail-subtable'
           size='small'
           pagination={false}
-          rowKey={(component, componentIndex) =>
-            `${pricingDetailModel?.model || 'model'}-${component.component || 'component'}-${component.condition || 'condition'}-${componentIndex}`
+          rowKey={(component) =>
+            buildPriceComponentRowKey(pricingDetailModel?.model, component)
           }
           dataSource={pricingDetailModel?.price_components || []}
           locale={{

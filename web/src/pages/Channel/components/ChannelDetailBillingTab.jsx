@@ -65,6 +65,15 @@ const formatAmountText = (item) => {
 
 const normalizeBillingValue = (value) => (value || '').toString().trim().toLowerCase();
 
+const buildQuotaItemRowKey = (row) =>
+  [
+    row?.id || '',
+    row?.quota_label || '',
+    row?.quota_type || '',
+    row?.resource_type || '',
+    row?.billing_cycle || '',
+  ].join('-');
+
 const isPeriodicQuotaType = (quotaType) =>
   ['daily', 'weekly', 'monthly'].includes(normalizeBillingValue(quotaType));
 
@@ -617,7 +626,7 @@ const ChannelDetailBillingTab = ({
             pagination={false}
             loading={billingLoading}
             dataSource={quotaItems}
-            rowKey={(row, index) => `${row?.quota_label || row?.quota_type || 'quota'}-${index}`}
+            rowKey={(row) => buildQuotaItemRowKey(row)}
             columns={[
               {
                 title: t('channel.edit.billing.quota_table.entitlement_kind'),

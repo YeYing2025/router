@@ -15,6 +15,17 @@ const ChannelComplexPricingModal = ({
   data,
   normalizeChannelModelType,
 }) => {
+  const buildPriceComponentRowKey = (detail, component) =>
+    [
+      detail?.provider || 'provider',
+      detail?.model || 'model',
+      component?.id || '',
+      component?.component || 'component',
+      component?.condition || 'condition',
+      component?.currency || '',
+      component?.price || component?.value || '',
+    ].join('-');
+
   return (
     <AppModal
       size='large'
@@ -89,8 +100,8 @@ const ChannelComplexPricingModal = ({
                 className='router-detail-table'
                 pagination={false}
                 scroll={{ x: 980 }}
-                rowKey={(component, componentIndex) =>
-                  `${detail.provider || 'provider'}-${detail.model || 'model'}-${component.component || 'component'}-${component.condition || 'condition'}-${componentIndex}`
+                rowKey={(component) =>
+                  buildPriceComponentRowKey(detail, component)
                 }
                 dataSource={detail.price_components || []}
                 columns={[

@@ -5,6 +5,7 @@ import {
   API,
   showError,
   showInfo,
+  showSuccess,
   timestamp2string,
 } from '../helpers';
 
@@ -236,7 +237,7 @@ const ChannelsTable = () => {
     setSelectedChannelIds((prev) => prev.filter((id) => validIds.has(id)));
   }, [selectionMode, channels]);
 
-  const manageChannel = async (id, action, idx, value) => {
+  const manageChannel = async (id, action, value) => {
     const normalizedID = (id || '').toString().trim();
     if (normalizedID === '') {
       showError('渠道 ID 无效');
@@ -318,7 +319,7 @@ const ChannelsTable = () => {
     }
   };
 
-  const renderStatusSwitch = (channel, idx) => {
+  const renderStatusSwitch = (channel) => {
     const status = Number(channel?.status || 0);
     const checked = status === 1;
     const disabled = status === channelStatusCreating || actionBusy;
@@ -332,7 +333,7 @@ const ChannelsTable = () => {
             loading={statusMutatingId === channel.id}
             aria-label={t('channel.table.status')}
             onChange={(event, { checked: nextChecked }) => {
-              manageChannel(channel.id, nextChecked ? 'enable' : 'disable', idx);
+              manageChannel(channel.id, nextChecked ? 'enable' : 'disable');
             }}
           />
         </AppTooltip>
@@ -733,7 +734,7 @@ const ChannelsTable = () => {
             sorter: (a, b) => compareNumberValue(a.status, b.status),
             sortDirections: ['ascend', 'descend'],
             sortOrder: tableSorter.columnKey === 'status' ? tableSorter.order : null,
-            render: (_, channel, idx) => renderStatusSwitch(channel, idx),
+            render: (_, channel) => renderStatusSwitch(channel),
           },
           {
             title: t('channel.table.created_time'),
@@ -796,19 +797,14 @@ const ChannelsTable = () => {
             sortDirections: ['ascend', 'descend'],
             sortOrder:
               tableSorter.columnKey === 'priority' ? tableSorter.order : null,
-            render: (value, channel, idx) => (
+            render: (value, channel) => (
               <div onClick={stopRowClick}>
                 <AppTooltip title={t('channel.table.priority_tip')}>
                   <AppInputNumber
                     className='router-inline-number-input router-inline-input-short'
                     defaultValue={value}
                     onBlur={(event) => {
-                      manageChannel(
-                        channel.id,
-                        'priority',
-                        idx,
-                        event.target.value,
-                      );
+                      manageChannel(channel.id, 'priority', event.target.value);
                     }}
                   />
                 </AppTooltip>
@@ -820,7 +816,7 @@ const ChannelsTable = () => {
             key: 'actions',
             className: 'router-table-col-actions-icon',
             width: 72,
-            render: (_, channel, idx) => (
+            render: (_, channel) => (
               <div
                 className='router-action-group-tight router-table-actions-icon-compact'
                 onClick={stopRowClick}
@@ -830,7 +826,7 @@ const ChannelsTable = () => {
                   title={t('channel.buttons.delete')}
                   color='red'
                   onClick={() => {
-                    manageChannel(channel.id, 'delete', idx);
+                    manageChannel(channel.id, 'delete');
                   }}
                 />
               </div>
