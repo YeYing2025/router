@@ -2894,6 +2894,13 @@ body,
     color: #1f2937;
 }
 
+.router-task-status-display {
+    min-height: 38px;
+    height: 38px;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
 .router-field-display-list {
     display: block;
     padding: 12px;

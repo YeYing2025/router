@@ -492,7 +492,7 @@ const TaskDetail = () => {
                     />
                   </AppField>
                   <AppField label={t('task.table.status')} readOnly>
-                    <div className='router-field-display'>
+                    <div className='router-field-display router-task-status-display'>
                       {task ? renderTaskStatus(task.status, t) : null}
                     </div>
                   </AppField>
