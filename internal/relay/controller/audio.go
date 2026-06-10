@@ -55,7 +55,7 @@ func RelayAudioHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	}
 	var err error
 
-	groupRatio := adminmodel.GetGroupBillingRatio(group)
+	groupRatio := adminmodel.GetGroupChannelBillingRatio(group, channelId)
 	pricing, pricingErr := adminmodel.ResolveChannelModelPricing(channelProtocol, meta.ChannelModelConfigs, audioModel)
 	if pricingErr != nil {
 		if groupRatio == 0 {

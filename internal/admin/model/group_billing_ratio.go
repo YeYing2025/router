@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	groupBillingRatioLock sync.RWMutex
-	groupBillingRatioMap  = map[string]float64{}
+	groupBillingRatioLock       sync.RWMutex
+	groupBillingRatioMap        = map[string]float64{}
+	groupChannelBillingRatioMap = map[string]map[string]float64{}
 )
 
 func normalizeGroupBillingRatio(value float64) float64 {
@@ -37,6 +38,12 @@ func setGroupBillingRatioRuntime(ratios map[string]float64) {
 	groupBillingRatioLock.Unlock()
 }
 
+func setGroupChannelBillingRatioRuntime(ratios map[string]map[string]float64) {
+	groupBillingRatioLock.Lock()
+	groupChannelBillingRatioMap = ratios
+	groupBillingRatioLock.Unlock()
+}
+
 func GetGroupBillingRatio(id string) float64 {
 	groupID := strings.TrimSpace(id)
 	if groupID == "" {
@@ -51,6 +58,37 @@ func GetGroupBillingRatio(id string) float64 {
 	return normalizeGroupBillingRatio(ratio)
 }
 
+func GetGroupChannelBillingRatio(group string, channelID string) float64 {
+	groupID := strings.TrimSpace(group)
+	normalizedChannelID := strings.TrimSpace(channelID)
+	if groupID == "" || normalizedChannelID == "" {
+		return GetGroupBillingRatio(groupID)
+	}
+	groupBillingRatioLock.RLock()
+	ratio, ok := groupChannelBillingRatioMap[groupID][normalizedChannelID]
+	groupBillingRatioLock.RUnlock()
+	if !ok {
+		return GetGroupBillingRatio(groupID)
+	}
+	return normalizeGroupBillingRatio(ratio)
+}
+
+func buildGroupChannelBillingRatioMap(rows []GroupChannel) map[string]map[string]float64 {
+	ratios := make(map[string]map[string]float64)
+	for _, row := range rows {
+		groupID := strings.TrimSpace(row.Group)
+		channelID := strings.TrimSpace(row.ChannelId)
+		if groupID == "" || channelID == "" || !row.Enabled {
+			continue
+		}
+		if _, ok := ratios[groupID]; !ok {
+			ratios[groupID] = make(map[string]float64)
+		}
+		ratios[groupID][channelID] = normalizeGroupBillingRatio(row.BillingRatio)
+	}
+	return ratios
+}
+
 func syncGroupBillingRatiosRuntimeWithDB(db *gorm.DB) error {
 	if db == nil {
 		return nil
@@ -60,5 +98,10 @@ func syncGroupBillingRatiosRuntimeWithDB(db *gorm.DB) error {
 		return err
 	}
 	setGroupBillingRatioRuntime(buildGroupBillingRatioMap(rows))
+	channelRows := make([]GroupChannel, 0)
+	if err := db.Find(&channelRows).Error; err != nil {
+		return err
+	}
+	setGroupChannelBillingRatioRuntime(buildGroupChannelBillingRatioMap(channelRows))
 	return nil
 }

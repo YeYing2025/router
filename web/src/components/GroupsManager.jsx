@@ -50,9 +50,10 @@ const createEmptyModelConfig = () => ({
 });
 
 const GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS = {
-  name: 320,
-  status: 120,
+  name: 280,
+  status: 100,
   priority: 140,
+  billingRatio: 140,
   actions: 220,
 };
 
@@ -60,6 +61,7 @@ const GROUP_DETAIL_CHANNEL_TABLE_MIN_WIDTH =
   GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.name +
   GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.status +
   GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.priority +
+  GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.billingRatio +
   GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.actions;
 
 const sortGroupModelRows = (items) =>
@@ -115,8 +117,19 @@ const collectChannelIDsFromGroupModels = (items) => {
   return ids;
 };
 
+const toSafeBillingRatio = (value, fallback = 1) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return Number(fallback) >= 0 ? Number(fallback) : 1;
+  }
+  return parsed;
+};
+
 const toChannelRows = (items) =>
-  Array.isArray(items) ? items : [];
+  (Array.isArray(items) ? items : []).map((item) => ({
+    ...item,
+    billing_ratio: toSafeBillingRatio(item?.billing_ratio, 1),
+  }));
 
 const getChannelModelOptionRows = (channel) =>
   Array.isArray(channel?.model_options)
@@ -282,7 +295,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
   const [detailEditingSection, setDetailEditingSection] = useState('');
   const [activeDetailTab, setActiveDetailTab] = useState('overview');
   const [detailChannelModalOpen, setDetailChannelModalOpen] = useState(false);
-  const [detailChannelDraft, setDetailChannelDraft] = useState({ id: '', priority: 0, models: [] });
+  const [detailChannelDraft, setDetailChannelDraft] = useState({ id: '', priority: 0, billing_ratio: 1, models: [] });
   const [detailModelModalOpen, setDetailModelModalOpen] = useState(false);
   const [detailModelEditTarget, setDetailModelEditTarget] = useState('');
   const [detailModelChannelDrafts, setDetailModelChannelDrafts] = useState([]);
@@ -844,6 +857,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     setDetailChannelDraft({
       id: (firstUnbound?.id || '').toString().trim(),
       priority: toSafePriorityNumber(firstUnbound?.priority, 0),
+      billing_ratio: toSafeBillingRatio(firstUnbound?.billing_ratio, 1),
       models: getChannelModelOptionRows(firstUnbound).map((item) =>
         encodeChannelModelOptionValue(item)
       ),
@@ -998,7 +1012,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
       return;
     }
     setDetailChannelModalOpen(false);
-    setDetailChannelDraft({ id: '', priority: 0, models: [] });
+    setDetailChannelDraft({ id: '', priority: 0, billing_ratio: 1, models: [] });
   }, [submitting]);
 
   const cancelDetailSectionEdit = useCallback(() => {
@@ -1007,7 +1021,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     }
     setDetailEditingSection('');
     setDetailChannelModalOpen(false);
-    setDetailChannelDraft({ id: '', priority: 0, models: [] });
+    setDetailChannelDraft({ id: '', priority: 0, billing_ratio: 1, models: [] });
     closeDetailModelModal();
     resetFormState();
   }, [closeDetailModelModal, submitting]);
@@ -1048,7 +1062,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     }
   }, [activeGroup, form.billing_ratio, form.description, form.name, refreshGroupDetailState, t]);
 
-  const submitDetailChannels = useCallback(async (channelRows = detailChannelRows) => {
+  const submitDetailChannels = useCallback(async (channelRows = detailChannelRows, options = {}) => {
     const id = (activeGroup?.id || '').toString().trim();
     if (id === '') {
       return false;
@@ -1060,6 +1074,7 @@ const GroupsManager = ({ detailGroupId = '' }) => {
           id: (item?.id || '').toString().trim(),
           bound: !!item?.bound,
           priority: toSafePriorityNumber(item?.priority, 0),
+          billing_ratio: toSafeBillingRatio(item?.billing_ratio, 1),
         }))
         .filter((item) => item.id !== '');
       const res = await API.put(`/api/v1/admin/group/${encodeURIComponent(id)}/channels`, {
@@ -1073,7 +1088,9 @@ const GroupsManager = ({ detailGroupId = '' }) => {
         showError(message || t('group_manage.messages.bind_update_failed'));
         return false;
       }
-      showSuccess(t('group_manage.messages.bind_update_success'));
+      if (!options.silent) {
+        showSuccess(t('group_manage.messages.bind_update_success'));
+      }
       await refreshGroupDetailState(id);
       return true;
     } catch (error) {
@@ -1121,14 +1138,28 @@ const GroupsManager = ({ detailGroupId = '' }) => {
     if (!ok) {
       return;
     }
+    const nextChannelRows = (Array.isArray(editorState.channels) ? editorState.channels : []).map((channel) => {
+      if ((channel?.id || '').toString().trim() !== channelID) {
+        return channel;
+      }
+      return {
+        ...channel,
+        bound: true,
+        priority: toSafePriorityNumber(detailChannelDraft.priority, 0),
+        billing_ratio: toSafeBillingRatio(detailChannelDraft.billing_ratio, 1),
+      };
+    });
+    await submitDetailChannels(nextChannelRows, { silent: true });
     closeDetailChannelModal();
   }, [
     closeDetailChannelModal,
     detailChannelDraft.id,
     detailChannelDraft.models,
     detailChannelDraft.priority,
+    detailChannelDraft.billing_ratio,
     loadDetailModelEditorState,
     saveDetailModels,
+    submitDetailChannels,
     t,
   ]);
 
@@ -1491,6 +1522,43 @@ const GroupsManager = ({ detailGroupId = '' }) => {
                           ? {
                               ...row,
                               priority: toSafePriorityNumber(row?.priority, 0),
+                            }
+                          : row
+                      );
+                      setDetailChannelRows(nextRows);
+                      await submitDetailChannels(nextRows);
+                    }}
+                  />
+                );
+              },
+            },
+            {
+              title: t('group_manage.detail.channel_billing_ratio'),
+              dataIndex: 'billing_ratio',
+              key: 'billing_ratio',
+              width: GROUP_DETAIL_CHANNEL_COLUMN_WIDTHS.billingRatio,
+              render: (_, item) => {
+                const channelID = (item?.id || '').toString().trim();
+                return (
+                  <AppInputNumber
+                    className='router-inline-input'
+                    min={0}
+                    step={0.1}
+                    precision={4}
+                    disabled={submitting || detailChannelsEditLocked || detailChannelModalOpen}
+                    value={toSafeBillingRatio(item?.billing_ratio, 1)}
+                    onChange={(e, { value }) =>
+                      updateDetailChannelDraft(channelID, (current) => ({
+                        ...current,
+                        billing_ratio: toSafeBillingRatio(value, 1),
+                      }))
+                    }
+                    onBlur={async () => {
+                      const nextRows = (Array.isArray(detailChannelRows) ? detailChannelRows : []).map((row) =>
+                        (row?.id || '').toString().trim() === channelID
+                          ? {
+                              ...row,
+                              billing_ratio: toSafeBillingRatio(row?.billing_ratio, 1),
                             }
                           : row
                       );
@@ -2846,6 +2914,8 @@ const GroupsManager = ({ detailGroupId = '' }) => {
                     setDetailChannelDraft((prev) => ({
                       ...prev,
                       id: nextChannelID,
+                      priority: toSafePriorityNumber(nextChannel?.priority, 0),
+                      billing_ratio: toSafeBillingRatio(nextChannel?.billing_ratio, 1),
                       models: getChannelModelOptionRows(nextChannel).map((item) =>
                         encodeChannelModelOptionValue(item)
                       ),
@@ -2933,6 +3003,24 @@ const GroupsManager = ({ detailGroupId = '' }) => {
                       priority: Number.isFinite(Number(value))
                         ? Math.trunc(Number(value))
                         : 0,
+                    }))
+                  }
+                />
+              </AppField>
+            </AppFormRow>
+            <AppFormRow>
+              <AppField label={t('group_manage.detail.channel_billing_ratio')}>
+                <AppInputNumber
+                  className='router-section-input'
+                  min={0}
+                  step={0.1}
+                  precision={4}
+                  fluid
+                  value={detailChannelDraft.billing_ratio}
+                  onChange={(e, { value }) =>
+                    setDetailChannelDraft((prev) => ({
+                      ...prev,
+                      billing_ratio: toSafeBillingRatio(value, 1),
                     }))
                   }
                 />

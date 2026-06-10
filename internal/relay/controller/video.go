@@ -344,7 +344,7 @@ func RelayVideoHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		return relayVideoRawResponse(c, resp, responseBody)
 	}
 
-	groupRatio := adminmodel.GetGroupBillingRatio(meta.Group)
+	groupRatio := adminmodel.GetGroupChannelBillingRatio(meta.Group, meta.ChannelId)
 	pricing, pricingErr := adminmodel.ResolveChannelModelPricing(meta.ChannelProtocol, meta.ChannelModelConfigs, videoRequest.Model)
 	if pricingErr != nil {
 		if groupRatio == 0 {

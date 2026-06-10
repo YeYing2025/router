@@ -94,7 +94,7 @@ func RelayTextHelper(c *gin.Context) *model.ErrorWithStatusCode {
 			strings.TrimSpace(meta.ActualModelName),
 		)
 	}
-	groupRatio := adminmodel.GetGroupBillingRatio(meta.Group)
+	groupRatio := adminmodel.GetGroupChannelBillingRatio(meta.Group, meta.ChannelId)
 	pricing, err := adminmodel.ResolveChannelModelPricing(meta.ChannelProtocol, meta.ChannelModelConfigs, textRequest.Model)
 	if err != nil {
 		if groupRatio == 0 {

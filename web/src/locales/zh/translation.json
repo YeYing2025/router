@@ -1199,6 +1199,7 @@
       "enabled": "是否启用",
       "selected": "使用",
       "priority": "优先级",
+      "channel_billing_ratio": "渠道业务倍率",
       "channel_count": "渠道数",
       "model_channels": "渠道",
       "model_search_placeholder": "搜索模型或渠道",
@@ -1210,7 +1211,7 @@
       "edit_model_title": "编辑模型 {{model}}",
       "bound_channels": "渠道",
       "empty_channels": "暂无渠道",
-      "channels_hint": "这里维护分组渠道人工配置，包括该分组接入哪些渠道以及渠道优先级。",
+      "channels_hint": "这里维护分组渠道人工配置，包括该分组接入哪些渠道、渠道优先级，以及该渠道在当前分组内的业务倍率。",
       "models_hint": "这里维护分组模型人工配置和渠道承载关系。分组层不会因为渠道临时异常、测试结果或上游波动自动改写这里的配置。"
     },
     "edit": {
@@ -1628,7 +1629,7 @@
         "billing_estimate_precision": "估算精度",
         "estimated_prompt_tokens": "预估提示词消耗",
         "billing_settlement_mode": "结算模式",
-        "billing_group_ratio": "业务倍率",
+        "billing_group_ratio": "命中业务倍率",
         "billing_yyc_rate": "折算比率",
         "billing_input_quantity": "输入计费数量",
         "billing_output_quantity": "输出计费数量",

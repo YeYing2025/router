@@ -26,8 +26,8 @@ type TopupPlan struct {
 	QuotaAmount    float64 `json:"quota_amount" gorm:"type:numeric(18,6);not null;default:0"`
 	QuotaCurrency  string  `json:"quota_currency" gorm:"type:varchar(16);not null;default:'USD'"`
 	ValidityDays   int     `json:"validity_days" gorm:"type:int;not null;default:0"`
-	Enabled        bool    `json:"enabled" gorm:"default:true;index"`
-	PublicVisible  bool    `json:"public_visible" gorm:"not null;default:true;index"`
+	Enabled        bool    `json:"enabled" gorm:"index"`
+	PublicVisible  bool    `json:"public_visible" gorm:"not null;index"`
 	SortOrder      int     `json:"sort_order" gorm:"default:0;index"`
 	CreatedAt      int64   `json:"created_at" gorm:"bigint;index"`
 	UpdatedAt      int64   `json:"updated_at" gorm:"bigint;index"`

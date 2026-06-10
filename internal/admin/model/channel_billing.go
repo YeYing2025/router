@@ -72,7 +72,7 @@ const (
 
 type ChannelBillingProfile struct {
 	ChannelId          string `json:"channel_id" gorm:"type:char(36);primaryKey"`
-	Enabled            bool   `json:"enabled" gorm:"not null;default:true"`
+	Enabled            bool   `json:"enabled" gorm:"not null"`
 	BillingMode        string `json:"billing_mode" gorm:"column:billing_mode;type:varchar(64);not null;default:'unsupported'"`
 	BillingConfig      string `json:"billing_config" gorm:"column:billing_config;type:text"`
 	ActionCapabilities string `json:"action_capabilities" gorm:"type:text"`

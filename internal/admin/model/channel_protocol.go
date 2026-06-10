@@ -14,7 +14,7 @@ type ChannelProtocolCatalog struct {
 	Description string `json:"description" gorm:"type:text"`
 	Tip         string `json:"tip" gorm:"type:text"`
 	Source      string `json:"source" gorm:"type:varchar(32);default:'default'"`
-	Enabled     bool   `json:"enabled" gorm:"default:true"`
+	Enabled     bool   `json:"enabled"`
 	SortOrder   int    `json:"sort_order" gorm:"column:sort_order;default:0"`
 	UpdatedAt   int64  `json:"updated_at" gorm:"bigint"`
 }

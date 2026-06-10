@@ -15,12 +15,13 @@ const (
 )
 
 type GroupChannel struct {
-	Group     string `json:"group" gorm:"column:group;primaryKey;type:varchar(32);autoIncrement:false"`
-	ChannelId string `json:"channel_id" gorm:"primaryKey;type:varchar(64);autoIncrement:false;index"`
-	Enabled   bool   `json:"enabled" gorm:"not null;default:true;index"`
-	Priority  int64  `json:"priority" gorm:"bigint;not null;default:0;index"`
-	CreatedAt int64  `json:"created_at" gorm:"bigint;index"`
-	UpdatedAt int64  `json:"updated_at" gorm:"bigint;index"`
+	Group        string  `json:"group" gorm:"column:group;primaryKey;type:varchar(32);autoIncrement:false"`
+	ChannelId    string  `json:"channel_id" gorm:"primaryKey;type:varchar(64);autoIncrement:false;index"`
+	Enabled      bool    `json:"enabled" gorm:"not null;index"`
+	Priority     int64   `json:"priority" gorm:"bigint;not null;default:0;index"`
+	BillingRatio float64 `json:"billing_ratio" gorm:"type:numeric(12,6);not null;default:1"`
+	CreatedAt    int64   `json:"created_at" gorm:"bigint;index"`
+	UpdatedAt    int64   `json:"updated_at" gorm:"bigint;index"`
 }
 
 func (GroupChannel) TableName() string {
@@ -179,12 +180,13 @@ func replaceGroupChannelRowsWithItemsDB(db *gorm.DB, groupID string, items []Gro
 			createdAt = existing.CreatedAt
 		}
 		rows = append(rows, GroupChannel{
-			Group:     groupID,
-			ChannelId: item.Id,
-			Enabled:   true,
-			Priority:  toSafeGroupChannelPriority(priority),
-			CreatedAt: createdAt,
-			UpdatedAt: now,
+			Group:        groupID,
+			ChannelId:    item.Id,
+			Enabled:      true,
+			Priority:     toSafeGroupChannelPriority(priority),
+			BillingRatio: normalizeGroupChannelItemBillingRatio(item.BillingRatio),
+			CreatedAt:    createdAt,
+			UpdatedAt:    now,
 		})
 	}
 
@@ -248,13 +250,18 @@ func syncGroupChannelRowsByChannelIDsDB(db *gorm.DB, groupID string, channelIDs 
 		if hasExisting && existing.CreatedAt > 0 {
 			createdAt = existing.CreatedAt
 		}
+		billingRatio := 1.0
+		if hasExisting {
+			billingRatio = normalizeGroupBillingRatio(existing.BillingRatio)
+		}
 		rows = append(rows, GroupChannel{
-			Group:     groupID,
-			ChannelId: channelID,
-			Enabled:   true,
-			Priority:  toSafeGroupChannelPriority(priority),
-			CreatedAt: createdAt,
-			UpdatedAt: now,
+			Group:        groupID,
+			ChannelId:    channelID,
+			Enabled:      true,
+			Priority:     toSafeGroupChannelPriority(priority),
+			BillingRatio: billingRatio,
+			CreatedAt:    createdAt,
+			UpdatedAt:    now,
 		})
 	}
 	groupCol := `"group"`
@@ -268,6 +275,29 @@ func syncGroupChannelRowsByChannelIDsDB(db *gorm.DB, groupID string, channelIDs 
 		Columns:   []clause.Column{{Name: "group"}, {Name: "channel_id"}},
 		UpdateAll: true,
 	}).Create(&rows).Error
+}
+
+func backfillGroupChannelBillingRatioWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	if err := db.AutoMigrate(&GroupChannel{}); err != nil {
+		return err
+	}
+	groupRows, err := listGroupCatalogWithDB(db)
+	if err != nil {
+		return err
+	}
+	ratioByGroup := buildGroupBillingRatioMap(groupRows)
+	groupCol := `"group"`
+	for groupID, ratio := range ratioByGroup {
+		if err := db.Model(&GroupChannel{}).
+			Where(groupCol+" = ?", groupID).
+			Update("billing_ratio", ratio).Error; err != nil {
+			return err
+		}
+	}
+	return syncGroupRuntimeCachesWithDB(db)
 }
 
 func migrateGroupChannelsWithDB(db *gorm.DB) error {
@@ -386,13 +416,18 @@ func backfillGroupChannelRowsFromGroupModelRouteDB(db *gorm.DB, groupID string, 
 		if hasExisting && existing.CreatedAt > 0 {
 			createdAt = existing.CreatedAt
 		}
+		billingRatio := 1.0
+		if hasExisting {
+			billingRatio = normalizeGroupBillingRatio(existing.BillingRatio)
+		}
 		rows = append(rows, GroupChannel{
-			Group:     groupCatalog.Id,
-			ChannelId: channelID,
-			Enabled:   channel.Status == ChannelStatusEnabled,
-			Priority:  toSafeGroupChannelPriority(priority),
-			CreatedAt: createdAt,
-			UpdatedAt: now,
+			Group:        groupCatalog.Id,
+			ChannelId:    channelID,
+			Enabled:      channel.Status == ChannelStatusEnabled,
+			Priority:     toSafeGroupChannelPriority(priority),
+			BillingRatio: billingRatio,
+			CreatedAt:    createdAt,
+			UpdatedAt:    now,
 		})
 	}
 	groupCol := `"group"`

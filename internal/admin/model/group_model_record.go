@@ -18,7 +18,7 @@ type GroupModel struct {
 	Group     string `json:"group" gorm:"column:group;primaryKey;type:varchar(32);autoIncrement:false"`
 	Model     string `json:"model" gorm:"primaryKey;type:varchar(255);autoIncrement:false"`
 	Provider  string `json:"provider" gorm:"type:varchar(128);default:'';index"`
-	Enabled   bool   `json:"enabled" gorm:"not null;default:true;index"`
+	Enabled   bool   `json:"enabled" gorm:"not null;index"`
 	CreatedAt int64  `json:"created_at" gorm:"bigint;index"`
 	UpdatedAt int64  `json:"updated_at" gorm:"bigint;index"`
 }
@@ -117,7 +117,7 @@ func replaceGroupModelRowsWithDB(db *gorm.DB, groupID string, rows []GroupModel)
 	if len(normalizedRows) == 0 {
 		return nil
 	}
-	return db.Clauses(clause.OnConflict{
+	return db.Select("*").Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "group"}, {Name: "model"}},
 		UpdateAll: true,
 	}).Create(&normalizedRows).Error

@@ -18,7 +18,7 @@ type GroupCatalog struct {
 	Description  string             `json:"description" gorm:"type:varchar(255);default:''"`
 	Source       string             `json:"source" gorm:"type:varchar(32);default:'system'"`
 	BillingRatio float64            `json:"billing_ratio" gorm:"type:numeric(12,6);not null;default:1"`
-	Enabled      bool               `json:"enabled" gorm:"default:true;index"`
+	Enabled      bool               `json:"enabled" gorm:"index"`
 	SortOrder    int                `json:"sort_order" gorm:"default:0;index"`
 	CreatedAt    int64              `json:"created_at" gorm:"bigint;index"`
 	UpdatedAt    int64              `json:"updated_at" gorm:"bigint;index"`

@@ -31,7 +31,7 @@ type ServicePackage struct {
 	PackageEmergencyQuotaLimit int64                              `json:"package_emergency_quota_limit" gorm:"column:package_emergency_quota_limit;type:bigint;not null;default:0"`
 	DurationDays               int                                `json:"duration_days" gorm:"type:int;not null;default:30"`
 	QuotaResetTimezone         string                             `json:"quota_reset_timezone" gorm:"type:varchar(64);not null;default:'Asia/Shanghai'"`
-	Enabled                    bool                               `json:"enabled" gorm:"default:true;index"`
+	Enabled                    bool                               `json:"enabled" gorm:"index"`
 	SortOrder                  int                                `json:"sort_order" gorm:"default:0;index"`
 	Source                     string                             `json:"source" gorm:"type:varchar(32);default:'manual'"`
 	CreatedAt                  int64                              `json:"created_at" gorm:"bigint;index"`

@@ -290,7 +290,7 @@ func replaceSingleGroupModelWithDB(db *gorm.DB, groupID string, modelName string
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := db.Clauses(clause.OnConflict{
+	if err := db.Select("*").Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "group"}, {Name: "model"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"provider",

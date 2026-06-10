@@ -1284,6 +1284,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			},
 		},
 		{
+			Version:     "202606091030_deepseek_reasoning_model_tags",
+			Description: "mark deepseek reasoning-capable provider models",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "deepseek")
+			},
+		},
+		{
 			Version:     "202605271030_channel_capability_disable_observability",
 			Description: "add runtime disable metadata to channel model and endpoint capabilities",
 			Up: func(tx *gorm.DB) error {
@@ -1316,6 +1323,20 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			Description: "upsert anthropic provider migration rows for claude opus 4.8 pricing",
 			Up: func(tx *gorm.DB) error {
 				return upsertProviderMigrationProvidersWithDB(tx, "anthropic")
+			},
+		},
+		{
+			Version:     "202606091030_add_qwen37_plus_provider_model",
+			Description: "upsert qwen3.7-plus official provider model and tiered pricing",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "qwen")
+			},
+		},
+		{
+			Version:     "202606091130_group_channel_billing_ratio",
+			Description: "add group channel billing ratio and backfill from group ratio",
+			Up: func(tx *gorm.DB) error {
+				return backfillGroupChannelBillingRatioWithDB(tx)
 			},
 		},
 	}

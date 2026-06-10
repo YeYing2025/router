@@ -607,7 +607,7 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	// Convert the original image model
 	imageRequest.Model, _ = getMappedModelName(imageRequest.Model, imagerule.ImageOriginModelName)
 	c.Set("response_format", imageRequest.ResponseFormat)
-	groupRatio := adminmodel.GetGroupBillingRatio(meta.Group)
+	groupRatio := adminmodel.GetGroupChannelBillingRatio(meta.Group, meta.ChannelId)
 	pricing, pricingErr := adminmodel.ResolveChannelModelPricing(meta.ChannelProtocol, meta.ChannelModelConfigs, imageModel)
 	if pricingErr != nil {
 		if groupRatio == 0 {

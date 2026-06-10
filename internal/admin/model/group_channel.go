@@ -18,6 +18,7 @@ type GroupChannelItem struct {
 	ModelOptions []GroupChannelModelOption `json:"model_options,omitempty"`
 	Bound        bool                      `json:"bound"`
 	Priority     *int64                    `json:"priority,omitempty"`
+	BillingRatio *float64                  `json:"billing_ratio,omitempty"`
 	Updated      int64                     `json:"updated_at"`
 }
 
@@ -58,6 +59,7 @@ func listGroupChannelsWithDB(db *gorm.DB, groupID string, enabledOnly bool) ([]G
 	}
 	boundSet := make(map[string]struct{}, len(channelRows))
 	priorityByChannelID := make(map[string]*int64, len(channelRows))
+	billingRatioByChannelID := make(map[string]float64, len(channelRows))
 	updatedByChannelID := make(map[string]int64, len(channelRows))
 	for _, row := range channelRows {
 		normalized := strings.TrimSpace(row.ChannelId)
@@ -67,6 +69,7 @@ func listGroupChannelsWithDB(db *gorm.DB, groupID string, enabledOnly bool) ([]G
 		boundSet[normalized] = struct{}{}
 		priority := row.Priority
 		priorityByChannelID[normalized] = &priority
+		billingRatioByChannelID[normalized] = normalizeGroupBillingRatio(row.BillingRatio)
 		updatedByChannelID[normalized] = row.UpdatedAt
 	}
 
@@ -87,6 +90,7 @@ func listGroupChannelsWithDB(db *gorm.DB, groupID string, enabledOnly bool) ([]G
 			ModelOptions: buildGroupChannelModelOptions(&channel),
 			Bound:        bound,
 			Priority:     resolveGroupChannelPriority(bound, priorityByChannelID[channelID], channel.Priority),
+			BillingRatio: helperFloat64Pointer(resolveGroupChannelBillingRatio(bound, billingRatioByChannelID[channelID])),
 			Updated:      resolveGroupChannelUpdatedAt(bound, updatedByChannelID[channelID], channel.CreatedTime),
 		})
 	}
@@ -186,7 +190,7 @@ func replaceGroupChannelsWithItemsDB(db *gorm.DB, groupID string, items []GroupC
 	if _, err := buildGroupModelChannelProviderMap(rows); err != nil {
 		return err
 	}
-	return nil
+	return syncGroupRuntimeCachesWithDB(db)
 }
 
 func normalizeGroupChannelItems(items []GroupChannelItem) []GroupChannelItem {
@@ -205,15 +209,34 @@ func normalizeGroupChannelItems(items []GroupChannelItem) []GroupChannelItem {
 		}
 		seen[channelID] = struct{}{}
 		result = append(result, GroupChannelItem{
-			Id:       channelID,
-			Bound:    item.Bound,
-			Priority: helperInt64Pointer(item.Priority),
+			Id:           channelID,
+			Bound:        item.Bound,
+			Priority:     helperInt64Pointer(item.Priority),
+			BillingRatio: helperFloat64Pointer(normalizeGroupChannelItemBillingRatio(item.BillingRatio)),
 		})
 	}
 	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].Id < result[j].Id
 	})
 	return result
+}
+
+func resolveGroupChannelBillingRatio(bound bool, ratio float64) float64 {
+	if !bound {
+		return 1
+	}
+	return normalizeGroupBillingRatio(ratio)
+}
+
+func normalizeGroupChannelItemBillingRatio(value *float64) float64 {
+	if value == nil {
+		return 1
+	}
+	return normalizeGroupBillingRatio(*value)
+}
+
+func helperFloat64Pointer(value float64) *float64 {
+	return &value
 }
 
 func resolveGroupChannelPriority(bound bool, abilityPriority *int64, channelPriority *int64) *int64 {
