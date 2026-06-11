@@ -124,18 +124,16 @@ export const GROUP_LIST_TABLE_MIN_WIDTH =
 export const TOKEN_LIST_COLUMN_WIDTHS = {
   name: 160,
   status: 92,
-  token: 220,
   usedAmount: 120,
   remainingAmount: 120,
   createdTime: 148,
   expiredTime: 148,
-  actions: 228,
+  actions: 56,
 };
 
 export const TOKEN_LIST_TABLE_MIN_WIDTH =
   TOKEN_LIST_COLUMN_WIDTHS.name +
   TOKEN_LIST_COLUMN_WIDTHS.status +
-  TOKEN_LIST_COLUMN_WIDTHS.token +
   TOKEN_LIST_COLUMN_WIDTHS.usedAmount +
   TOKEN_LIST_COLUMN_WIDTHS.remainingAmount +
   TOKEN_LIST_COLUMN_WIDTHS.createdTime +

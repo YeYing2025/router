@@ -1339,6 +1339,19 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return backfillGroupChannelBillingRatioWithDB(tx)
 			},
 		},
+		{
+			Version:     "202606101000_api_tokens_updated_time",
+			Description: "add token updated_time and backfill existing rows from created_time",
+			Up: func(tx *gorm.DB) error {
+				if err := tx.AutoMigrate(&Token{}); err != nil {
+					return err
+				}
+				return tx.Exec(
+					"UPDATE api_tokens SET updated_time = COALESCE(NULLIF(created_time, 0), ?) WHERE COALESCE(updated_time, 0) = 0",
+					helper.GetTimestamp(),
+				).Error
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

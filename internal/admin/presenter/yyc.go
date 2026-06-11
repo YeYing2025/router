@@ -42,6 +42,19 @@ func NewToken(token *model.Token) *Token {
 	if token == nil {
 		return nil
 	}
+	sanitized := *token
+	sanitized.Key = ""
+	return &Token{
+		Token:     &sanitized,
+		YYCRemain: token.RemainQuota,
+		YYCUsed:   token.UsedQuota,
+	}
+}
+
+func NewCreatedToken(token *model.Token) *Token {
+	if token == nil {
+		return nil
+	}
 	return &Token{
 		Token:     token,
 		YYCRemain: token.RemainQuota,

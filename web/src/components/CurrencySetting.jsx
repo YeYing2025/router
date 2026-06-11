@@ -11,9 +11,10 @@ import {
   AppFilterHeader,
   AppInput,
   AppInputNumber,
-  AppSelect,
   AppSpin,
+  AppSwitch,
   AppTable,
+  AppTableActionButton,
 } from '../router-ui';
 
 const createEmptyCurrency = () => ({
@@ -32,10 +33,10 @@ const codeColumnWidth = 96;
 const nameColumnWidth = 180;
 const symbolColumnWidth = 88;
 const minorUnitColumnWidth = 108;
-const statusColumnWidth = 124;
+const statusColumnWidth = 92;
 const createdAtColumnWidth = 148;
 const updatedAtColumnWidth = 148;
-const actionColumnWidth = 148;
+const actionColumnWidth = 84;
 const currencyTableMinWidth =
   codeColumnWidth +
   nameColumnWidth +
@@ -57,19 +58,6 @@ const CurrencySetting = ({ section = '' }) => {
     normalizedSection === '' ||
     normalizedSection === 'all' ||
     normalizedSection === 'catalog';
-
-  const statusOptions = [
-    {
-      key: 1,
-      value: 1,
-      text: t('setting.currency.catalog.status.enabled'),
-    },
-    {
-      key: 2,
-      value: 2,
-      text: t('setting.currency.catalog.status.disabled'),
-    },
-  ];
 
   const loadCurrencies = async () => {
     setLoading(true);
@@ -310,16 +298,22 @@ const CurrencySetting = ({ section = '' }) => {
                 dataIndex: 'status',
                 key: 'status',
                 width: statusColumnWidth,
-                render: (_, row) => (
-                  <AppSelect
-                    className='router-section-input'
-                    options={statusOptions}
-                    value={Number(row.status || 1)}
-                    onChange={(e, { value }) =>
-                      updateCurrencyField(row._rowIndex, 'status', value)
-                    }
-                  />
-                ),
+                className: 'router-table-col-status-compact',
+                render: (_, row) => {
+                  const currentSavingKey = row._isNew
+                    ? `new-${row._rowIndex}`
+                    : row.code;
+                  const isSaving = savingKey === currentSavingKey;
+                  return (
+                    <AppSwitch
+                      checked={Number(row.status || 1) === 1}
+                      disabled={isSaving}
+                      onChange={(_, { checked }) =>
+                        updateCurrencyField(row._rowIndex, 'status', checked ? 1 : 2)
+                      }
+                    />
+                  );
+                },
               },
               {
                 title: t('setting.currency.catalog.columns.created_at'),
@@ -342,34 +336,30 @@ const CurrencySetting = ({ section = '' }) => {
                 title: t('setting.currency.catalog.columns.action'),
                 key: 'action',
                 width: actionColumnWidth,
-                className: 'router-billing-action-cell',
+                className: 'router-table-col-actions-icon router-billing-action-cell',
                 render: (_, row) => {
                   const currentSavingKey = row._isNew
                     ? `new-${row._rowIndex}`
                     : row.code;
                   const isSaving = savingKey === currentSavingKey;
                   return (
-                    <div className='router-action-group'>
+                    <div className='router-action-group-tight router-table-actions-icon-compact'>
                       {row._isNew ? (
-                        <AppButton
-                          className='router-table-action-button'
-                          type='button'
+                        <AppTableActionButton
+                          icon='close'
+                          title={t('setting.currency.catalog.buttons.cancel')}
                           onClick={() => removeNewCurrency(row._rowIndex)}
                           disabled={isSaving}
-                        >
-                          {t('setting.currency.catalog.buttons.cancel')}
-                        </AppButton>
+                        />
                       ) : null}
-                      <AppButton
-                        className='router-table-action-button'
+                      <AppTableActionButton
+                        icon='save'
+                        title={t('setting.currency.catalog.buttons.save')}
                         color='blue'
-                        type='button'
                         loading={isSaving}
                         disabled={isSaving}
                         onClick={() => saveCurrency(row, row._rowIndex)}
-                      >
-                        {t('setting.currency.catalog.buttons.save')}
-                      </AppButton>
+                      />
                     </div>
                   );
                 },

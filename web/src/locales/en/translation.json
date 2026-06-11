@@ -1352,6 +1352,7 @@
       "used_quota": "Used YYC",
       "remain_quota": "Remaining YYC",
       "created_time": "Created Time",
+      "updated_time": "Updated Time",
       "expired_time": "Expiry Time",
       "actions": "Actions",
       "no_name": "None",
@@ -1401,9 +1402,12 @@
       "ip_limit_placeholder": "Please enter allowed subnets, e.g.: 192.168.0.0/24, use commas to separate multiple subnets",
       "expire_time": "Expiry Time",
       "expire_time_placeholder": "Please enter expiry time in yyyy-MM-dd HH:mm:ss format, -1 for no limit",
-      "quota_notice": "Note: the token's remaining YYC only limits this token's own balance. Actual requests are still constrained by the account's remaining YYC.",
-      "quota": "Remaining YYC",
-      "quota_placeholder": "Please enter remaining YYC",
+      "expire_time_options": {
+        "custom": "Custom Time"
+      },
+      "quota_notice": "Note: the token's remaining amount only limits this token's own balance. Actual requests are still constrained by the account's remaining amount.",
+      "quota": "Remaining Amount",
+      "quota_placeholder": "Please enter remaining amount",
       "buttons": {
         "never_expire": "Never Expire",
         "expire_1_month": "Expire in 1 Month",
@@ -1419,7 +1423,9 @@
         "update_success": "Token updated successfully!",
         "create_success": "Token created successfully, please copy it from the list page!",
         "name_required": "Please enter a token name.",
+        "id_required": "Token id is empty. Please refresh the page and try again.",
         "expire_time_invalid": "Invalid expiry time format!",
+        "quota_invalid": "Invalid remaining amount.",
         "models_required": "Please select at least one model."
       }
     },
@@ -1441,6 +1447,7 @@
     "no_data": "No data",
     "add": "Add",
     "view": "View",
+    "back": "Back",
     "download": "Download",
     "basic_info": "Basic Information",
     "cancel": "Cancel",

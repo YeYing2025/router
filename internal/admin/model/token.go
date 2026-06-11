@@ -28,6 +28,7 @@ type Token struct {
 	Status         int     `json:"status" gorm:"default:1"`
 	Name           string  `json:"name" gorm:"index" `
 	CreatedTime    int64   `json:"created_time" gorm:"bigint"`
+	UpdatedTime    int64   `json:"updated_time" gorm:"bigint"`
 	AccessedTime   int64   `json:"accessed_time" gorm:"bigint"`
 	ExpiredTime    int64   `json:"expired_time" gorm:"bigint;default:-1"`
 	RemainQuota    int64   `json:"remain_quota" gorm:"bigint;default:0"`

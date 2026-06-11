@@ -3943,17 +3943,43 @@ body,
     padding-bottom: 10px !important;
 }
 
-.router-token-expire-actions {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 8px;
+.router-token-basic-info-row {
+    grid-template-columns: minmax(0, 1fr);
 }
 
-.router-token-expire-actions .router-ui-button.router-inline-button {
-    min-height: 28px !important;
-    padding: 0.44em 0.74em !important;
+.router-token-basic-info-row .router-ui-textarea {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    word-break: break-all;
+}
+
+.router-ui-form-row.router-token-expire-row {
+    grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+}
+
+.router-token-expire-mode-select {
+    width: 100%;
+}
+
+.router-ui-form-row.router-token-quota-row {
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 160px);
+    align-items: start;
+}
+
+.router-token-quota-field {
+    min-width: 0;
+}
+
+.router-token-unlimited-field .router-ui-field-control {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+}
+
+@media (max-width: 720px) {
+    .router-ui-form-row.router-token-expire-row,
+    .router-ui-form-row.router-token-quota-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .router-compact-stack {

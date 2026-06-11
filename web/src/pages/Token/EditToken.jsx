@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   useLocation,
@@ -7,15 +7,24 @@ import {
 } from 'react-router-dom';
 import {
   API,
-  copy,
   showError,
   showSuccess,
-  showWarning,
   timestamp2string,
 } from '../../helpers';
-import { renderAmountEquivalentPrompt } from '../../helpers/render';
+import UnitDropdown from '../../components/UnitDropdown';
+import {
+  billingInputValueToYYC,
+  buildBillingUnitOptions,
+  buildPublicDisplayCurrencyIndex,
+  convertBillingInputValueUnit,
+  loadPublicDisplayCurrencyCatalog,
+  resolveBillingInputStep,
+  resolveDefaultBillingUnit,
+  yycToBillingInputValue,
+} from '../../helpers/billing';
 import {
   AppButton,
+  AppCompact,
   AppDetailSection,
   AppField,
   AppFilterHeader,
@@ -23,9 +32,12 @@ import {
   AppFormRow,
   AppInput,
   AppInputNumber,
+  AppSelect,
   AppSwitch,
   AppTable,
+  AppTabs,
   AppTag,
+  AppTextarea,
 } from '../../router-ui';
 
 const EditToken = () => {
@@ -48,6 +60,13 @@ const EditToken = () => {
   const [allModelsSelected, setAllModelsSelected] = useState(isCreateMode);
   const [modelKeyword, setModelKeyword] = useState('');
   const [detailEditingSection, setDetailEditingSection] = useState('');
+  const [activeDetailTab, setActiveDetailTab] = useState('basic');
+  const [createdToken, setCreatedToken] = useState(null);
+  const [expireTimeMode, setExpireTimeMode] = useState('custom');
+  const [billingCurrencyIndex, setBillingCurrencyIndex] = useState(
+    buildPublicDisplayCurrencyIndex([])
+  );
+  const [quotaDisplayUnit, setQuotaDisplayUnit] = useState('USD');
   const originInputs = {
     name: '',
     remain_quota: isDetailMode ? 0 : 500000,
@@ -57,14 +76,15 @@ const EditToken = () => {
     subnet: '',
     status: 1,
     created_time: 0,
+    updated_time: 0,
     key: '',
     used_quota: 0,
   };
   const [inputs, setInputs] = useState(originInputs);
   const [persistedInputs, setPersistedInputs] = useState(originInputs);
+  const [quotaInputValue, setQuotaInputValue] = useState(`${originInputs.remain_quota}`);
   const {
     name,
-    remain_quota: remainingYYC,
     expired_time,
     unlimited_quota: hasUnlimitedYYCLimit,
   } = inputs;
@@ -73,9 +93,47 @@ const EditToken = () => {
   const filteredModelOptions = modelOptions.filter((option) =>
     option.value.toLowerCase().includes(modelKeyword.trim().toLowerCase())
   );
+  const quotaUnitOptions = useMemo(
+    () => buildBillingUnitOptions(billingCurrencyIndex),
+    [billingCurrencyIndex]
+  );
+  const expireTimeModeOptions = useMemo(
+    () => [
+      {
+        key: 'custom',
+        value: 'custom',
+        text: t('token.edit.expire_time_options.custom'),
+      },
+      {
+        key: 'never',
+        value: 'never',
+        text: t('token.edit.buttons.never_expire'),
+      },
+      {
+        key: '1_month',
+        value: '1_month',
+        text: t('token.edit.buttons.expire_1_month'),
+      },
+      {
+        key: '1_day',
+        value: '1_day',
+        text: t('token.edit.buttons.expire_1_day'),
+      },
+      {
+        key: '1_hour',
+        value: '1_hour',
+        text: t('token.edit.buttons.expire_1_hour'),
+      },
+      {
+        key: '1_minute',
+        value: '1_minute',
+        text: t('token.edit.buttons.expire_1_minute'),
+      },
+    ],
+    [t]
+  );
   const basicReadonly = isDetailMode && detailEditingSection !== 'basic';
   const modelsReadonly = isDetailMode && detailEditingSection !== 'models';
-  const limitsReadonly = isDetailMode && detailEditingSection !== 'limits';
   const isEveryModelSelected = modelOptions.length > 0 && (
     allModelsSelected || inputs.models.length === modelOptions.length
   );
@@ -116,16 +174,12 @@ const EditToken = () => {
     }
   };
 
-  const renderShortToken = (key) => {
+  const renderFullToken = (key) => {
     const raw = typeof key === 'string' ? key.trim() : '';
     if (raw === '') {
       return '-';
     }
-    const withPrefix = raw.startsWith('sk-') ? raw : `sk-${raw}`;
-    if (withPrefix.length <= 24) {
-      return withPrefix;
-    }
-    return `${withPrefix.slice(0, 12)}...${withPrefix.slice(-8)}`;
+    return raw.startsWith('sk-') ? raw : `sk-${raw}`;
   };
 
   const syncTokenState = useCallback((data) => {
@@ -157,10 +211,26 @@ const EditToken = () => {
     }
     setInputs(normalizedData);
     setPersistedInputs(normalizedData);
-  }, []);
+    setExpireTimeMode('custom');
+    setQuotaInputValue(
+      yycToBillingInputValue(
+        normalizedData.remain_quota,
+        quotaDisplayUnit,
+        billingCurrencyIndex
+      )
+    );
+  }, [billingCurrencyIndex, quotaDisplayUnit]);
 
   const handleInputChange = (e, { name, value }) => {
     setInputs((inputs) => ({ ...inputs, [name]: value }));
+  };
+
+  const formatDateTimeLocalInputValue = (value) => {
+    const normalizedValue = (value || '').toString().trim();
+    if (normalizedValue === '') {
+      return '';
+    }
+    return normalizedValue.replace(' ', 'T').slice(0, 16);
   };
 
   const startDetailSectionEdit = useCallback((section) => {
@@ -172,26 +242,21 @@ const EditToken = () => {
 
   const cancelDetailSectionEdit = useCallback(() => {
     setInputs(persistedInputs);
+    setExpireTimeMode('custom');
+    setQuotaInputValue(
+      yycToBillingInputValue(
+        persistedInputs.remain_quota,
+        quotaDisplayUnit,
+        billingCurrencyIndex
+      )
+    );
     setAllModelsSelected(
       Array.isArray(persistedInputs.models)
         ? persistedInputs.models.length === 0
         : true
     );
     setDetailEditingSection('');
-  }, [persistedInputs]);
-
-  const handleCopyToken = async () => {
-    const raw = typeof inputs.key === 'string' ? inputs.key.trim() : '';
-    if (raw === '') {
-      return;
-    }
-    const tokenValue = raw.startsWith('sk-') ? raw : `sk-${raw}`;
-    if (await copy(tokenValue)) {
-      showSuccess(t('token.messages.copy_success'));
-      return;
-    }
-    showWarning(t('token.messages.copy_failed'));
-  };
+  }, [billingCurrencyIndex, persistedInputs, quotaDisplayUnit]);
 
   const handleCancel = () => {
     if (isCreateMode) {
@@ -226,9 +291,38 @@ const EditToken = () => {
     seconds += minute * 60;
     if (seconds !== 0) {
       timestamp += seconds;
-      setInputs({ ...inputs, expired_time: timestamp2string(timestamp) });
+      setInputs((prev) => ({ ...prev, expired_time: timestamp2string(timestamp) }));
     } else {
-      setInputs({ ...inputs, expired_time: '' });
+      setInputs((prev) => ({ ...prev, expired_time: '' }));
+    }
+  };
+
+  const handleExpiredTimeChange = (event, data) => {
+    handleInputChange(event, data);
+    setExpireTimeMode('custom');
+  };
+
+  const handleExpireTimeModeChange = (_, { value }) => {
+    const nextMode = (value || 'custom').toString();
+    setExpireTimeMode(nextMode);
+    switch (nextMode) {
+      case 'never':
+        setExpiredTime(0, 0, 0, 0);
+        break;
+      case '1_month':
+        setExpiredTime(1, 0, 0, 0);
+        break;
+      case '1_day':
+        setExpiredTime(0, 1, 0, 0);
+        break;
+      case '1_hour':
+        setExpiredTime(0, 0, 1, 0);
+        break;
+      case '1_minute':
+        setExpiredTime(0, 0, 0, 1);
+        break;
+      default:
+        break;
     }
   };
 
@@ -237,6 +331,23 @@ const EditToken = () => {
       ...prev,
       unlimited_quota: !prev.unlimited_quota,
     }));
+  };
+
+  const handleQuotaInputChange = (_, { value }) => {
+    setQuotaInputValue(value ?? '0');
+  };
+
+  const handleQuotaUnitChange = (_, { value }) => {
+    const nextUnit = (value || 'YYC').toString().trim().toUpperCase();
+    setQuotaInputValue((currentValue) =>
+      convertBillingInputValueUnit(
+        currentValue,
+        quotaDisplayUnit,
+        nextUnit,
+        billingCurrencyIndex
+      )
+    );
+    setQuotaDisplayUnit(nextUnit);
   };
 
   const loadToken = useCallback(async () => {
@@ -294,13 +405,40 @@ const EditToken = () => {
     });
   }, [isDetailMode, loadAvailableModels, loadToken]);
 
+  useEffect(() => {
+    let disposed = false;
+    loadPublicDisplayCurrencyCatalog().then(({ currencyIndex: nextIndex }) => {
+      if (disposed) {
+        return;
+      }
+      const nextUnit = resolveDefaultBillingUnit(nextIndex);
+      setBillingCurrencyIndex(nextIndex);
+      setQuotaDisplayUnit(nextUnit);
+      setQuotaInputValue(
+        yycToBillingInputValue(inputs.remain_quota, nextUnit, nextIndex)
+      );
+    });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
   const submit = async () => {
     if (isCreateMode && inputs.name.trim() === '') {
       showError(t('token.edit.messages.name_required'));
       return;
     }
     const localInputs = { ...inputs };
-    localInputs.remain_quota = parseInt(localInputs.remain_quota);
+    const quotaYYC = billingInputValueToYYC(
+      quotaInputValue,
+      quotaDisplayUnit,
+      billingCurrencyIndex
+    );
+    if (!Number.isFinite(quotaYYC) || quotaYYC < 0) {
+      showError(t('token.edit.messages.quota_invalid'));
+      return;
+    }
+    localInputs.remain_quota = quotaYYC;
     if (localInputs.expired_time) {
       let time = Date.parse(localInputs.expired_time);
       if (isNaN(time)) {
@@ -318,30 +456,41 @@ const EditToken = () => {
     localInputs.models = isEveryModelSelected ? '' : localInputs.models.join(',');
     let res;
     if (isDetailMode) {
+      const normalizedTokenId = (tokenId || '').toString().trim();
+      if (normalizedTokenId === '') {
+        showError(t('token.edit.messages.id_required'));
+        return;
+      }
       res = await API.put(`/api/v1/public/token/`, {
         ...localInputs,
-        id: parseInt(tokenId),
+        id: normalizedTokenId,
       });
     } else {
       res = await API.post(`/api/v1/public/token/`, localInputs);
     }
-    const { success, message } = res.data;
+    const { success, message, data } = res.data;
     if (success) {
       if (isDetailMode) {
         showSuccess(t('token.edit.messages.update_success'));
-        syncTokenState({
+        syncTokenState(data || {
           ...inputs,
-          id: parseInt(tokenId),
+          id: tokenId,
           models: localInputs.models,
           expired_time: localInputs.expired_time,
         });
         setDetailEditingSection('');
       } else {
         showSuccess(t('token.edit.messages.create_success'));
+        setCreatedToken(data || null);
         setInputs(originInputs);
-      }
-      if (isCreateMode) {
-        navigate('/token');
+        setExpireTimeMode('custom');
+        setQuotaInputValue(
+          yycToBillingInputValue(
+            originInputs.remain_quota,
+            quotaDisplayUnit,
+            billingCurrencyIndex
+          )
+        );
       }
     } else {
       showError(message);
@@ -449,7 +598,7 @@ const EditToken = () => {
             },
             {
               key: 'token-current',
-              label: inputs.name || renderShortToken(inputs.key) || tokenId,
+              label: inputs.name || tokenId,
               active: true,
             },
           ]}
@@ -482,13 +631,41 @@ const EditToken = () => {
             </AppButton>
           }
           end={
+            createdToken ? null :
             <AppButton className='router-page-button' color='blue' onClick={submit}>
               {t('token.edit.buttons.submit')}
             </AppButton>
           }
         />
       )}
-      {isCreateMode ? (
+      {isCreateMode && createdToken ? (
+            <div className='router-page-stack'>
+              <AppDetailSection title='令牌已创建'>
+                <div className='router-section-message'>
+                  令牌只会在创建成功后显示一次，请现在保存到你的客户端或密钥管理工具中。离开当前页面后，系统不会再次展示完整令牌。
+                </div>
+                <AppFormRow className='router-token-basic-info-row'>
+                  <AppField label={t('token.table.token')} readOnly>
+                    <AppTextarea
+                      className='router-section-input'
+                      value={renderFullToken(createdToken.key)}
+                      readOnly
+                      autoSize={{ minRows: 2, maxRows: 5 }}
+                    />
+                  </AppField>
+                </AppFormRow>
+                <AppFormActions>
+                  <AppButton
+                    className='router-page-button'
+                    color='blue'
+                    onClick={() => navigate('/token')}
+                  >
+                    {t('common.back')}
+                  </AppButton>
+                </AppFormActions>
+              </AppDetailSection>
+            </div>
+      ) : isCreateMode ? (
             <div className='router-page-stack'>
                 <AppFormRow>
                   <AppField label={t('token.edit.name')} required={isCreateMode}>
@@ -530,90 +707,58 @@ const EditToken = () => {
                     />
                   </AppField>
                 </AppFormRow>
-                <AppFormRow>
+                <AppFormRow className='router-token-expire-row'>
                   <AppField label={t('token.edit.expire_time')}>
+                    <AppSelect
+                      className='router-section-dropdown router-token-expire-mode-select'
+                      options={expireTimeModeOptions}
+                      value={expireTimeMode}
+                      onChange={handleExpireTimeModeChange}
+                    />
+                  </AppField>
+                  <AppField label={t('token.edit.expire_time_options.custom')}>
                     <AppInput
                       className='router-section-input'
                       name='expired_time'
                       placeholder={t('token.edit.expire_time_placeholder')}
-                      onChange={handleInputChange}
-                      value={expired_time}
+                      onChange={handleExpiredTimeChange}
+                      value={formatDateTimeLocalInputValue(expired_time)}
                       autoComplete='new-password'
                       type='datetime-local'
+                      disabled={expireTimeMode !== 'custom'}
                       readOnly={false}
                     />
                   </AppField>
                 </AppFormRow>
-                <div className='router-token-expire-actions'>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
-                    onClick={() => {
-                      setExpiredTime(0, 0, 0, 0);
-                    }}
-                  >
-                    {t('token.edit.buttons.never_expire')}
-                  </AppButton>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
-                    onClick={() => {
-                      setExpiredTime(1, 0, 0, 0);
-                    }}
-                  >
-                    {t('token.edit.buttons.expire_1_month')}
-                  </AppButton>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
-                    onClick={() => {
-                      setExpiredTime(0, 1, 0, 0);
-                    }}
-                  >
-                    {t('token.edit.buttons.expire_1_day')}
-                  </AppButton>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
-                    onClick={() => {
-                      setExpiredTime(0, 0, 1, 0);
-                    }}
-                  >
-                    {t('token.edit.buttons.expire_1_hour')}
-                  </AppButton>
-                  <AppButton
-                    className='router-inline-button'
-                    type='button'
-                    onClick={() => {
-                      setExpiredTime(0, 0, 0, 1);
-                    }}
-                  >
-                    {t('token.edit.buttons.expire_1_minute')}
-                  </AppButton>
-                </div>
-                <div className='router-section-message'>{t('token.edit.quota_notice')}</div>
-                <AppFormRow>
+                <AppFormRow className='router-token-quota-row'>
                   <AppField
-                    label={`${t('token.edit.quota')}${renderAmountEquivalentPrompt(
-                      remainingYYC,
-                      t
-                    )}`}
+                    className='router-token-quota-field'
+                    label={t('token.edit.quota')}
+                    hint={t('token.edit.quota_notice')}
                   >
-                    <AppInputNumber
-                      className='router-section-input'
-                      name='remain_quota'
-                      placeholder={t('token.edit.quota_placeholder')}
-                      onChange={handleInputChange}
-                      value={remainingYYC}
-                      min={0}
-                      precision={0}
-                      fluid
-                      disabled={hasUnlimitedYYCLimit}
-                    />
+                    <AppCompact className='router-section-input-with-unit' block>
+                      <AppInputNumber
+                        className='router-section-input router-section-input-with-unit-field'
+                        name='remain_quota'
+                        placeholder={t('token.edit.quota_placeholder')}
+                        onChange={handleQuotaInputChange}
+                        value={quotaInputValue}
+                        min={0}
+                        step={resolveBillingInputStep(quotaDisplayUnit, billingCurrencyIndex)}
+                        precision={6}
+                        fluid
+                        disabled={hasUnlimitedYYCLimit}
+                      />
+                      <UnitDropdown
+                        variant='inputUnit'
+                        options={quotaUnitOptions}
+                        value={quotaDisplayUnit}
+                        onChange={handleQuotaUnitChange}
+                        aria-label={t('token.edit.quota')}
+                      />
+                    </AppCompact>
                   </AppField>
-                </AppFormRow>
-                <AppFormRow>
-                  <AppField label={t('token.edit.buttons.unlimited_quota')}>
+                  <AppField className='router-token-unlimited-field' label={t('token.edit.buttons.unlimited_quota')}>
                     <AppSwitch
                       checked={hasUnlimitedYYCLimit}
                       onChange={() => {
@@ -624,7 +769,20 @@ const EditToken = () => {
                 </AppFormRow>
               </div>
       ) : (
-        <div className='router-entity-detail-page'>
+        <div className='router-tab-detail-page router-entity-detail-page'>
+          <div className='router-entity-detail-tabs router-block-gap-sm'>
+            <AppTabs
+              className='router-detail-tab-menu'
+              activeKey={activeDetailTab}
+              onChange={setActiveDetailTab}
+              items={[
+                { key: 'basic', label: t('common.basic_info') },
+                { key: 'models', label: t('token.detail.sections.models') },
+              ]}
+            />
+          </div>
+          <div className='router-page-stack'>
+            {activeDetailTab === 'basic' ? (
               <AppDetailSection
                 title={t('common.basic_info')}
                 headerStart={renderStatus(Number(inputs.status || 0))}
@@ -651,7 +809,7 @@ const EditToken = () => {
                 }
                 bodyClassName='router-page-stack'
               >
-                  <AppFormRow>
+                  <AppFormRow className='router-token-basic-info-row'>
                     <AppField label={t('token.edit.name')}>
                       <AppInput
                         className='router-section-input'
@@ -664,26 +822,7 @@ const EditToken = () => {
                       />
                     </AppField>
                   </AppFormRow>
-                  <AppFormRow>
-                    <AppField label={t('token.table.token')} readOnly>
-                      <AppInput
-                        className='router-section-input'
-                        value={renderShortToken(inputs.key)}
-                        readOnly
-                        action={(
-                          <AppButton
-                            type='button'
-                            basic
-                            className='router-page-button'
-                            onClick={handleCopyToken}
-                            disabled={!inputs.key}
-                            aria-label={t('token.buttons.copy')}
-                          >
-                            {t('token.buttons.copy')}
-                          </AppButton>
-                        )}
-                      />
-                    </AppField>
+                  <AppFormRow className='router-token-basic-info-row'>
                     <AppField label={t('token.table.created_time')} readOnly>
                       <AppInput
                         className='router-section-input'
@@ -696,8 +835,99 @@ const EditToken = () => {
                       />
                     </AppField>
                   </AppFormRow>
+                  <AppFormRow className='router-token-basic-info-row'>
+                    <AppField label={t('token.table.updated_time')} readOnly>
+                      <AppInput
+                        className='router-section-input'
+                        value={
+                          inputs.updated_time || inputs.created_time
+                            ? timestamp2string(inputs.updated_time || inputs.created_time)
+                            : ''
+                        }
+                        readOnly
+                      />
+                    </AppField>
+                  </AppFormRow>
+                  <AppFormRow>
+                    <AppField label={t('token.edit.ip_limit')}>
+                      <AppInput
+                        className='router-section-input'
+                        name='subnet'
+                        placeholder={t('token.edit.ip_limit_placeholder')}
+                        onChange={handleInputChange}
+                        value={inputs.subnet}
+                        autoComplete='new-password'
+                        readOnly={basicReadonly}
+                      />
+                    </AppField>
+                  </AppFormRow>
+                  <AppFormRow className='router-token-expire-row'>
+                    <AppField label={t('token.edit.expire_time')}>
+                      <AppSelect
+                        className='router-section-dropdown router-token-expire-mode-select'
+                        options={expireTimeModeOptions}
+                        value={expireTimeMode}
+                        onChange={handleExpireTimeModeChange}
+                        disabled={basicReadonly}
+                      />
+                    </AppField>
+                    <AppField label={t('token.edit.expire_time_options.custom')}>
+                      <AppInput
+                        className='router-section-input'
+                        name='expired_time'
+                        placeholder={t('token.edit.expire_time_placeholder')}
+                        onChange={handleExpiredTimeChange}
+                        value={formatDateTimeLocalInputValue(expired_time)}
+                        autoComplete='new-password'
+                        type='datetime-local'
+                        disabled={basicReadonly || expireTimeMode !== 'custom'}
+                        readOnly={basicReadonly}
+                      />
+                    </AppField>
+                  </AppFormRow>
+                  <AppFormRow className='router-token-quota-row'>
+                    <AppField
+                      className='router-token-quota-field'
+                      label={t('token.edit.quota')}
+                      hint={t('token.edit.quota_notice')}
+                    >
+                      <AppCompact className='router-section-input-with-unit' block>
+                        <AppInputNumber
+                          className='router-section-input router-section-input-with-unit-field'
+                          name='remain_quota'
+                          placeholder={t('token.edit.quota_placeholder')}
+                          onChange={handleQuotaInputChange}
+                          value={quotaInputValue}
+                          min={0}
+                          step={resolveBillingInputStep(quotaDisplayUnit, billingCurrencyIndex)}
+                          precision={6}
+                          fluid
+                          disabled={hasUnlimitedYYCLimit || basicReadonly}
+                        />
+                        <UnitDropdown
+                          variant='inputUnit'
+                          options={quotaUnitOptions}
+                          value={quotaDisplayUnit}
+                          onChange={handleQuotaUnitChange}
+                          disabled={basicReadonly}
+                          aria-label={t('token.edit.quota')}
+                        />
+                      </AppCompact>
+                    </AppField>
+                    <AppField className='router-token-unlimited-field' label={t('token.edit.buttons.unlimited_quota')}>
+                      <AppSwitch
+                        checked={hasUnlimitedYYCLimit}
+                        disabled={basicReadonly}
+                        onChange={() => {
+                          toggleUnlimitedYYCLimit();
+                        }}
+                      />
+                    </AppField>
+                  </AppFormRow>
               </AppDetailSection>
-              <AppDetailSection
+            ) : null}
+            {activeDetailTab === 'models' ? (
+            <AppDetailSection
                 title={t('token.detail.sections.models')}
                 headerEnd={
                   detailEditingSection === 'models' ? (
@@ -732,142 +962,9 @@ const EditToken = () => {
                     onChange={handleModelKeywordChange}
                   />
                   {renderModelTable(modelsReadonly)}
-              </AppDetailSection>
-              <AppDetailSection
-                title={t('token.detail.sections.limits')}
-                headerEnd={
-                  detailEditingSection === 'limits' ? (
-                    <>
-                      <AppButton className='router-page-button' onClick={cancelDetailSectionEdit}>
-                        {t('token.edit.buttons.cancel')}
-                      </AppButton>
-                      <AppButton className='router-page-button' color='blue' onClick={submit}>
-                        {t('token.edit.buttons.submit')}
-                      </AppButton>
-                    </>
-                  ) : (
-                    <AppButton
-                      className='router-page-button'
-                      color='blue'
-                      onClick={() => startDetailSectionEdit('limits')}
-                      disabled={detailEditingSection !== ''}
-                    >
-                      {t('token.buttons.edit')}
-                    </AppButton>
-                  )
-                }
-                bodyClassName='router-page-stack'
-              >
-                  <AppFormRow>
-                    <AppField label={t('token.edit.ip_limit')}>
-                      <AppInput
-                        className='router-section-input'
-                        name='subnet'
-                        placeholder={t('token.edit.ip_limit_placeholder')}
-                        onChange={handleInputChange}
-                        value={inputs.subnet}
-                        autoComplete='new-password'
-                        readOnly={limitsReadonly}
-                      />
-                    </AppField>
-                  </AppFormRow>
-                  <AppFormRow>
-                    <AppField label={t('token.edit.expire_time')}>
-                      <AppInput
-                        className='router-section-input'
-                        name='expired_time'
-                        placeholder={t('token.edit.expire_time_placeholder')}
-                        onChange={handleInputChange}
-                        value={expired_time}
-                        autoComplete='new-password'
-                        type='datetime-local'
-                        readOnly={limitsReadonly}
-                      />
-                    </AppField>
-                  </AppFormRow>
-                  {detailEditingSection === 'limits' ? (
-                    <div className='router-token-expire-actions'>
-                      <AppButton
-                        className='router-inline-button'
-                        type='button'
-                        onClick={() => {
-                          setExpiredTime(0, 0, 0, 0);
-                        }}
-                      >
-                        {t('token.edit.buttons.never_expire')}
-                      </AppButton>
-                      <AppButton
-                        className='router-inline-button'
-                        type='button'
-                        onClick={() => {
-                          setExpiredTime(1, 0, 0, 0);
-                        }}
-                      >
-                        {t('token.edit.buttons.expire_1_month')}
-                      </AppButton>
-                      <AppButton
-                        className='router-inline-button'
-                        type='button'
-                        onClick={() => {
-                          setExpiredTime(0, 1, 0, 0);
-                        }}
-                      >
-                        {t('token.edit.buttons.expire_1_day')}
-                      </AppButton>
-                      <AppButton
-                        className='router-inline-button'
-                        type='button'
-                        onClick={() => {
-                          setExpiredTime(0, 0, 1, 0);
-                        }}
-                      >
-                        {t('token.edit.buttons.expire_1_hour')}
-                      </AppButton>
-                      <AppButton
-                        className='router-inline-button'
-                        type='button'
-                        onClick={() => {
-                          setExpiredTime(0, 0, 0, 1);
-                        }}
-                      >
-                        {t('token.edit.buttons.expire_1_minute')}
-                      </AppButton>
-                    </div>
-                  ) : null}
-                  <div className='router-section-message'>{t('token.edit.quota_notice')}</div>
-                  <AppFormRow>
-                    <AppField
-                      label={`${t('token.edit.quota')}${renderAmountEquivalentPrompt(
-                        remainingYYC,
-                        t
-                      )}`}
-                    >
-                      <AppInputNumber
-                        className='router-section-input'
-                        name='remain_quota'
-                        placeholder={t('token.edit.quota_placeholder')}
-                        onChange={handleInputChange}
-                        value={remainingYYC}
-                        min={0}
-                        precision={0}
-                        fluid
-                        disabled={hasUnlimitedYYCLimit || limitsReadonly}
-                      />
-                    </AppField>
-                  </AppFormRow>
-                  {detailEditingSection === 'limits' ? (
-                    <AppFormRow>
-                      <AppField label={t('token.edit.buttons.unlimited_quota')}>
-                        <AppSwitch
-                          checked={hasUnlimitedYYCLimit}
-                          onChange={() => {
-                            toggleUnlimitedYYCLimit();
-                          }}
-                        />
-                      </AppField>
-                    </AppFormRow>
-                  ) : null}
-              </AppDetailSection>
+            </AppDetailSection>
+            ) : null}
+          </div>
         </div>
       )}
     </div>

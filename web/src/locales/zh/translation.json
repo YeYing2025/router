@@ -1352,6 +1352,7 @@
       "used_quota": "已用 YYC",
       "remain_quota": "剩余 YYC",
       "created_time": "创建时间",
+      "updated_time": "更新时间",
       "expired_time": "过期时间",
       "actions": "操作",
       "no_name": "无",
@@ -1401,9 +1402,12 @@
       "ip_limit_placeholder": "请输入允许访问的网段，例如：192.168.0.0/24，请使用英文逗号分隔多个网段",
       "expire_time": "过期时间",
       "expire_time_placeholder": "请输入过期时间，格式为 yyyy-MM-dd HH:mm:ss，-1 表示无限制",
-      "quota_notice": "注意，令牌的剩余 YYC 仅限制该令牌自身的可用余额，实际调用仍受到账户剩余 YYC 约束。",
-      "quota": "剩余 YYC",
-      "quota_placeholder": "请输入剩余 YYC",
+      "expire_time_options": {
+        "custom": "自定义时间"
+      },
+      "quota_notice": "注意，令牌的剩余额度仅限制该令牌自身的可用余额，实际调用仍受到账户剩余额度约束。",
+      "quota": "剩余额度",
+      "quota_placeholder": "请输入剩余额度",
       "buttons": {
         "never_expire": "永不过期",
         "expire_1_month": "一个月后过期",
@@ -1419,7 +1423,9 @@
         "update_success": "令牌更新成功！",
         "create_success": "令牌创建成功，请在列表页面点击复制获取令牌！",
         "name_required": "请输入令牌名称。",
+        "id_required": "令牌标识为空，请刷新页面后重试。",
         "expire_time_invalid": "过期时间格式错误！",
+        "quota_invalid": "剩余额度格式错误。",
         "models_required": "请至少选择一个模型。"
       }
     },
@@ -1441,6 +1447,7 @@
     "no_data": "暂无数据",
     "add": "新增",
     "view": "查看",
+    "back": "返回",
     "download": "下载",
     "basic_info": "基础信息",
     "cancel": "取消",

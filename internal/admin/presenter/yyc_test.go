@@ -27,6 +27,7 @@ func TestNewUserAddsYYCBaseAliases(t *testing.T) {
 func TestNewTokenAddsYYCAliases(t *testing.T) {
 	row := &model.Token{
 		Id:          "t1",
+		Key:         "secret",
 		RemainQuota: 900,
 		UsedQuota:   100,
 	}
@@ -39,6 +40,25 @@ func TestNewTokenAddsYYCAliases(t *testing.T) {
 	}
 	if view.YYCUsed != row.UsedQuota {
 		t.Fatalf("yyc_used=%d, want %d", view.YYCUsed, row.UsedQuota)
+	}
+	if view.Key != "" {
+		t.Fatalf("key=%q, want hidden", view.Key)
+	}
+}
+
+func TestNewCreatedTokenKeepsKey(t *testing.T) {
+	row := &model.Token{
+		Id:          "t1",
+		Key:         "secret",
+		RemainQuota: 900,
+		UsedQuota:   100,
+	}
+	view := NewCreatedToken(row)
+	if view == nil {
+		t.Fatal("NewCreatedToken returned nil")
+	}
+	if view.Key != row.Key {
+		t.Fatalf("key=%q, want %q", view.Key, row.Key)
 	}
 }
 

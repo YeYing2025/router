@@ -140,11 +140,17 @@ func Create(token *model.Token) error {
 	if strings.TrimSpace(token.Id) == "" {
 		token.Id = random.GetUUID()
 	}
+	if token.CreatedTime == 0 {
+		token.CreatedTime = helper.GetTimestamp()
+	}
+	if token.UpdatedTime == 0 {
+		token.UpdatedTime = token.CreatedTime
+	}
 	return model.DB.Create(token).Error
 }
 
 func Update(token *model.Token) error {
-	return model.DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota", "models", "subnet").Updates(token).Error
+	return model.DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota", "models", "subnet", "updated_time").Updates(token).Error
 }
 
 func SelectUpdate(token *model.Token) error {

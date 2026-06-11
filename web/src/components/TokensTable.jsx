@@ -4,10 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import UnitDropdown from './UnitDropdown';
 import {
   API,
-  copy,
   showError,
   showSuccess,
-  showWarning,
   timestamp2string,
 } from '../helpers';
 
@@ -26,9 +24,7 @@ import {
 import {
   AppButton,
   AppFilterHeader,
-  AppIcon,
   AppInput,
-  AppMenuDropdown,
   AppPagination,
   AppPopconfirm,
   AppSwitch,
@@ -37,8 +33,6 @@ import {
   AppTooltip,
   AppToolbar,
 } from '../router-ui';
-
-const DEFAULT_CHAT_LINK = 'https://chat.yeying.pub';
 
 const compareTextValue = (left, right) =>
   String(left || '').localeCompare(String(right || ''));
@@ -79,30 +73,11 @@ function tokenStatusTooltip(status, t) {
   }
 }
 
-function renderShortToken(key) {
-  const raw = typeof key === 'string' ? key.trim() : '';
-  if (raw === '') {
-    return '-';
-  }
-  const withPrefix = raw.startsWith('sk-') ? raw : `sk-${raw}`;
-  if (withPrefix.length <= 16) {
-    return withPrefix;
-  }
-  return `${withPrefix.slice(0, 8)}...${withPrefix.slice(-6)}`;
-}
-
 const TokensTable = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const currentPagePath = `${location.pathname}${location.search}${location.hash}`;
-
-  const OPEN_LINK_OPTIONS = [
-    { key: 'next', text: t('token.copy_options.next'), value: 'next' },
-    { key: 'ama', text: t('token.copy_options.ama'), value: 'ama' },
-    { key: 'opencat', text: t('token.copy_options.opencat'), value: 'opencat' },
-    { key: 'lobe', text: t('token.copy_options.lobe'), value: 'lobechat' },
-  ];
 
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -171,97 +146,6 @@ const TokensTable = () => {
   const refresh = async () => {
     setLoading(true);
     await loadTokens(activePage);
-  };
-
-  const onCopy = async (type, key) => {
-    let status = localStorage.getItem('status');
-    let serverAddress = '';
-    if (status) {
-      status = JSON.parse(status);
-      serverAddress = status.server_address;
-    }
-    if (serverAddress === '') {
-      serverAddress = window.location.origin;
-    }
-    let encodedServerAddress = encodeURIComponent(serverAddress);
-    const nextLink = localStorage.getItem('chat_link');
-    let nextUrl;
-
-    if (nextLink) {
-      nextUrl =
-        nextLink + `/#/?settings={"key":"sk-${key}","url":"${serverAddress}"}`;
-    } else {
-      nextUrl = `${DEFAULT_CHAT_LINK}/#/?settings={"key":"sk-${key}","url":"${serverAddress}"}`;
-    }
-
-    let url;
-    switch (type) {
-      case 'ama':
-        url = `ama://set-api-key?server=${encodedServerAddress}&key=sk-${key}`;
-        break;
-      case 'opencat':
-        url = `opencat://team/join?domain=${encodedServerAddress}&token=sk-${key}`;
-        break;
-      case 'next':
-        url = nextUrl;
-        break;
-      case 'lobechat':
-        url =
-          nextLink +
-          `/?settings={"keyVaults":{"openai":{"apiKey":"sk-${key}","baseURL":"${serverAddress}/v1"}}}`;
-        break;
-      default:
-        url = `sk-${key}`;
-    }
-    if (await copy(url)) {
-      showSuccess(t('token.messages.copy_success'));
-    } else {
-      showWarning(t('token.messages.copy_failed'));
-      setSearchKeyword(url);
-    }
-  };
-
-  const onOpenLink = async (type, key) => {
-    let status = localStorage.getItem('status');
-    let serverAddress = '';
-    if (status) {
-      status = JSON.parse(status);
-      serverAddress = status.server_address;
-    }
-    if (serverAddress === '') {
-      serverAddress = window.location.origin;
-    }
-    let encodedServerAddress = encodeURIComponent(serverAddress);
-    const chatLink = localStorage.getItem('chat_link');
-    let defaultUrl;
-
-    if (chatLink) {
-      defaultUrl =
-        chatLink + `/#/?settings={"key":"sk-${key}","url":"${serverAddress}"}`;
-    } else {
-      defaultUrl = `${DEFAULT_CHAT_LINK}/#/?settings={"key":"sk-${key}","url":"${serverAddress}"}`;
-    }
-    let url;
-    switch (type) {
-      case 'ama':
-        url = `ama://set-api-key?server=${encodedServerAddress}&key=sk-${key}`;
-        break;
-
-      case 'opencat':
-        url = `opencat://team/join?domain=${encodedServerAddress}&token=sk-${key}`;
-        break;
-
-      case 'lobechat':
-        url =
-          chatLink +
-          `/?settings={"keyVaults":{"openai":{"apiKey":"sk-${key}","baseURL":"${serverAddress}/v1"}}}`;
-        break;
-
-      default:
-        url = defaultUrl;
-    }
-
-    window.open(url, '_blank');
   };
 
   useEffect(() => {
@@ -521,53 +405,6 @@ const TokensTable = () => {
             },
           },
           {
-            title: t('token.table.token'),
-            dataIndex: 'key',
-            key: 'token',
-            width: TOKEN_LIST_COLUMN_WIDTHS.token,
-            render: (value, token) => (
-              <span
-                className='router-action-group'
-                onClick={(event) => stopRowClick(event)}
-              >
-                <span
-                  role='button'
-                  tabIndex={0}
-                  className='router-text-link router-token-key-link'
-                  onClick={() =>
-                    navigate(`/token/${token.id}`, {
-                      state: {
-                        from: currentPagePath,
-                      },
-                    })
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      navigate(`/token/${token.id}`, {
-                        state: {
-                          from: currentPagePath,
-                        },
-                      });
-                    }
-                  }}
-                >
-                  {renderShortToken(value)}
-                </span>
-                <button
-                  type='button'
-                  className='router-icon-button'
-                  onClick={async (event) => {
-                    stopRowClick(event);
-                    await onCopy('', token.key);
-                  }}
-                >
-                  <AppIcon name='copy outline' />
-                </button>
-              </span>
-            ),
-          },
-          {
             title: (
               <div className='router-table-header-with-control'>
                 <span>{t('token.table.used_amount')}</span>
@@ -656,41 +493,15 @@ const TokensTable = () => {
             title: t('token.table.actions'),
             key: 'actions',
             className: 'router-table-col-actions-icon',
-            width: 120,
+            width: 56,
             render: (_, token) => {
               const realIdx = tokens.findIndex((item) => item?.id === token?.id);
-              const openLinkOptionsWithHandlers = OPEN_LINK_OPTIONS.map((option) => ({
-                ...option,
-                onClick: async () => {
-                  await onOpenLink(option.value, token.key);
-                },
-              }));
 
               return (
                 <div
                   className='router-action-group router-table-actions-icon-compact'
                   onClick={(event) => stopRowClick(event)}
                 >
-                  <AppTableActionButton
-                    icon='comments'
-                    title={t('token.buttons.chat')}
-                    color='blue'
-                    onClick={() => onOpenLink('', token.key)}
-                  />
-                  <AppMenuDropdown
-                    className='router-token-action-menu'
-                    menuClassName='router-token-action-menu-overlay'
-                    items={openLinkOptionsWithHandlers.map((option) => ({
-                      key: option.value,
-                      label: option.text,
-                      onClick: option.onClick,
-                    }))}
-                  >
-                    <AppTableActionButton
-                      icon='right chevron'
-                      title={t('common.more')}
-                    />
-                  </AppMenuDropdown>
                   <AppPopconfirm
                     title={`${t('token.buttons.confirm_delete')} ${token.name || ''}`}
                     onConfirm={() => {

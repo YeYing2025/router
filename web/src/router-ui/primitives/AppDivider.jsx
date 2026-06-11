@@ -5,13 +5,16 @@ function AppDivider({
   className = '',
   children,
   horizontal = false,
+  orientation,
+  titlePlacement,
   ...props
 }) {
+  const resolvedTitlePlacement = titlePlacement || (horizontal ? 'center' : orientation);
   return (
     <Divider
       {...props}
       className={className}
-      orientation={horizontal ? 'center' : props.orientation}
+      titlePlacement={resolvedTitlePlacement}
     >
       {children}
     </Divider>

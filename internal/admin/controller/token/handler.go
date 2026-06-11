@@ -155,12 +155,14 @@ func AddToken(c *gin.Context) {
 		return
 	}
 
+	now := helper.GetTimestamp()
 	cleanToken := model.Token{
 		UserId:         c.GetString(ctxkey.Id),
 		Name:           token.Name,
 		Key:            random.GenerateKey(),
-		CreatedTime:    helper.GetTimestamp(),
-		AccessedTime:   helper.GetTimestamp(),
+		CreatedTime:    now,
+		UpdatedTime:    now,
+		AccessedTime:   now,
 		ExpiredTime:    token.ExpiredTime,
 		RemainQuota:    token.RemainQuota,
 		UnlimitedQuota: token.UnlimitedQuota,
@@ -178,7 +180,7 @@ func AddToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    presenter.NewToken(&cleanToken),
+		"data":    presenter.NewCreatedToken(&cleanToken),
 	})
 	return
 }
@@ -255,6 +257,7 @@ func UpdateToken(c *gin.Context) {
 		cleanToken.UnlimitedQuota = token.UnlimitedQuota
 		cleanToken.Models = token.Models
 		cleanToken.Subnet = token.Subnet
+		cleanToken.UpdatedTime = helper.GetTimestamp()
 	}
 	err = tokensvc.Update(cleanToken)
 	if err != nil {

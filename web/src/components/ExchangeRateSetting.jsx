@@ -17,15 +17,19 @@ import {
   AppModal,
   AppSpin,
   AppTable,
+  AppTableActionButton,
 } from '../router-ui';
 
 const YYC_CODE = 'YYC';
 const MANUAL_RATE_ROW_PREFIX = 'manual:';
 const MARKET_RATE_ROW_PREFIX = 'market:';
-const rateColumnStyle = { width: '180px', minWidth: '180px' };
+const pairColumnStyle = { width: 112 };
+const rateColumnStyle = { width: 240 };
+const providerColumnStyle = { width: 132 };
 const rateDateColumnStyle = { width: '160px', minWidth: '160px' };
 const createdAtColumnStyle = { width: '160px', minWidth: '160px' };
 const updatedAtColumnStyle = { width: '168px', minWidth: '168px' };
+const actionColumnStyle = { width: 76 };
 
 const ExchangeRateSetting = ({ section = '' }) => {
   const { t } = useTranslation();
@@ -240,6 +244,7 @@ const ExchangeRateSetting = ({ section = '' }) => {
                 title: t('setting.exchange.columns.pair'),
                 dataIndex: 'pair',
                 key: 'pair',
+                width: pairColumnStyle.width,
                 render: (value) => value || '-',
               },
               {
@@ -257,6 +262,7 @@ const ExchangeRateSetting = ({ section = '' }) => {
                 title: t('setting.exchange.columns.provider'),
                 dataIndex: 'provider',
                 key: 'provider',
+                width: providerColumnStyle.width,
                 render: (value) => value || '-',
               },
               {
@@ -286,28 +292,30 @@ const ExchangeRateSetting = ({ section = '' }) => {
               {
                 title: t('setting.exchange.columns.action'),
                 key: 'action',
+                className: 'router-table-col-actions-icon',
+                width: actionColumnStyle.width,
                 render: (_, row) =>
                   row.row_type === 'manual' ? (
-                    <AppButton
-                      className='router-table-action-button'
-                      type='button'
-                      color='blue'
-                      loading={savingKey === row.id}
-                      disabled={syncing || savingKey === row.id}
-                      onClick={() => openEditModal(row)}
-                    >
-                      {t('setting.exchange.buttons.edit')}
-                    </AppButton>
+                    <div className='router-action-group-tight router-table-actions-icon-compact'>
+                      <AppTableActionButton
+                        icon='edit'
+                        title={t('setting.exchange.buttons.edit')}
+                        color='blue'
+                        loading={savingKey === row.id}
+                        disabled={syncing || savingKey === row.id}
+                        onClick={() => openEditModal(row)}
+                      />
+                    </div>
                   ) : (
-                    <AppButton
-                      className='router-table-action-button'
-                      type='button'
-                      loading={syncing}
-                      disabled={syncing || savingKey !== ''}
-                      onClick={syncRates}
-                    >
-                      {t('setting.exchange.buttons.sync')}
-                    </AppButton>
+                    <div className='router-action-group-tight router-table-actions-icon-compact'>
+                      <AppTableActionButton
+                        icon='sync'
+                        title={t('setting.exchange.buttons.sync')}
+                        loading={syncing}
+                        disabled={syncing || savingKey !== ''}
+                        onClick={syncRates}
+                      />
+                    </div>
                   ),
               },
             ]}
