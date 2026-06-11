@@ -116,13 +116,16 @@ func TestNormalizeProviderModelSupportedEndpointsForQwenSpecialModels(t *testing
 		t.Fatalf("qwen tts normalized endpoints = %#v, want empty", qwenTTS)
 	}
 
-	qwenImage := NormalizeProviderModelSupportedEndpointsForModel(
+	qwenImage, handled := qwenProviderSupportedEndpoints(
 		ProviderModelTypeImage,
 		"qwen-image-2.0",
 		[]string{ChannelModelEndpointResponses, ChannelModelEndpointImages, ChannelModelEndpointImageEdit},
 	)
-	if len(qwenImage) != 3 || qwenImage[0] != ChannelModelEndpointResponses || qwenImage[1] != ChannelModelEndpointImages || qwenImage[2] != ChannelModelEndpointImageEdit {
-		t.Fatalf("qwen image normalized endpoints = %#v, want responses+images+edits", qwenImage)
+	if !handled {
+		t.Fatalf("qwen image endpoint rule handled=false, want true")
+	}
+	if len(qwenImage) != 2 || qwenImage[0] != ChannelModelEndpointImages || qwenImage[1] != ChannelModelEndpointImageEdit {
+		t.Fatalf("qwen image normalized endpoints = %#v, want images+edits", qwenImage)
 	}
 }
 

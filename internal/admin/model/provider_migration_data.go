@@ -62,9 +62,6 @@ func qwenProviderSupportedEndpoints(modelType string, modelName string, current 
 	case strings.Contains(normalizedModelName, "tts"):
 		return []string{}, true
 	case strings.HasPrefix(normalizedModelName, "qwen-image"):
-		if len(current) > 0 {
-			return NormalizeProviderModelSupportedEndpointsForModel(modelType, modelName, current), true
-		}
 		return []string{ChannelModelEndpointImages, ChannelModelEndpointImageEdit}, true
 	case strings.HasSuffix(normalizedModelName, "-realtime"),
 		strings.Contains(normalizedModelName, "omni-realtime"):

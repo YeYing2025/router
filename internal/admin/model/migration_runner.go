@@ -1382,21 +1382,33 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			Version:     "202606111150_zhipu_channel_endpoint_baseline_cleanup",
 			Description: "rebuild zhipu channel endpoints from official provider endpoint baseline",
 			Up: func(tx *gorm.DB) error {
-				return cleanupZhipuChannelEndpointBaselineWithDB(tx)
+				return cleanupChannelEndpointBaselineWithDB(tx, "zhipu", "zhipu", true)
+			},
+		},
+		{
+			Version:     "202606111160_qwen_channel_endpoint_baseline_cleanup",
+			Description: "rebuild qwen channel endpoints from official provider endpoint baseline",
+			Up: func(tx *gorm.DB) error {
+				return cleanupChannelEndpointBaselineWithDB(tx, "ali", "qwen", false)
 			},
 		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
 
-func cleanupZhipuChannelEndpointBaselineWithDB(db *gorm.DB) error {
+func cleanupChannelEndpointBaselineWithDB(db *gorm.DB, channelProtocol string, provider string, assignAllRows bool) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
+	}
+	normalizedProtocol := strings.TrimSpace(strings.ToLower(channelProtocol))
+	normalizedProvider := NormalizeGroupModelProviderValue(provider)
+	if normalizedProtocol == "" || normalizedProvider == "" {
+		return nil
 	}
 	channels := make([]Channel, 0)
 	if err := db.
 		Select("id").
-		Where("protocol = ?", "zhipu").
+		Where("protocol = ?", normalizedProtocol).
 		Find(&channels).Error; err != nil {
 		return err
 	}
@@ -1413,26 +1425,34 @@ func cleanupZhipuChannelEndpointBaselineWithDB(db *gorm.DB) error {
 			continue
 		}
 		modelNames := channelModelProviderLookupCandidates(rows)
-		endpointsByModel, err := LoadProviderModelEndpointMapByModelsWithDB(db, "zhipu", modelNames)
+		endpointsByModel, err := LoadProviderModelEndpointMapByModelsWithDB(db, normalizedProvider, modelNames)
 		if err != nil {
 			return err
 		}
+		if len(endpointsByModel) == 0 {
+			continue
+		}
 		providerEndpoints := make(map[string][]string, len(endpointsByModel))
 		for modelName, endpoints := range endpointsByModel {
-			key := buildProviderModelEndpointKey("zhipu", modelName)
+			key := buildProviderModelEndpointKey(normalizedProvider, modelName)
 			if key == "" {
 				continue
 			}
 			providerEndpoints[key] = endpoints
 		}
 		now := helper.GetTimestamp()
+		changed := false
 		for idx := range rows {
-			rows[idx].Provider = "zhipu"
+			if !assignAllRows && !channelModelMatchesProviderEndpointBaseline(rows[idx], normalizedProvider, providerEndpoints) {
+				continue
+			}
+			rows[idx].Provider = normalizedProvider
 			supportedEndpoints := resolveProviderEndpointCandidatesForChannelModel(rows[idx], providerEndpoints)
 			currentEndpoint := NormalizeRequestedChannelModelEndpoint(rows[idx].Endpoint)
 			if len(supportedEndpoints) > 0 && !channelModelEndpointInSet(currentEndpoint, supportedEndpoints) {
 				rows[idx].Endpoint = supportedEndpoints[0]
 			}
+			changed = true
 			if err := db.Model(&ChannelModel{}).
 				Where("channel_id = ? AND model = ?", channelID, rows[idx].Model).
 				Updates(map[string]any{
@@ -1443,11 +1463,29 @@ func cleanupZhipuChannelEndpointBaselineWithDB(db *gorm.DB) error {
 				return err
 			}
 		}
+		if !changed {
+			continue
+		}
 		if err := SyncChannelModelEndpointsWithDB(db, channelID, rows); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func channelModelMatchesProviderEndpointBaseline(row ChannelModel, provider string, providerEndpoints map[string][]string) bool {
+	if NormalizeGroupModelProviderValue(row.Provider) == NormalizeGroupModelProviderValue(provider) {
+		return true
+	}
+	normalized := row
+	normalizeChannelModelRow(&normalized)
+	for _, modelName := range NormalizeProviderLookupCandidates(normalized.Model, normalized.UpstreamModel) {
+		key := buildProviderModelEndpointKey(provider, modelName)
+		if len(providerEndpoints[key]) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func channelModelEndpointInSet(endpoint string, candidates []string) bool {
