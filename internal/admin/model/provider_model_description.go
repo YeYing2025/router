@@ -301,21 +301,21 @@ func volcengineProviderModelDescription(modelName string) string {
 		return "Doubao Seed Code 是火山方舟面向代码生成、补全和工程任务优化的编程模型。"
 	case "doubao-embedding-vision-251215":
 		return "Doubao Embedding Vision 是火山方舟的多模态向量模型，支持文本、图像等内容的向量化检索。"
-	case "doubao-seedream-5.0-lite":
+	case "doubao-seedream-5-0-lite-260128":
 		return "Doubao Seedream 5.0 Lite 是火山方舟图片生成模型，按成功输出图片数量计费。"
-	case "doubao-seedream-4.5":
+	case "doubao-seedream-4-5-251128":
 		return "Doubao Seedream 4.5 是火山方舟图片生成模型，按成功输出图片数量计费。"
-	case "doubao-seedream-4.0":
+	case "doubao-seedream-4-0-250828":
 		return "Doubao Seedream 4.0 是火山方舟图片生成模型，按成功输出图片数量计费。"
-	case "doubao-seedance-2.0":
+	case "doubao-seedance-2-0-260128":
 		return "Doubao Seedance 2.0 是火山方舟视频生成模型，按 token 用量和视频规格分档计费。"
-	case "doubao-seedance-2.0-fast":
+	case "doubao-seedance-2-0-fast-260128":
 		return "Doubao Seedance 2.0 Fast 是火山方舟视频生成模型，按 token 用量和输入是否包含视频分档计费。"
-	case "doubao-seedance-1.5-pro":
+	case "doubao-seedance-1-5-pro-251215":
 		return "Doubao Seedance 1.5 Pro 是火山方舟视频生成模型，按 token 用量和是否有声分档计费。"
-	case "doubao-seedance-1.0-pro":
+	case "doubao-seedance-1-0-pro-250528":
 		return "Doubao Seedance 1.0 Pro 是火山方舟视频生成模型，按 token 用量计费。"
-	case "doubao-seedance-1.0-pro-fast":
+	case "doubao-seedance-1-0-pro-fast-251015":
 		return "Doubao Seedance 1.0 Pro Fast 是火山方舟视频生成模型，按 token 用量计费。"
 	default:
 		return ""

@@ -1449,22 +1449,40 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return renameVolcengineOldModelNamesWithDB(tx)
 			},
 		},
+		{
+			Version:     "202606120040_fix_volcengine_multimodal_api_model_ids",
+			Description: "rename volcengine multimodal display model names to official api model ids",
+			Up: func(tx *gorm.DB) error {
+				if err := upsertProviderMigrationProvidersWithDB(tx, "volcengine"); err != nil {
+					return err
+				}
+				return renameVolcengineOldModelNamesWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
 
 func volcengineOldModelNameToOfficialModelMap() map[string]string {
 	return map[string]string{
-		"doubao-seed-2.0-pro":     "doubao-seed-2-0-pro-260215",
-		"doubao-seed-2.0-lite":    "doubao-seed-2-0-lite-260428",
-		"doubao-seed-2.0-mini":    "doubao-seed-2-0-mini-260428",
-		"doubao-seed-2.0-code":    "doubao-seed-2-0-code-preview-260215",
-		"doubao-seed-1.8":         "doubao-seed-1-8-251228",
-		"doubao-seed-1.6-vision":  "doubao-seed-1-6-vision-250815",
-		"doubao-seed-code":        "doubao-seed-code-preview-251028",
-		"doubao-seed-translation": "doubao-seed-translation-250915",
-		"doubao-seed-character":   "doubao-seed-character-251128",
-		"doubao-embedding-vision": "doubao-embedding-vision-251215",
+		"doubao-seed-2.0-pro":          "doubao-seed-2-0-pro-260215",
+		"doubao-seed-2.0-lite":         "doubao-seed-2-0-lite-260428",
+		"doubao-seed-2.0-mini":         "doubao-seed-2-0-mini-260428",
+		"doubao-seed-2.0-code":         "doubao-seed-2-0-code-preview-260215",
+		"doubao-seed-1.8":              "doubao-seed-1-8-251228",
+		"doubao-seed-1.6-vision":       "doubao-seed-1-6-vision-250815",
+		"doubao-seed-code":             "doubao-seed-code-preview-251028",
+		"doubao-seed-translation":      "doubao-seed-translation-250915",
+		"doubao-seed-character":        "doubao-seed-character-251128",
+		"doubao-embedding-vision":      "doubao-embedding-vision-251215",
+		"doubao-seedream-5.0-lite":     "doubao-seedream-5-0-lite-260128",
+		"doubao-seedream-4.5":          "doubao-seedream-4-5-251128",
+		"doubao-seedream-4.0":          "doubao-seedream-4-0-250828",
+		"doubao-seedance-2.0":          "doubao-seedance-2-0-260128",
+		"doubao-seedance-2.0-fast":     "doubao-seedance-2-0-fast-260128",
+		"doubao-seedance-1.5-pro":      "doubao-seedance-1-5-pro-251215",
+		"doubao-seedance-1.0-pro":      "doubao-seedance-1-0-pro-250528",
+		"doubao-seedance-1.0-pro-fast": "doubao-seedance-1-0-pro-fast-251015",
 	}
 }
 

@@ -2515,7 +2515,7 @@
         ]
       },
       {
-        "model": "doubao-seedance-1.0-pro",
+        "model": "doubao-seedance-1-0-pro-250528",
         "type": "video",
         "status": "active",
         "description": "Doubao Seedance 1.0 Pro 是火山方舟视频生成模型，按 token 用量计费。",
@@ -2552,7 +2552,7 @@
         ]
       },
       {
-        "model": "doubao-seedance-1.0-pro-fast",
+        "model": "doubao-seedance-1-0-pro-fast-251015",
         "type": "video",
         "status": "active",
         "description": "Doubao Seedance 1.0 Pro Fast 是火山方舟视频生成模型，按 token 用量计费。",
@@ -2589,7 +2589,7 @@
         ]
       },
       {
-        "model": "doubao-seedance-1.5-pro",
+        "model": "doubao-seedance-1-5-pro-251215",
         "type": "video",
         "status": "active",
         "description": "Doubao Seedance 1.5 Pro 是火山方舟视频生成模型，按 token 用量和是否有声分档计费。",
@@ -2648,7 +2648,7 @@
         ]
       },
       {
-        "model": "doubao-seedance-2.0",
+        "model": "doubao-seedance-2-0-260128",
         "type": "video",
         "status": "active",
         "description": "Doubao Seedance 2.0 是火山方舟视频生成模型，按 token 用量和视频规格分档计费。",
@@ -2707,7 +2707,7 @@
         ]
       },
       {
-        "model": "doubao-seedance-2.0-fast",
+        "model": "doubao-seedance-2-0-fast-260128",
         "type": "video",
         "status": "active",
         "description": "Doubao Seedance 2.0 Fast 是火山方舟视频生成模型，按 token 用量和输入是否包含视频分档计费。",
@@ -2744,7 +2744,7 @@
         ]
       },
       {
-        "model": "doubao-seedream-4.0",
+        "model": "doubao-seedream-4-0-250828",
         "type": "image",
         "status": "active",
         "description": "Doubao Seedream 4.0 是火山方舟图片生成模型，按成功输出图片数量计费。",
@@ -2772,7 +2772,7 @@
         ]
       },
       {
-        "model": "doubao-seedream-4.5",
+        "model": "doubao-seedream-4-5-251128",
         "type": "image",
         "status": "active",
         "description": "Doubao Seedream 4.5 是火山方舟图片生成模型，按成功输出图片数量计费。",
@@ -2800,7 +2800,7 @@
         ]
       },
       {
-        "model": "doubao-seedream-5.0-lite",
+        "model": "doubao-seedream-5-0-lite-260128",
         "type": "image",
         "status": "active",
         "description": "Doubao Seedream 5.0 Lite 是火山方舟图片生成模型，按成功输出图片数量计费。",

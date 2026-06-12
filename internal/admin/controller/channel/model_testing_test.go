@@ -100,6 +100,22 @@ func TestBuildChannelModelTestResult_PreserveIsStream(t *testing.T) {
 	}
 }
 
+func TestResolveChannelImageModelTestSize_UsesLargeSizeForVolcengineSeedream(t *testing.T) {
+	channel := &adminmodel.Channel{Protocol: "doubao"}
+	got := resolveChannelImageModelTestSize(channel, "doubao-seedream-5-0-lite-260128")
+	if got != "2048x2048" {
+		t.Fatalf("resolveChannelImageModelTestSize() = %q, want 2048x2048", got)
+	}
+}
+
+func TestResolveChannelImageModelTestSize_KeepsDefaultForRegularImages(t *testing.T) {
+	channel := &adminmodel.Channel{Protocol: "openai"}
+	got := resolveChannelImageModelTestSize(channel, "gpt-image-1")
+	if got != "1024x1024" {
+		t.Fatalf("resolveChannelImageModelTestSize() = %q, want 1024x1024", got)
+	}
+}
+
 func TestResolveChannelModelTestEndpoint_StrictRejectsEmpty(t *testing.T) {
 	_, err := resolveChannelModelTestEndpoint(adminmodel.ProviderModelTypeText, "")
 	if err == nil {

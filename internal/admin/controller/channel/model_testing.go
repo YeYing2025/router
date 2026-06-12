@@ -1264,7 +1264,7 @@ func executeChannelImageModelTest(ctx context.Context, channel *model.Channel, m
 		Model:  actualModelName,
 		Prompt: "A blue square on a white background.",
 		N:      1,
-		Size:   "1024x1024",
+		Size:   resolveChannelImageModelTestSize(channel, actualModelName),
 	}
 	convertedRequest, err := adaptor.ConvertImageRequest(imageRequest)
 	if err != nil {
@@ -1319,6 +1319,15 @@ func executeChannelImageModelTest(ctx context.Context, channel *model.Channel, m
 	}
 	execution.Message = preview
 	return execution
+}
+
+func resolveChannelImageModelTestSize(channel *model.Channel, actualModelName string) string {
+	if channel != nil &&
+		channel.GetChannelProtocol() == relaychannel.Doubao &&
+		strings.Contains(strings.ToLower(strings.TrimSpace(actualModelName)), "seedream") {
+		return "2048x2048"
+	}
+	return "1024x1024"
 }
 
 func resolveChannelImageEditTestImage(ctx context.Context, input imageEditTestInput) ([]byte, string, error) {
