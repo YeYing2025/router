@@ -66,6 +66,8 @@ const ChannelDetailTestsTab = ({
   normalizeChannelModelType,
   audioTestLanguage,
   setAudioTestLanguage,
+  responsesTestMode,
+  setResponsesTestMode,
   imageEditTestURL,
   setImageEditTestURL,
   imageEditTestFileName,
@@ -126,6 +128,23 @@ const ChannelDetailTestsTab = ({
         key: 'en-US',
         value: 'en-US',
         text: t('channel.edit.model_tester.audio_language_options.en-US'),
+      },
+    ],
+    [t],
+  );
+  const responsesTestModeOptions = useMemo(
+    () => [
+      {
+        key: 'text',
+        value: 'text',
+        text: t('channel.edit.model_tester.responses_test_mode_options.text'),
+      },
+      {
+        key: 'image_generation',
+        value: 'image_generation',
+        text: t(
+          'channel.edit.model_tester.responses_test_mode_options.image_generation',
+        ),
       },
     ],
     [t],
@@ -248,6 +267,11 @@ const ChannelDetailTestsTab = ({
     }
     return streamCapableRows.every((row) => row?.is_stream !== false);
   }, [streamCapableRows]);
+  const hasResponsesTestRows = useMemo(
+    () =>
+      filteredRows.some((row) => getEffectiveModelEndpoint(row) === '/v1/responses'),
+    [filteredRows, getEffectiveModelEndpoint],
+  );
 
   const resultSummaryByKey = useMemo(() => {
     const summaryMap = new Map();
@@ -416,6 +440,21 @@ const ChannelDetailTestsTab = ({
                       </span>
                     </div>
                   ) : null}
+                  <div className='router-block-gap-xs'>
+                    <label>
+                      {t('channel.edit.model_tester.responses_test_mode')}
+                    </label>
+                    <AppSelect
+                      className='router-section-dropdown router-dropdown-min-170'
+                      disabled={!hasResponsesTestRows}
+                      getPopupContainer={resolvePopupContainer}
+                      options={responsesTestModeOptions}
+                      value={responsesTestMode || 'text'}
+                      onChange={(e, { value }) =>
+                        setResponsesTestMode((value || 'text').toString())
+                      }
+                    />
+                  </div>
                   <div className='router-block-gap-xs'>
                     <label>
                       {t('channel.edit.model_tester.settings_audio_language')}

@@ -1016,6 +1016,11 @@
         "settings_button": "配置",
         "settings_title": "测试配置",
         "settings_stream": "流式测试",
+        "responses_test_mode": "Responses 测试模式",
+        "responses_test_mode_options": {
+          "text": "文本响应",
+          "image_generation": "生图工具"
+        },
         "settings_audio_language": "语音测试语言",
         "image_edit_source_url": "图片编辑测试原图地址",
         "image_edit_upload": "上传图片编辑测试原图",

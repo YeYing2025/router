@@ -1913,6 +1913,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const [channelTasks, setChannelTasks] = useState([]);
   const [modelTestError, setModelTestError] = useState('');
   const [audioTestLanguage, setAudioTestLanguage] = useState('zh-CN');
+  const [responsesTestMode, setResponsesTestMode] = useState('text');
   const [imageEditTestURL, setImageEditTestURL] = useState(
     DEFAULT_IMAGE_EDIT_TEST_URL,
   );
@@ -3964,12 +3965,16 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       const targetConfigs = visibleChannelModels
         .filter((row) => normalizedTargets.includes(row.model))
         .map((row) => {
+          const endpoint = getEffectiveModelEndpoint(row);
           const targetConfig = {
             model: row.model,
-            endpoint: getEffectiveModelEndpoint(row),
+            endpoint,
           };
           if (supportsModelTestStream(row)) {
             targetConfig.is_stream = !!row.is_stream;
+          }
+          if (endpoint === '/v1/responses') {
+            targetConfig.responses_test_mode = responsesTestMode;
           }
           return targetConfig;
         });
@@ -4030,6 +4035,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       t,
       visibleChannelModels,
       audioTestLanguage,
+      responsesTestMode,
       imageEditTestURL,
       imageEditTestData,
     ],
@@ -5567,6 +5573,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 normalizeChannelModelType={normalizeChannelModelType}
                 audioTestLanguage={audioTestLanguage}
                 setAudioTestLanguage={setAudioTestLanguage}
+                responsesTestMode={responsesTestMode}
+                setResponsesTestMode={setResponsesTestMode}
                 imageEditTestURL={imageEditTestURL}
                 setImageEditTestURL={setImageEditTestURL}
                 imageEditTestFileName={imageEditTestFileName}

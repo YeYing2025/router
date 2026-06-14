@@ -42,9 +42,24 @@ type imageEditTestInput struct {
 }
 
 type channelModelTestTargetItem struct {
-	Model    string `json:"model"`
-	Endpoint string `json:"endpoint,omitempty"`
-	IsStream *bool  `json:"is_stream,omitempty"`
+	Model             string `json:"model"`
+	Endpoint          string `json:"endpoint,omitempty"`
+	IsStream          *bool  `json:"is_stream,omitempty"`
+	ResponsesTestMode string `json:"responses_test_mode,omitempty"`
+}
+
+const (
+	channelModelResponsesTestModeText            = "text"
+	channelModelResponsesTestModeImageGeneration = "image_generation"
+)
+
+func normalizeResponsesTestMode(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case channelModelResponsesTestModeImageGeneration:
+		return channelModelResponsesTestModeImageGeneration
+	default:
+		return channelModelResponsesTestModeText
+	}
 }
 
 func normalizeAudioTestLanguage(raw string) string {
@@ -318,11 +333,11 @@ func buildChannelModelTestResult(row model.ChannelModel, execution channelModelT
 }
 
 func runSingleChannelModelTest(channel *model.Channel, row model.ChannelModel) (model.ChannelTest, channelModelTestExecution) {
-	return runSingleChannelModelTestWithContextAndStream(context.Background(), channel, row, nil, "", imageEditTestInput{})
+	return runSingleChannelModelTestWithContextAndStream(context.Background(), channel, row, nil, "", imageEditTestInput{}, "")
 }
 
 func runSingleChannelModelTestWithContext(ctx context.Context, channel *model.Channel, row model.ChannelModel) (model.ChannelTest, channelModelTestExecution) {
-	return runSingleChannelModelTestWithContextAndStream(ctx, channel, row, nil, "", imageEditTestInput{})
+	return runSingleChannelModelTestWithContextAndStream(ctx, channel, row, nil, "", imageEditTestInput{}, "")
 }
 
 func resolveChannelModelTestRequestURL(baseURL string, path string, adaptor relayadaptor.Adaptor, relayMeta *meta.Meta) string {
@@ -351,11 +366,14 @@ const (
 	channelModelTestKindEmbedding      channelModelTestKind = "embedding"
 )
 
-func resolveChannelModelTestKind(modelType string, endpoint string) channelModelTestKind {
+func resolveChannelModelTestKind(modelType string, endpoint string, responsesTestMode string) channelModelTestKind {
 	switch model.NormalizeRequestedChannelModelEndpoint(endpoint) {
 	case model.ChannelModelEndpointChat, model.ChannelModelEndpointMessages:
 		return channelModelTestKindText
 	case model.ChannelModelEndpointResponses:
+		if normalizeResponsesTestMode(responsesTestMode) == channelModelResponsesTestModeImageGeneration {
+			return channelModelTestKindImageResponses
+		}
 		if strings.EqualFold(strings.TrimSpace(modelType), model.ProviderModelTypeImage) {
 			return channelModelTestKindImageResponses
 		}
@@ -436,7 +454,7 @@ func resolveChannelModelTestEndpointForRow(row model.ChannelModel) (string, erro
 	return "", fmt.Errorf("模型 %s 未声明支持测试端点 %s", strings.TrimSpace(row.Model), endpoint)
 }
 
-func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel *model.Channel, row model.ChannelModel, requestedStream *bool, requestedAudioLanguage string, imageEditInput imageEditTestInput) (model.ChannelTest, channelModelTestExecution) {
+func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel *model.Channel, row model.ChannelModel, requestedStream *bool, requestedAudioLanguage string, imageEditInput imageEditTestInput, responsesTestMode string) (model.ChannelTest, channelModelTestExecution) {
 	modelType := resolveSelectionModelType(row)
 	endpoint, endpointErr := resolveChannelModelTestEndpointForRow(row)
 	if endpointErr != nil {
@@ -454,7 +472,7 @@ func runSingleChannelModelTestWithContextAndStream(ctx context.Context, channel 
 		}, execution), execution
 	}
 
-	switch resolveChannelModelTestKind(modelType, endpoint) {
+	switch resolveChannelModelTestKind(modelType, endpoint, responsesTestMode) {
 	case channelModelTestKindText:
 		stream := false
 		if requestedStream != nil {

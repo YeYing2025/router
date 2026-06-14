@@ -397,14 +397,20 @@ func TestRestoreRuntimeDisabledCapabilitiesAfterSuccessfulTests(t *testing.T) {
 }
 
 func TestResolveChannelModelTestKind_UsesEndpointBeforeQwenModelType(t *testing.T) {
-	if got := resolveChannelModelTestKind(adminmodel.ProviderModelTypeImage, adminmodel.ChannelModelEndpointChat); got != channelModelTestKindText {
+	if got := resolveChannelModelTestKind(adminmodel.ProviderModelTypeImage, adminmodel.ChannelModelEndpointChat, ""); got != channelModelTestKindText {
 		t.Fatalf("image+chat test kind = %q, want %q", got, channelModelTestKindText)
 	}
-	if got := resolveChannelModelTestKind(adminmodel.ProviderModelTypeAudio, adminmodel.ChannelModelEndpointChat); got != channelModelTestKindText {
+	if got := resolveChannelModelTestKind(adminmodel.ProviderModelTypeAudio, adminmodel.ChannelModelEndpointChat, ""); got != channelModelTestKindText {
 		t.Fatalf("audio+chat test kind = %q, want %q", got, channelModelTestKindText)
 	}
-	if got := resolveChannelModelTestKind(adminmodel.ProviderModelTypeImage, adminmodel.ChannelModelEndpointResponses); got != channelModelTestKindImageResponses {
+	if got := resolveChannelModelTestKind(adminmodel.ProviderModelTypeImage, adminmodel.ChannelModelEndpointResponses, ""); got != channelModelTestKindImageResponses {
 		t.Fatalf("image+responses test kind = %q, want %q", got, channelModelTestKindImageResponses)
+	}
+	if got := resolveChannelModelTestKind(adminmodel.ProviderModelTypeText, adminmodel.ChannelModelEndpointResponses, ""); got != channelModelTestKindTextResponses {
+		t.Fatalf("text+responses default test kind = %q, want %q", got, channelModelTestKindTextResponses)
+	}
+	if got := resolveChannelModelTestKind(adminmodel.ProviderModelTypeText, adminmodel.ChannelModelEndpointResponses, channelModelResponsesTestModeImageGeneration); got != channelModelTestKindImageResponses {
+		t.Fatalf("text+responses image_generation test kind = %q, want %q", got, channelModelTestKindImageResponses)
 	}
 }
 
