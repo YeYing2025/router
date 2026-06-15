@@ -122,6 +122,27 @@ func TestConvertImageRequest_QwenImageUsesMultimodalMessages(t *testing.T) {
 	}
 }
 
+func TestConvertRequest_PreservesQwenEnableThinkingFlag(t *testing.T) {
+	enabled := false
+	converted := ConvertRequest(relaymodel.GeneralOpenAIRequest{
+		Model: "qwen3.7-plus",
+		Messages: []relaymodel.Message{
+			{Role: "user", Content: "ping"},
+		},
+		EnableThinking: &enabled,
+	})
+
+	if converted == nil {
+		t.Fatal("ConvertRequest() returned nil")
+	}
+	if converted.Parameters.EnableThinking == nil {
+		t.Fatal("EnableThinking = nil, want non-nil")
+	}
+	if *converted.Parameters.EnableThinking {
+		t.Fatal("EnableThinking = true, want false")
+	}
+}
+
 func TestConvertQwenImageEditRequestUsesDataURIImageContent(t *testing.T) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)

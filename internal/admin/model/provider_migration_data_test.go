@@ -1010,6 +1010,7 @@ func TestBuildProviderMigrationSeeds_DeepSeekTextModelsSupportChatAndMessages(t 
 func TestBuildProviderMigrationSeeds_ZhipuClaudeCompatibleModelsExposeMessagesEndpoint(t *testing.T) {
 	seeds := mustLoadProviderMigrationSeeds(t)
 	expectedModels := map[string]bool{
+		"glm-5.2": false,
 		"glm-5.1": false,
 		"glm-5":   false,
 		"glm-4.7": false,
@@ -1040,6 +1041,40 @@ func TestBuildProviderMigrationSeeds_ZhipuClaudeCompatibleModelsExposeMessagesEn
 			t.Fatalf("expected zhipu seed to include %s", modelName)
 		}
 	}
+}
+
+func TestBuildProviderMigrationSeeds_ZhipuIncludesGLM52WithoutFabricatedPricing(t *testing.T) {
+	seeds := mustLoadProviderMigrationSeeds(t)
+	for _, seed := range seeds {
+		if seed.Provider != "zhipu" {
+			continue
+		}
+		for _, detail := range seed.ModelDetails {
+			if detail.Model != "glm-5.2" {
+				continue
+			}
+			if detail.Type != ProviderModelTypeText {
+				t.Fatalf("glm-5.2 type=%q, want %q", detail.Type, ProviderModelTypeText)
+			}
+			if !providerModelTagsContain(detail.Tags, ProviderModelTagReasoning) {
+				t.Fatalf("glm-5.2 tags=%#v, want reasoning tag", detail.Tags)
+			}
+			if len(detail.SupportedEndpoints) != 2 ||
+				detail.SupportedEndpoints[0] != ChannelModelEndpointChat ||
+				detail.SupportedEndpoints[1] != ChannelModelEndpointMessages {
+				t.Fatalf("glm-5.2 supported_endpoints=%#v, want [chat messages]", detail.SupportedEndpoints)
+			}
+			if detail.InputPrice != 0 || detail.OutputPrice != 0 {
+				t.Fatalf("glm-5.2 pricing should stay empty until official price is published: input=%v output=%v", detail.InputPrice, detail.OutputPrice)
+			}
+			if detail.PriceUnit != ProviderPriceUnitPer1KTokens || detail.Currency != "CNY" {
+				t.Fatalf("glm-5.2 billing unit=%q currency=%q, want per_1k_tokens/CNY", detail.PriceUnit, detail.Currency)
+			}
+			return
+		}
+		t.Fatalf("expected zhipu seed to include glm-5.2")
+	}
+	t.Fatalf("expected zhipu provider to exist")
 }
 
 func TestBuildProviderMigrationSeeds_ZhipuEmbeddingModelsUseEmbeddingsEndpoint(t *testing.T) {

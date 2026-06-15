@@ -3961,6 +3961,24 @@
         ]
       },
       {
+        "model": "glm-5.2",
+        "tags": [
+          "text",
+          "reasoning",
+          "tool_calling"
+        ],
+        "status": "active",
+        "description": "GLM-5.2 是智谱的新一代旗舰模型，适合复杂推理、编码和智能体任务。",
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/messages"
+        ],
+        "price_unit": "per_1k_tokens",
+        "currency": "CNY",
+        "source": "migration",
+        "updated_at": 1700000000
+      },
+      {
         "model": "glm-5.1",
         "tags": [
           "text",

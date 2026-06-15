@@ -1421,6 +1421,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 					}).Error
 			},
 		},
+		{
+			Version:     "202606151030_add_zhipu_glm52_provider_model",
+			Description: "upsert zhipu official glm-5.2 provider model",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "zhipu")
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

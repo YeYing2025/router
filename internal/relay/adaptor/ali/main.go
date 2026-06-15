@@ -48,6 +48,7 @@ func ConvertRequest(request model.GeneralOpenAIRequest) *ChatRequest {
 		},
 		Parameters: Parameters{
 			EnableSearch:      enableSearch,
+			EnableThinking:    request.EnableThinking,
 			IncrementalOutput: request.Stream,
 			Seed:              uint64(request.Seed),
 			MaxTokens:         request.MaxTokens,

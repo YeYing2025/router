@@ -439,6 +439,8 @@ func stepFunProviderModelDescription(modelName string) string {
 
 func zhipuProviderModelDescription(modelName string) string {
 	switch modelName {
+	case "glm-5.2":
+		return "GLM-5.2 是智谱的新一代旗舰模型，适合复杂推理、编码和智能体任务。"
 	case "glm-5.1":
 		return "GLM-5.1 是智谱的新一代旗舰模型，适合复杂推理、编码和智能体任务。"
 	case "glm-5-turbo":
