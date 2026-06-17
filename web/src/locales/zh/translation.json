@@ -2959,6 +2959,45 @@
       }
     }
   },
+  "billing": {
+    "procurement_report": {
+      "nav": "采购成本",
+      "title": "采购成本报表",
+      "empty": "暂无采购成本数据",
+      "group_by": {
+        "channel": "按渠道",
+        "model": "按模型"
+      },
+      "summary": {
+        "request_count": "请求数",
+        "request_count_hint": "当前时间范围内的计费请求",
+        "sell_amount": "用户侧售价",
+        "sell_amount_hint": "包含已配置和未配置成本请求",
+        "procurement_cost": "采购成本",
+        "procurement_cost_hint": "仅统计已配置成本请求",
+        "gross_profit": "毛利",
+        "gross_profit_hint": "未配置成本请求不参与计算",
+        "gross_margin": "毛利率",
+        "gross_margin_hint": "毛利 / 已配置成本请求售价",
+        "unconfigured": "未配置成本请求"
+      },
+      "columns": {
+        "channel": "渠道",
+        "model": "模型",
+        "request_count": "请求数",
+        "configured_count": "已配置成本",
+        "unconfigured_count": "未配置成本",
+        "sell_amount": "售价 CNY",
+        "procurement_cost": "采购成本 CNY",
+        "gross_profit": "毛利 CNY",
+        "gross_margin": "毛利率"
+      },
+      "messages": {
+        "invalid_time": "请选择有效的时间范围",
+        "load_failed": "加载采购成本报表失败"
+      }
+    }
+  },
   "footer": {
     "built_by": "由",
     "built_by_name": "JustSong",

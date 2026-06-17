@@ -2964,6 +2964,45 @@
       }
     }
   },
+  "billing": {
+    "procurement_report": {
+      "nav": "Procurement Cost",
+      "title": "Procurement Cost Report",
+      "empty": "No procurement cost data",
+      "group_by": {
+        "channel": "By channel",
+        "model": "By model"
+      },
+      "summary": {
+        "request_count": "Requests",
+        "request_count_hint": "Billable requests in the selected range",
+        "sell_amount": "Sell amount",
+        "sell_amount_hint": "Includes configured and unconfigured cost requests",
+        "procurement_cost": "Procurement cost",
+        "procurement_cost_hint": "Only configured cost requests are counted",
+        "gross_profit": "Gross profit",
+        "gross_profit_hint": "Unconfigured cost requests are excluded",
+        "gross_margin": "Gross margin",
+        "gross_margin_hint": "Gross profit / configured-cost sell amount",
+        "unconfigured": "Unconfigured cost requests"
+      },
+      "columns": {
+        "channel": "Channel",
+        "model": "Model",
+        "request_count": "Requests",
+        "configured_count": "Configured cost",
+        "unconfigured_count": "Unconfigured cost",
+        "sell_amount": "Sell CNY",
+        "procurement_cost": "Cost CNY",
+        "gross_profit": "Profit CNY",
+        "gross_margin": "Margin"
+      },
+      "messages": {
+        "invalid_time": "Select a valid time range",
+        "load_failed": "Failed to load procurement cost report"
+      }
+    }
+  },
   "footer": {
     "built_by": "built by",
     "built_by_name": "JustSong",
