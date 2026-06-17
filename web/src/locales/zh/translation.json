@@ -2968,6 +2968,10 @@
         "channel": "按渠道",
         "model": "按模型"
       },
+      "cost_scope": {
+        "all": "全部请求",
+        "unconfigured": "仅未配置成本"
+      },
       "summary": {
         "request_count": "请求数",
         "request_count_hint": "当前时间范围内的计费请求",

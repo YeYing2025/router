@@ -73,6 +73,15 @@
   white-space: nowrap;
 }
 
+.billing-procurement-report-link {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.billing-procurement-report-link:hover {
+  color: #1d4ed8;
+}
+
 @media (max-width: 1180px) {
   .billing-procurement-report-summary-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

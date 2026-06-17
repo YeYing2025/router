@@ -511,4 +511,29 @@ func TestListProcurementReportWithDB(t *testing.T) {
 	if report.GrossMargin != 11.0/15.0 {
 		t.Fatalf("GrossMargin=%v, want %v", report.GrossMargin, 11.0/15.0)
 	}
+
+	unconfiguredReport, err := ListProcurementReportWithDB(db, ProcurementReportQuery{
+		StartAt:   90,
+		EndAt:     140,
+		GroupBy:   ProcurementReportGroupByChannel,
+		CostScope: ProcurementReportCostScopeUnconfigured,
+	})
+	if err != nil {
+		t.Fatalf("list unconfigured report: %v", err)
+	}
+	if unconfiguredReport.RequestCount != 1 {
+		t.Fatalf("unconfigured RequestCount=%d, want 1", unconfiguredReport.RequestCount)
+	}
+	if unconfiguredReport.ConfiguredCostRequestCount != 0 {
+		t.Fatalf("unconfigured ConfiguredCostRequestCount=%d, want 0", unconfiguredReport.ConfiguredCostRequestCount)
+	}
+	if unconfiguredReport.UnconfiguredCostRequestCount != 1 {
+		t.Fatalf("unconfigured UnconfiguredCostRequestCount=%d, want 1", unconfiguredReport.UnconfiguredCostRequestCount)
+	}
+	if unconfiguredReport.SellAmountCNY != 8 {
+		t.Fatalf("unconfigured SellAmountCNY=%v, want 8", unconfiguredReport.SellAmountCNY)
+	}
+	if unconfiguredReport.GrossProfitCNY != 0 {
+		t.Fatalf("unconfigured GrossProfitCNY=%v, want 0", unconfiguredReport.GrossProfitCNY)
+	}
 }

@@ -12,10 +12,16 @@ const (
 	ProcurementReportGroupByModel   = "model"
 )
 
+const (
+	ProcurementReportCostScopeAll          = "all"
+	ProcurementReportCostScopeUnconfigured = "unconfigured"
+)
+
 type ProcurementReportQuery struct {
-	StartAt int64
-	EndAt   int64
-	GroupBy string
+	StartAt   int64
+	EndAt     int64
+	GroupBy   string
+	CostScope string
 }
 
 type ProcurementReportItem struct {
@@ -39,6 +45,7 @@ type ProcurementReportItem struct {
 
 type ProcurementReportSummary struct {
 	GroupBy                      string                  `json:"group_by"`
+	CostScope                    string                  `json:"cost_scope"`
 	StartAt                      int64                   `json:"start_at"`
 	EndAt                        int64                   `json:"end_at"`
 	Items                        []ProcurementReportItem `json:"items"`
@@ -51,6 +58,15 @@ type ProcurementReportSummary struct {
 	ProcurementCostCNY           float64                 `json:"procurement_cost_cny"`
 	GrossProfitCNY               float64                 `json:"gross_profit_cny"`
 	GrossMargin                  float64                 `json:"gross_margin"`
+}
+
+func NormalizeProcurementReportCostScope(value string) string {
+	switch strings.TrimSpace(strings.ToLower(value)) {
+	case ProcurementReportCostScopeUnconfigured:
+		return ProcurementReportCostScopeUnconfigured
+	default:
+		return ProcurementReportCostScopeAll
+	}
 }
 
 func NormalizeProcurementReportGroupBy(value string) string {
@@ -73,16 +89,22 @@ func procurementReportDimensionExpression(groupBy string) string {
 	}
 }
 
+func procurementReportUnconfiguredCostCondition() string {
+	return "billing_procurement_cost_source NOT IN ? OR COALESCE(NULLIF(TRIM(billing_procurement_cost_source), ''), '') = ''"
+}
+
 func ListProcurementReportWithDB(db *gorm.DB, query ProcurementReportQuery) (ProcurementReportSummary, error) {
 	if db == nil {
 		return ProcurementReportSummary{}, fmt.Errorf("database handle is nil")
 	}
 	groupBy := NormalizeProcurementReportGroupBy(query.GroupBy)
+	costScope := NormalizeProcurementReportCostScope(query.CostScope)
 	summary := ProcurementReportSummary{
-		GroupBy: groupBy,
-		StartAt: query.StartAt,
-		EndAt:   query.EndAt,
-		Items:   []ProcurementReportItem{},
+		GroupBy:   groupBy,
+		CostScope: costScope,
+		StartAt:   query.StartAt,
+		EndAt:     query.EndAt,
+		Items:     []ProcurementReportItem{},
 	}
 	if query.StartAt <= 0 || query.EndAt <= 0 || query.EndAt < query.StartAt {
 		return summary, nil
@@ -91,7 +113,7 @@ func ListProcurementReportWithDB(db *gorm.DB, query ProcurementReportQuery) (Pro
 	dimensionExpr := procurementReportDimensionExpression(groupBy)
 	rows := make([]ProcurementReportItem, 0)
 	configuredSources := []string{ProcurementCostSourceActual, ProcurementCostSourceEstimated, ProcurementCostSourceZeroCost}
-	if err := db.Table(EventLogsTableName).
+	queryDB := db.Table(EventLogsTableName).
 		Select(`
 			`+dimensionExpr+` AS dimension_key,
 			COUNT(1) AS request_count,
@@ -108,7 +130,11 @@ func ListProcurementReportWithDB(db *gorm.DB, query ProcurementReportQuery) (Pro
 			COALESCE(MIN(created_at), 0) AS first_request_at,
 			COALESCE(MAX(created_at), 0) AS last_request_at
 		`, configuredSources, configuredSources, configuredSources, configuredSources, configuredSources, configuredSources, ProcurementCostSourceActual, ProcurementCostSourceEstimated, ProcurementCostSourceZeroCost).
-		Where("type = ? AND created_at BETWEEN ? AND ?", LogTypeConsume, query.StartAt, query.EndAt).
+		Where("type = ? AND created_at BETWEEN ? AND ?", LogTypeConsume, query.StartAt, query.EndAt)
+	if costScope == ProcurementReportCostScopeUnconfigured {
+		queryDB = queryDB.Where(procurementReportUnconfiguredCostCondition(), configuredSources)
+	}
+	if err := queryDB.
 		Group("dimension_key").
 		Order("procurement_cost_cny DESC, sell_amount_cny DESC").
 		Scan(&rows).Error; err != nil {

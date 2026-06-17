@@ -122,9 +122,10 @@ func GetProcurementReport(c *gin.Context) {
 		endAt = parseBillingReportTimestamp(c.Query("end_timestamp"))
 	}
 	summary, err := model.ListProcurementReportWithDB(model.LOG_DB, model.ProcurementReportQuery{
-		StartAt: startAt,
-		EndAt:   endAt,
-		GroupBy: c.Query("group_by"),
+		StartAt:   startAt,
+		EndAt:     endAt,
+		GroupBy:   c.Query("group_by"),
+		CostScope: c.Query("cost_scope"),
 	})
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{

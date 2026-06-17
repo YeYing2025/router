@@ -2973,6 +2973,10 @@
         "channel": "By channel",
         "model": "By model"
       },
+      "cost_scope": {
+        "all": "All requests",
+        "unconfigured": "Unconfigured cost only"
+      },
       "summary": {
         "request_count": "Requests",
         "request_count_hint": "Billable requests in the selected range",

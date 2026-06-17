@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { API, showError } from '../../helpers';
 import { formatDecimalNumber } from '../../helpers/render';
 import {
@@ -17,6 +18,11 @@ import './BillingProcurementReport.css';
 const GROUP_BY_OPTIONS = [
   { label: '按渠道', value: 'channel' },
   { label: '按模型', value: 'model' },
+];
+
+const COST_SCOPE_OPTIONS = [
+  { label: '全部请求', value: 'all' },
+  { label: '仅未配置成本', value: 'unconfigured' },
 ];
 
 const toDateTimeLocalValue = (date) => {
@@ -85,6 +91,7 @@ function BillingProcurementReport() {
   const { t } = useTranslation();
   const initialRange = useMemo(() => createLastSevenDaysRange(), []);
   const [groupBy, setGroupBy] = useState('channel');
+  const [costScope, setCostScope] = useState('all');
   const [startAt, setStartAt] = useState(initialRange.startAt);
   const [endAt, setEndAt] = useState(initialRange.endAt);
   const [loading, setLoading] = useState(false);
@@ -104,6 +111,7 @@ function BillingProcurementReport() {
           start_at: startTimestamp,
           end_at: endTimestamp,
           group_by: groupBy,
+          cost_scope: costScope,
         },
       });
       const { success, message, data } = res.data || {};
@@ -121,7 +129,7 @@ function BillingProcurementReport() {
 
   useEffect(() => {
     loadReport().then();
-  }, [groupBy]);
+  }, [groupBy, costScope]);
 
   const summaryItems = [
     {
@@ -171,7 +179,21 @@ function BillingProcurementReport() {
           : t('billing.procurement_report.columns.channel'),
       key: 'dimension',
       width: 240,
-      render: (_, row) => row.dimension_name || row.dimension_key || '-',
+      render: (_, row) => {
+        const label = row.dimension_name || row.dimension_key || '-';
+        const key = (row.dimension_key || '').toString().trim();
+        if (groupBy === 'channel' && key && key !== '-') {
+          return (
+            <Link
+              className='billing-procurement-report-link'
+              to={`/admin/channel/detail/${encodeURIComponent(key)}?tab=billing`}
+            >
+              {label}
+            </Link>
+          );
+        }
+        return label;
+      },
     },
     {
       title: t('billing.procurement_report.columns.request_count'),
@@ -261,6 +283,15 @@ function BillingProcurementReport() {
               }))}
               value={groupBy}
               onChange={(e, { value }) => setGroupBy(value)}
+            />
+            <AppSegmented
+              className='billing-procurement-report-segmented'
+              options={COST_SCOPE_OPTIONS.map((item) => ({
+                ...item,
+                label: t(`billing.procurement_report.cost_scope.${item.value}`),
+              }))}
+              value={costScope}
+              onChange={(e, { value }) => setCostScope(value)}
             />
             <AppInput
               className='router-section-input billing-procurement-report-time-input'
