@@ -71,6 +71,62 @@ func TestConsumeChannelProcurementBatchesWithDB(t *testing.T) {
 	}
 }
 
+func TestCountRequestProcurementConsumptionsBySourceSnapshotIDWithDB(t *testing.T) {
+	db := newProcurementTestDB(t)
+	snapshotID := "snapshot-1"
+	batch, err := CreateChannelProcurementBatchWithDB(db, ChannelProcurementBatch{
+		ChannelId:            "channel-1",
+		ResourceType:         "quota",
+		QuotaType:            "total",
+		ScopeType:            "global",
+		CapacityUnit:         "token",
+		CapacityTotal:        100,
+		CapacityEffective:    100,
+		CapacityRemaining:    100,
+		PurchaseCostCNY:      10,
+		CostPerUnitCNY:       0.1,
+		CostSource:           ProcurementCostSourceActual,
+		CostStatus:           ProcurementCostStatusActive,
+		SourceSnapshotId:     snapshotID,
+		SourceSnapshotItemId: "item-1",
+	})
+	if err != nil {
+		t.Fatalf("create batch: %v", err)
+	}
+
+	count, err := CountRequestProcurementConsumptionsBySourceSnapshotIDWithDB(db, snapshotID)
+	if err != nil {
+		t.Fatalf("count consumptions: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("count=%d, want 0", count)
+	}
+
+	if err := db.Create(&RequestProcurementConsumption{
+		Id:                 "consumption-1",
+		RequestLogId:       "log-1",
+		ChannelId:          "channel-1",
+		ProcurementBatchId: batch.Id,
+		ResourceType:       "quota",
+		QuotaType:          "total",
+		CapacityUnit:       "token",
+		ConsumedQuantity:   1,
+		UnitCostCNY:        0.1,
+		ConsumedCostCNY:    0.1,
+		CostSource:         ProcurementCostSourceActual,
+	}).Error; err != nil {
+		t.Fatalf("create consumption: %v", err)
+	}
+
+	count, err = CountRequestProcurementConsumptionsBySourceSnapshotIDWithDB(db, snapshotID)
+	if err != nil {
+		t.Fatalf("count consumptions after insert: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("count=%d, want 1", count)
+	}
+}
+
 func TestConsumeChannelProcurementBatchesMarksExhausted(t *testing.T) {
 	db := newProcurementTestDB(t)
 	batch, err := CreateChannelProcurementBatchWithDB(db, ChannelProcurementBatch{
@@ -201,11 +257,56 @@ func TestUpdateLogProcurementCostObservationWithDB(t *testing.T) {
 	}
 }
 
-func TestCreateBillingSnapshotItemsCreatesUnconfiguredProcurementBatch(t *testing.T) {
+func TestCreateBillingSnapshotItemsDoesNotCreateProcurementBatchForAPISnapshot(t *testing.T) {
 	db := newProcurementTestDB(t)
 	snapshot, err := CreateChannelBillingSnapshotWithDB(db, ChannelBillingSnapshot{
 		ChannelId:  "channel-1",
 		SourceType: ChannelBillingSnapshotSourceAPI,
+		CreatedAt:  100,
+	})
+	if err != nil {
+		t.Fatalf("create snapshot: %v", err)
+	}
+
+	items, err := CreateChannelBillingSnapshotItemsWithDB(db, snapshot.Id, "channel-1", []ChannelBillingSnapshotItem{
+		{
+			ResourceType:    ChannelBillingResourceTypeCredit,
+			QuotaType:       "total",
+			Amount:          100,
+			LimitAmount:     100,
+			RemainingAmount: 80,
+			Currency:        "USD",
+			ExpiresAt:       200,
+			SourceRef:       "test_credit",
+		},
+		{
+			ResourceType:    ChannelBillingResourceTypePlan,
+			QuotaType:       "custom",
+			RemainingAmount: 1,
+			SourceRef:       "test_plan",
+		},
+	})
+	if err != nil {
+		t.Fatalf("create snapshot items: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("items len=%d, want 2", len(items))
+	}
+
+	var batches []ChannelProcurementBatch
+	if err := db.Order("created_at asc").Find(&batches).Error; err != nil {
+		t.Fatalf("list procurement batches: %v", err)
+	}
+	if len(batches) != 0 {
+		t.Fatalf("batches len=%d, want 0", len(batches))
+	}
+}
+
+func TestCreateBillingSnapshotItemsCreatesUnconfiguredProcurementBatchForManualSnapshot(t *testing.T) {
+	db := newProcurementTestDB(t)
+	snapshot, err := CreateChannelBillingSnapshotWithDB(db, ChannelBillingSnapshot{
+		ChannelId:  "channel-1",
+		SourceType: ChannelBillingSnapshotSourceManual,
 		CreatedAt:  100,
 	})
 	if err != nil {
@@ -271,6 +372,60 @@ func TestCreateBillingSnapshotItemsCreatesUnconfiguredProcurementBatch(t *testin
 	}
 	if batch.SourceSnapshotItemId != items[0].Id {
 		t.Fatalf("SourceSnapshotItemId=%q, want %q", batch.SourceSnapshotItemId, items[0].Id)
+	}
+}
+
+func TestCreateBillingSnapshotItemsCreatesSingleBatchForPeriodicQuotaRule(t *testing.T) {
+	db := newProcurementTestDB(t)
+	purchaseAt := int64(1700000000)
+	snapshot, err := CreateChannelBillingSnapshotWithDB(db, ChannelBillingSnapshot{
+		ChannelId:  "channel-1",
+		SourceType: ChannelBillingSnapshotSourceManual,
+		PurchaseAt: purchaseAt,
+		CreatedAt:  purchaseAt,
+	})
+	if err != nil {
+		t.Fatalf("create snapshot: %v", err)
+	}
+
+	items, err := CreateChannelBillingSnapshotItemsWithDB(db, snapshot.Id, "channel-1", []ChannelBillingSnapshotItem{
+		{
+			ResourceType:    ChannelBillingResourceTypeQuota,
+			QuotaType:       "daily",
+			QuotaLabel:      "30-day package daily quota",
+			LimitAmount:     100,
+			RemainingAmount: 100,
+			Currency:        "USD",
+			ExpiresAt:       purchaseAt + 30*24*60*60,
+			SourceRef:       "plan_daily",
+		},
+	})
+	if err != nil {
+		t.Fatalf("create snapshot items: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("items len=%d, want 1", len(items))
+	}
+
+	var batches []ChannelProcurementBatch
+	if err := db.Order("created_at asc").Find(&batches).Error; err != nil {
+		t.Fatalf("list procurement batches: %v", err)
+	}
+	if len(batches) != 1 {
+		t.Fatalf("batches len=%d, want 1", len(batches))
+	}
+	batch := batches[0]
+	if batch.CapacityTotal != 3000 {
+		t.Fatalf("CapacityTotal=%v, want 3000", batch.CapacityTotal)
+	}
+	if batch.CapacityRemaining != 3000 {
+		t.Fatalf("CapacityRemaining=%v, want 3000", batch.CapacityRemaining)
+	}
+	if batch.ResetCycle != "daily" {
+		t.Fatalf("ResetCycle=%q, want daily", batch.ResetCycle)
+	}
+	if batch.ExpireAt != purchaseAt+30*24*60*60 {
+		t.Fatalf("ExpireAt=%d, want %d", batch.ExpireAt, purchaseAt+30*24*60*60)
 	}
 }
 

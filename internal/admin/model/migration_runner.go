@@ -1435,6 +1435,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return tx.AutoMigrate(&ChannelProcurementBatch{}, &RequestProcurementConsumption{})
 			},
 		},
+		{
+			Version:     "202606181030_channel_billing_purchase_fields",
+			Description: "add purchase fields to channel billing snapshots",
+			Up: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&ChannelBillingSnapshot{})
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

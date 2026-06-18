@@ -136,6 +136,46 @@ func procurementBatchCapacityFromSnapshotItem(item ChannelBillingSnapshotItem) (
 	return capacityTotal, capacityRemaining
 }
 
+func procurementCycleSeconds(quotaType string) int64 {
+	switch strings.TrimSpace(strings.ToLower(quotaType)) {
+	case "daily":
+		return 24 * 60 * 60
+	case "weekly":
+		return 7 * 24 * 60 * 60
+	case "monthly":
+		return 30 * 24 * 60 * 60
+	default:
+		return 0
+	}
+}
+
+func procurementBatchCapacityFromSnapshot(snapshot ChannelBillingSnapshot, item ChannelBillingSnapshotItem) (float64, float64) {
+	capacityTotal, capacityRemaining := procurementBatchCapacityFromSnapshotItem(item)
+	if item.ResourceType != ChannelBillingResourceTypeQuota || item.ResetAt > 0 || item.ExpiresAt <= 0 {
+		return capacityTotal, capacityRemaining
+	}
+	cycleSeconds := procurementCycleSeconds(item.QuotaType)
+	if cycleSeconds <= 0 || capacityTotal <= 0 {
+		return capacityTotal, capacityRemaining
+	}
+	validFrom := snapshot.PurchaseAt
+	if validFrom <= 0 {
+		validFrom = snapshot.CreatedAt
+	}
+	if validFrom <= 0 {
+		validFrom = item.CreatedAt
+	}
+	if validFrom <= 0 || item.ExpiresAt <= validFrom {
+		return capacityTotal, capacityRemaining
+	}
+	cycles := math.Ceil(float64(item.ExpiresAt-validFrom) / float64(cycleSeconds))
+	if cycles <= 1 {
+		return capacityTotal, capacityRemaining
+	}
+	effectiveTotal := capacityTotal * cycles
+	return effectiveTotal, effectiveTotal
+}
+
 func procurementBatchCapacityUnitFromSnapshotItem(item ChannelBillingSnapshotItem) string {
 	resourceType := strings.TrimSpace(strings.ToLower(item.ResourceType))
 	currency := strings.TrimSpace(strings.ToLower(item.Currency))
@@ -178,6 +218,16 @@ func procurementBatchExpireAtFromSnapshotItem(item ChannelBillingSnapshotItem) i
 	return 0
 }
 
+func procurementBatchExpireAtFromSnapshot(snapshot ChannelBillingSnapshot, item ChannelBillingSnapshotItem) int64 {
+	if item.ExpiresAt > 0 {
+		return item.ExpiresAt
+	}
+	if item.ResetAt > 0 {
+		return item.ResetAt
+	}
+	return 0
+}
+
 func BuildProcurementBatchFromBillingSnapshotItem(snapshot ChannelBillingSnapshot, item ChannelBillingSnapshotItem) (ChannelProcurementBatch, bool) {
 	normalizedItems := NormalizeChannelBillingSnapshotItems([]ChannelBillingSnapshotItem{item})
 	if len(normalizedItems) == 0 {
@@ -190,7 +240,7 @@ func BuildProcurementBatchFromBillingSnapshotItem(snapshot ChannelBillingSnapsho
 	if normalizedItem.Status == ChannelBillingItemStatusExpired || normalizedItem.Status == ChannelBillingItemStatusDepleted {
 		return ChannelProcurementBatch{}, false
 	}
-	capacityTotal, capacityRemaining := procurementBatchCapacityFromSnapshotItem(normalizedItem)
+	capacityTotal, capacityRemaining := procurementBatchCapacityFromSnapshot(snapshot, normalizedItem)
 	if capacityRemaining <= 0 {
 		return ChannelProcurementBatch{}, false
 	}
@@ -228,7 +278,7 @@ func BuildProcurementBatchFromBillingSnapshotItem(snapshot ChannelBillingSnapsho
 		CostSource:           ProcurementCostSourceNone,
 		CostStatus:           ProcurementCostStatusCostUnconfigured,
 		ValidFrom:            validFrom,
-		ExpireAt:             procurementBatchExpireAtFromSnapshotItem(normalizedItem),
+		ExpireAt:             procurementBatchExpireAtFromSnapshot(snapshot, normalizedItem),
 		ResetCycle:           procurementBatchResetCycleFromSnapshotItem(normalizedItem),
 		SourceSnapshotId:     sourceSnapshotID,
 		SourceSnapshotItemId: strings.TrimSpace(normalizedItem.Id),
@@ -412,6 +462,23 @@ func ListChannelProcurementBatchesByChannelIDWithDB(db *gorm.DB, channelID strin
 	return rows, nil
 }
 
+func ListChannelProcurementBatchesBySourceSnapshotIDWithDB(db *gorm.DB, snapshotID string) ([]ChannelProcurementBatch, error) {
+	if db == nil {
+		return nil, fmt.Errorf("database handle is nil")
+	}
+	normalizedSnapshotID := strings.TrimSpace(snapshotID)
+	if normalizedSnapshotID == "" {
+		return []ChannelProcurementBatch{}, nil
+	}
+	rows := make([]ChannelProcurementBatch, 0)
+	if err := db.Where("source_snapshot_id = ?", normalizedSnapshotID).
+		Order("created_at asc, id asc").
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 func GetChannelProcurementBatchByIDWithDB(db *gorm.DB, id string) (ChannelProcurementBatch, error) {
 	if db == nil {
 		return ChannelProcurementBatch{}, fmt.Errorf("database handle is nil")
@@ -423,6 +490,37 @@ func GetChannelProcurementBatchByIDWithDB(db *gorm.DB, id string) (ChannelProcur
 	row := ChannelProcurementBatch{}
 	err := db.Where("id = ?", normalizedID).Take(&row).Error
 	return row, err
+}
+
+func CountRequestProcurementConsumptionsByBatchIDsWithDB(db *gorm.DB, batchIDs []string) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("database handle is nil")
+	}
+	normalizedBatchIDs := normalizeTrimmedValuesPreserveOrder(batchIDs)
+	if len(normalizedBatchIDs) == 0 {
+		return 0, nil
+	}
+	var count int64
+	if err := db.Model(&RequestProcurementConsumption{}).
+		Where("procurement_batch_id IN ?", normalizedBatchIDs).
+		Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func CountRequestProcurementConsumptionsBySourceSnapshotIDWithDB(db *gorm.DB, snapshotID string) (int64, error) {
+	rows, err := ListChannelProcurementBatchesBySourceSnapshotIDWithDB(db, snapshotID)
+	if err != nil {
+		return 0, err
+	}
+	batchIDs := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if strings.TrimSpace(row.Id) != "" {
+			batchIDs = append(batchIDs, row.Id)
+		}
+	}
+	return CountRequestProcurementConsumptionsByBatchIDsWithDB(db, batchIDs)
 }
 
 func UpdateChannelProcurementBatchCostWithDB(db *gorm.DB, id string, input ProcurementBatchCostUpdate) (ChannelProcurementBatch, error) {

@@ -603,6 +603,11 @@ const normalizeChannelBillingSnapshots = (items) => {
       id: (item.id || '').toString().trim(),
       source_type: (item.source_type || '').toString().trim(),
       message: (item.message || '').toString().trim(),
+      purchase_at: Number(item.purchase_at || 0),
+      purchase_currency: (item.purchase_currency || '').toString().trim(),
+      purchase_amount: Number(item.purchase_amount || 0),
+      purchase_fx_rate: Number(item.purchase_fx_rate || 0),
+      purchase_cost_cny: Number(item.purchase_cost_cny || 0),
       created_at: Number(item.created_at || 0),
       items: Array.isArray(item.items)
         ? item.items.map((quotaItem) => ({
@@ -662,6 +667,7 @@ const normalizeChannelProcurementBatches = (items) => {
       cost_status: (item.cost_status || '').toString().trim(),
       expire_at: Number(item.expire_at || 0),
       reset_cycle: (item.reset_cycle || '').toString().trim(),
+      source_snapshot_id: (item.source_snapshot_id || '').toString().trim(),
       source_ref: (item.source_ref || '').toString().trim(),
       created_at: Number(item.created_at || 0),
       updated_at: Number(item.updated_at || 0),
@@ -3494,7 +3500,16 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   }, [channelId, submitChannelBillingRefresh, t]);
 
   const updateChannelManualBillingSnapshot = useCallback(
-    async ({ items, message }) => {
+    async ({
+      id,
+      purchase_at,
+      purchase_currency,
+      purchase_amount,
+      purchase_fx_rate,
+      purchase_cost_cny,
+      items,
+      message,
+    }) => {
       const targetChannelId = (channelId || '').toString().trim();
       if (targetChannelId === '') {
         return false;
@@ -3511,12 +3526,13 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
           currency: (item?.currency || '').toString().trim(),
           reset_at: Number(item?.reset_at || 0),
           expires_at: Number(item?.expires_at || 0),
+          source_ref: (item?.source_ref || '').toString().trim(),
         }))
         .filter(
           (item) =>
             item.resource_type !== '' &&
             item.quota_label !== '' &&
-            (item.resource_type === 'plan' ||
+            ((item.resource_type === 'plan' && item.expires_at > 0) ||
               (Number.isFinite(item.amount) &&
                 item.amount >= 0 &&
                 (item.amount > 0 ||
@@ -3529,9 +3545,22 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       }
       setChannelBillingSubmitting(true);
       try {
-        const res = await API.post(
-          `/api/v1/admin/channel/${targetChannelId}/billing/snapshots`,
+        const method = (id || '').toString().trim() === '' ? 'post' : 'put';
+        const path =
+          (id || '').toString().trim() === ''
+            ? `/api/v1/admin/channel/${targetChannelId}/billing/snapshots`
+            : `/api/v1/admin/channel/${targetChannelId}/billing/snapshots/${(id || '')
+                .toString()
+                .trim()}`;
+        const res = await API[method](
+          path,
           {
+            ...(method === 'put' ? { id: (id || '').toString().trim() } : {}),
+            purchase_at: Number(purchase_at || 0),
+            purchase_currency: (purchase_currency || '').toString().trim(),
+            purchase_amount: Number(purchase_amount || 0),
+            purchase_fx_rate: Number(purchase_fx_rate || 0),
+            purchase_cost_cny: Number(purchase_cost_cny || 0),
             items: normalizedItems,
             message: (message || '').toString().trim(),
           }
@@ -3556,6 +3585,40 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       }
     },
     [channelId, refreshChannelBillingState, t]
+  );
+
+  const deleteChannelManualBillingSnapshot = useCallback(
+    async (snapshotId) => {
+      const targetChannelId = (channelId || '').toString().trim();
+      const normalizedSnapshotId = (snapshotId || '').toString().trim();
+      if (targetChannelId === '' || normalizedSnapshotId === '') {
+        return false;
+      }
+      setChannelBillingSubmitting(true);
+      try {
+        const res = await API.delete(
+          `/api/v1/admin/channel/${targetChannelId}/billing/snapshots/${normalizedSnapshotId}`
+        );
+        const { success, message: responseMessage } = res.data || {};
+        if (!success) {
+          showError(
+            responseMessage || t('channel.edit.billing.delete_purchase_record_failed')
+          );
+          return false;
+        }
+        await refreshChannelBillingState(targetChannelId);
+        showSuccess(t('channel.edit.billing.delete_purchase_record_success'));
+        return true;
+      } catch (error) {
+        showError(
+          error?.message || t('channel.edit.billing.delete_purchase_record_failed')
+        );
+        return false;
+      } finally {
+        setChannelBillingSubmitting(false);
+      }
+    },
+    [channelId, refreshChannelBillingState, showError, showSuccess, t]
   );
 
   const updateChannelProcurementBatchCost = useCallback(
@@ -5846,6 +5909,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 onRefreshBilling={refreshChannelBillingNow}
                 onOpenActivatePage={openChannelBillingActivatePage}
                 onManualSnapshotUpdate={updateChannelManualBillingSnapshot}
+                onManualSnapshotDelete={deleteChannelManualBillingSnapshot}
                 onProcurementBatchCostUpdate={updateChannelProcurementBatchCost}
                 onProcurementBatchStatusUpdate={
                   updateChannelProcurementBatchStatus
