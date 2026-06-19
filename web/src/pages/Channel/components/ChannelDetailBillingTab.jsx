@@ -5,6 +5,7 @@ import {
   AppButton,
   AppCompact,
   AppDetailSection,
+  AppDivider,
   AppField,
   AppFormActions,
   AppFormRow,
@@ -1335,14 +1336,28 @@ const ChannelDetailBillingTab = ({
   );
 
   return (
-    <AppDetailSection title={t('channel.edit.billing.title')} titleTag='span'>
+    <AppDetailSection
+      title={t('channel.edit.billing.title')}
+      titleTag='span'
+      bodyClassName='router-billing-page'
+    >
+      <div className='router-billing-overview-strip'>
+        <div className='router-billing-overview-main'>
+          <AppTag color={entitlementModeSummary.color}>
+            {entitlementModeSummary.label}
+          </AppTag>
+          <span>{entitlementModeSummary.description}</span>
+        </div>
+        <div className='router-billing-overview-meta'>
+          <span>{t('channel.edit.billing.latest_snapshot_at')}</span>
+          <strong>
+            {billingSummary?.latest_snapshot_at
+              ? timestamp2string(billingSummary.latest_snapshot_at)
+              : '-'}
+          </strong>
+        </div>
+      </div>
       <div>
-        <AppAlert
-          type='info'
-          showIcon
-          className='router-section-message'
-          title={t('channel.edit.billing.hint')}
-        />
         <AppDetailSection
           title={t('channel.edit.billing.current_quotas_title')}
           titleTag='span'
@@ -1368,12 +1383,6 @@ const ChannelDetailBillingTab = ({
             </div>
           }
         >
-          <div className='router-billing-mode-summary'>
-            <AppTag color={entitlementModeSummary.color}>
-              {entitlementModeSummary.label}
-            </AppTag>
-            <span>{entitlementModeSummary.description}</span>
-          </div>
           {latestSnapshotStatus === 'failed' ? (
             <AppAlert
               type='warning'
@@ -1484,10 +1493,20 @@ const ChannelDetailBillingTab = ({
           </AppDetailSection>
         )}
         <AppDetailSection
-          title={t('channel.edit.billing.snapshots_title')}
+          className='router-billing-management-section'
+          title={t('channel.edit.billing.management_title')}
           titleTag='span'
-          headerEnd={
-            billingSummary?.manual_update_supported ? (
+        >
+          <div className='router-billing-subsection-header'>
+            <div>
+              <div className='router-billing-subsection-title'>
+                {t('channel.edit.billing.snapshots_title')}
+              </div>
+              <div className='router-billing-subsection-description'>
+                {t('channel.edit.billing.snapshots_hint')}
+              </div>
+            </div>
+            {billingSummary?.manual_update_supported ? (
               <AppButton
                 type='button'
                 className='router-page-button'
@@ -1497,9 +1516,8 @@ const ChannelDetailBillingTab = ({
               >
                 {t('channel.edit.billing.add_purchase_record')}
               </AppButton>
-            ) : null
-          }
-        >
+            ) : null}
+          </div>
           <AppTable
             className='router-detail-table'
             pagination={false}
@@ -1593,17 +1611,17 @@ const ChannelDetailBillingTab = ({
               },
             ]}
           />
-        </AppDetailSection>
-        <AppDetailSection
-          title={t('channel.edit.billing.procurement_title')}
-          titleTag='span'
-        >
-          <AppAlert
-            type='info'
-            showIcon
-            className='router-section-message'
-            title={t('channel.edit.billing.procurement_hint')}
-          />
+          <AppDivider className='router-billing-subsection-divider' />
+          <div className='router-billing-subsection-header'>
+            <div>
+              <div className='router-billing-subsection-title'>
+                {t('channel.edit.billing.procurement_title')}
+              </div>
+              <div className='router-billing-subsection-description'>
+                {t('channel.edit.billing.procurement_hint')}
+              </div>
+            </div>
+          </div>
           <AppTable
             className='router-detail-table'
             pagination={false}
