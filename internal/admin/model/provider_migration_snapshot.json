@@ -3472,7 +3472,7 @@
     "Provider": "zhipu",
     "Name": "Zhipu",
     "BaseURL": "https://open.bigmodel.cn",
-    "OfficialURL": "https://docs.bigmodel.cn/cn/guide/models/text/glm-5.1",
+    "OfficialURL": "https://open.bigmodel.cn/pricing",
     "SortOrder": 155,
     "ModelDetails": [
       {
@@ -3973,10 +3973,35 @@
           "/v1/chat/completions",
           "/v1/messages"
         ],
+        "input_price": 0.008,
+        "output_price": 0.028,
         "price_unit": "per_1k_tokens",
         "currency": "CNY",
         "source": "migration",
-        "updated_at": 1700000000
+        "updated_at": 1700000000,
+        "price_components": [
+          {
+            "component": "text",
+            "condition": "mode=standard",
+            "input_price": 0.008,
+            "output_price": 0.028,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 10,
+            "updated_at": 1700000000
+          },
+          {
+            "component": "context_cache",
+            "condition": "mode=standard",
+            "input_price": 0.002,
+            "price_unit": "per_1k_tokens",
+            "currency": "CNY",
+            "source_url": "https://open.bigmodel.cn/pricing",
+            "sort_order": 20,
+            "updated_at": 1700000000
+          }
+        ]
       },
       {
         "model": "glm-5.1",
@@ -4076,6 +4101,7 @@
         "supported_endpoints": [
           "/v1/images/generations"
         ],
+        "input_price": 0.1,
         "price_unit": "per_image",
         "currency": "CNY",
         "source": "migration",

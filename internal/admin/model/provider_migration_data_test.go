@@ -776,6 +776,7 @@ func TestBuildProviderMigrationSeeds_OfficialPricingBackfillForPreviouslyUnprice
 			"image-01":              {modelType: ProviderModelTypeImage, input: 0.0035, priceUnit: ProviderPriceUnitPerImage, currency: ProviderPriceCurrencyUSD},
 		},
 		"zhipu": {
+			"glm-5.2":          {modelType: ProviderModelTypeText, input: 0.008, output: 0.028, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
 			"glm-5.1":          {modelType: ProviderModelTypeText, input: 0.006, output: 0.024, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
 			"glm-5-turbo":      {modelType: ProviderModelTypeText, input: 0.005, output: 0.022, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
 			"glm-5":            {modelType: ProviderModelTypeText, input: 0.004, output: 0.018, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
@@ -789,6 +790,7 @@ func TestBuildProviderMigrationSeeds_OfficialPricingBackfillForPreviouslyUnprice
 			"glm-4v-plus-0111": {modelType: ProviderModelTypeImage, input: 0.004, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
 			"glm-4-voice":      {modelType: ProviderModelTypeAudio, input: 0.08, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
 			"cogview-4-250304": {modelType: ProviderModelTypeImage, input: 0.06, priceUnit: ProviderPriceUnitPerImage, currency: "CNY"},
+			"glm-image":        {modelType: ProviderModelTypeImage, input: 0.1, priceUnit: ProviderPriceUnitPerImage, currency: "CNY"},
 			"cogvideox-2":      {modelType: ProviderModelTypeVideo, input: 0.5, priceUnit: ProviderPriceUnitPerVideo, currency: "CNY"},
 			"embedding-2":      {modelType: ProviderModelTypeEmbedding, input: 0.0005, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
 			"embedding-3":      {modelType: ProviderModelTypeEmbedding, input: 0.0005, priceUnit: ProviderPriceUnitPer1KTokens, currency: "CNY"},
@@ -894,6 +896,7 @@ func TestBuildProviderMigrationSeeds_ComplexPricingComponentsForLiveAndOmniModel
 			"doubao-seedance-1-0-pro-fast-251015": {componentCount: 2},
 		},
 		"zhipu": {
+			"glm-5.2":         {componentCount: 2},
 			"glm-5.1":         {componentCount: 2},
 			"glm-5-turbo":     {componentCount: 2},
 			"glm-5":           {componentCount: 2},
@@ -1043,7 +1046,7 @@ func TestBuildProviderMigrationSeeds_ZhipuClaudeCompatibleModelsExposeMessagesEn
 	}
 }
 
-func TestBuildProviderMigrationSeeds_ZhipuIncludesGLM52WithoutFabricatedPricing(t *testing.T) {
+func TestBuildProviderMigrationSeeds_ZhipuIncludesGLM52OfficialPricing(t *testing.T) {
 	seeds := mustLoadProviderMigrationSeeds(t)
 	for _, seed := range seeds {
 		if seed.Provider != "zhipu" {
@@ -1064,11 +1067,29 @@ func TestBuildProviderMigrationSeeds_ZhipuIncludesGLM52WithoutFabricatedPricing(
 				detail.SupportedEndpoints[1] != ChannelModelEndpointMessages {
 				t.Fatalf("glm-5.2 supported_endpoints=%#v, want [chat messages]", detail.SupportedEndpoints)
 			}
-			if detail.InputPrice != 0 || detail.OutputPrice != 0 {
-				t.Fatalf("glm-5.2 pricing should stay empty until official price is published: input=%v output=%v", detail.InputPrice, detail.OutputPrice)
+			if detail.InputPrice != 0.008 || detail.OutputPrice != 0.028 {
+				t.Fatalf("glm-5.2 pricing input=%v output=%v, want 0.008/0.028", detail.InputPrice, detail.OutputPrice)
 			}
 			if detail.PriceUnit != ProviderPriceUnitPer1KTokens || detail.Currency != "CNY" {
 				t.Fatalf("glm-5.2 billing unit=%q currency=%q, want per_1k_tokens/CNY", detail.PriceUnit, detail.Currency)
+			}
+			if len(detail.PriceComponents) != 2 {
+				t.Fatalf("glm-5.2 price_components=%d, want 2", len(detail.PriceComponents))
+			}
+			expectedComponents := map[string]bool{
+				"text|mode=standard":          false,
+				"context_cache|mode=standard": false,
+			}
+			for _, component := range detail.PriceComponents {
+				key := component.Component + "|" + component.Condition
+				if _, ok := expectedComponents[key]; ok {
+					expectedComponents[key] = true
+				}
+			}
+			for key, found := range expectedComponents {
+				if !found {
+					t.Fatalf("glm-5.2 missing price component %s", key)
+				}
 			}
 			return
 		}
@@ -1291,7 +1312,6 @@ func TestBuildProviderMigrationSeeds_RemainingUnpricedModelsAreExplicitlyTracked
 			"cogvideox-flash": false,
 			"glm-4.6v-flash":  false,
 			"glm-4.7-flash":   false,
-			"glm-image":       false,
 		},
 		"mistral": {
 			"pixtral-large-latest": false,

@@ -1442,6 +1442,20 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return tx.AutoMigrate(&ChannelBillingSnapshot{})
 			},
 		},
+		{
+			Version:     "202606191030_refresh_zhipu_glm52_pricing",
+			Description: "refresh zhipu provider migration data for glm-5.2 pricing and official metadata",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "zhipu")
+			},
+		},
+		{
+			Version:     "202606191100_refresh_zhipu_glm_image_pricing",
+			Description: "refresh zhipu provider migration data for glm-image pricing",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "zhipu")
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
