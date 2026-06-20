@@ -38,12 +38,31 @@ type Token struct {
 	UsedAmount      int64 `json:"used_amount"`
 }
 
+func maskTokenKey(raw string) string {
+	key := strings.TrimSpace(raw)
+	if key == "" {
+		return ""
+	}
+	prefix := ""
+	if strings.HasPrefix(strings.ToLower(key), "sk-") {
+		prefix = key[:3]
+		key = key[3:]
+	}
+	if len(key) <= 4 {
+		return prefix + "****"
+	}
+	if len(key) <= 8 {
+		return prefix + key[:2] + "****" + key[len(key)-2:]
+	}
+	return prefix + key[:4] + "****" + key[len(key)-4:]
+}
+
 func NewToken(token *model.Token) *Token {
 	if token == nil {
 		return nil
 	}
 	sanitized := *token
-	sanitized.Key = ""
+	sanitized.Key = maskTokenKey(token.Key)
 	return &Token{
 		Token:           &sanitized,
 		RemainingAmount: token.RemainQuota,
