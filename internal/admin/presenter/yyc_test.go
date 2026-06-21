@@ -41,8 +41,8 @@ func TestNewTokenAddsAmountFields(t *testing.T) {
 	if view.UsedAmount != row.UsedQuota {
 		t.Fatalf("used_amount=%d, want %d", view.UsedAmount, row.UsedQuota)
 	}
-	if view.Key != "secr****1234" {
-		t.Fatalf("key=%q, want masked", view.Key)
+	if view.Key != row.Key {
+		t.Fatalf("key=%q, want %q", view.Key, row.Key)
 	}
 }
 
@@ -59,27 +59,6 @@ func TestNewCreatedTokenKeepsKey(t *testing.T) {
 	}
 	if view.Key != row.Key {
 		t.Fatalf("key=%q, want %q", view.Key, row.Key)
-	}
-}
-
-func TestMaskTokenKey(t *testing.T) {
-	tests := []struct {
-		name string
-		in   string
-		want string
-	}{
-		{name: "empty", in: "", want: ""},
-		{name: "short", in: "abcd", want: "****"},
-		{name: "medium", in: "abcdef", want: "ab****ef"},
-		{name: "long", in: "abcdefgh1234", want: "abcd****1234"},
-		{name: "prefixed", in: "sk-abcdefgh1234", want: "sk-abcd****1234"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := maskTokenKey(tt.in); got != tt.want {
-				t.Fatalf("maskTokenKey(%q)=%q, want %q", tt.in, got, tt.want)
-			}
-		})
 	}
 }
 

@@ -48,7 +48,7 @@ func decodeTokenResponseBody(t *testing.T, body []byte) map[string]any {
 	return payload
 }
 
-func TestGetAllTokensReturnsMaskedKeys(t *testing.T) {
+func TestGetAllTokensReturnsRawKeys(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := newTokenControllerTestDB(t)
 	seedUserTokenForTest(t, db, model.Token{
@@ -81,12 +81,12 @@ func TestGetAllTokensReturnsMaskedKeys(t *testing.T) {
 		t.Fatalf("row=%T %#v, want object", data[0], data[0])
 	}
 	key, _ := row["key"].(string)
-	if key != "sk-secr****1234" {
-		t.Fatalf("key=%q, want masked value", key)
+	if key != "sk-secretTokenValue1234" {
+		t.Fatalf("key=%q, want raw value", key)
 	}
 }
 
-func TestGetTokenReturnsMaskedKey(t *testing.T) {
+func TestGetTokenReturnsRawKey(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := newTokenControllerTestDB(t)
 	seedUserTokenForTest(t, db, model.Token{
@@ -116,8 +116,8 @@ func TestGetTokenReturnsMaskedKey(t *testing.T) {
 		t.Fatalf("data=%T %#v, want object", payload["data"], payload["data"])
 	}
 	key, _ := row["key"].(string)
-	if key != "secr****1234" {
-		t.Fatalf("key=%q, want masked value", key)
+	if key != "secretTokenValue1234" {
+		t.Fatalf("key=%q, want raw value", key)
 	}
 }
 
