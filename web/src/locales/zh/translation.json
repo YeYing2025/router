@@ -1526,7 +1526,7 @@
       },
       "messages": {
         "update_success": "令牌更新成功！",
-        "create_success": "令牌创建成功，请在列表页面点击复制获取令牌！",
+        "create_success": "令牌创建成功，请立即复制并妥善保存完整令牌！",
         "name_required": "请输入令牌名称。",
         "id_required": "令牌标识为空，请刷新页面后重试。",
         "expire_time_invalid": "过期时间格式错误！",
@@ -1543,7 +1543,7 @@
     },
     "messages": {
       "copy_success": "已复制到剪贴板！",
-      "copy_failed": "无法复制到剪贴板，请手动复制，已将令牌填入搜索框。",
+      "copy_failed": "无法复制到剪贴板，请手动复制。",
       "operation_success": "操作成功完成！"
     }
   },
@@ -3053,10 +3053,15 @@
         "request_count": "请求数",
         "configured_count": "已配置成本",
         "unconfigured_count": "未配置成本",
+        "related_channels": "关联渠道",
+        "more_channels": "+{{count}} 个",
         "sell_amount": "售价 CNY",
         "procurement_cost": "采购成本 CNY",
         "gross_profit": "毛利 CNY",
         "gross_margin": "毛利率"
+      },
+      "actions": {
+        "configure_cost": "打开渠道账务页补采购成本"
       },
       "messages": {
         "invalid_time": "请选择有效的时间范围",

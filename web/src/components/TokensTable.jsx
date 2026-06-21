@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import UnitDropdown from './UnitDropdown';
 import {
   API,
+  copy,
   showError,
   showSuccess,
   timestamp2string,
@@ -71,6 +72,14 @@ function tokenStatusTooltip(status, t) {
     default:
       return t('token.table.status_unknown');
   }
+}
+
+function renderTokenPreview(key) {
+  const raw = typeof key === 'string' ? key.trim() : '';
+  if (raw === '') {
+    return '-';
+  }
+  return raw.startsWith('sk-') ? raw : `sk-${raw}`;
 }
 
 const TokensTable = () => {
@@ -391,6 +400,22 @@ const TokensTable = () => {
             render: (value) => value || t('token.table.no_name'),
           },
           {
+            title: t('token.table.token'),
+            dataIndex: 'key',
+            key: 'key',
+            width: TOKEN_LIST_COLUMN_WIDTHS.token,
+            ellipsis: true,
+            render: (value) => (
+              <span
+                className='router-token-key-link'
+                onClick={(event) => stopRowClick(event)}
+                title={renderTokenPreview(value)}
+              >
+                {renderTokenPreview(value)}
+              </span>
+            ),
+          },
+          {
             title: t('token.table.status'),
             dataIndex: 'status',
             key: 'status',
@@ -502,6 +527,22 @@ const TokensTable = () => {
                   className='router-action-group router-table-actions-icon-compact'
                   onClick={(event) => stopRowClick(event)}
                 >
+                  <AppTableActionButton
+                    icon='copy outline'
+                    title={t('token.buttons.copy')}
+                    onClick={async () => {
+                      const preview = renderTokenPreview(token.key);
+                      if (preview === '-') {
+                        showError(t('token.messages.copy_failed'));
+                        return;
+                      }
+                      if (await copy(preview)) {
+                        showSuccess(t('token.messages.copy_success'));
+                        return;
+                      }
+                      showError(t('token.messages.copy_failed'));
+                    }}
+                  />
                   <AppPopconfirm
                     title={`${t('token.buttons.confirm_delete')} ${token.name || ''}`}
                     onConfirm={() => {

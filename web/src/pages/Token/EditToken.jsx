@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom';
 import {
   API,
+  copy,
   showError,
   showSuccess,
   timestamp2string,
@@ -655,6 +656,19 @@ const EditToken = () => {
                   </AppField>
                 </AppFormRow>
                 <AppFormActions>
+                  <AppButton
+                    className='router-page-button'
+                    onClick={async () => {
+                      const rawToken = renderFullToken(createdToken.key);
+                      if (await copy(rawToken)) {
+                        showSuccess(t('token.messages.copy_success'));
+                        return;
+                      }
+                      showError(t('token.messages.copy_failed'));
+                    }}
+                  >
+                    {t('token.copy_options.raw')}
+                  </AppButton>
                   <AppButton
                     className='router-page-button'
                     color='blue'
