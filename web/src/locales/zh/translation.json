@@ -3034,6 +3034,9 @@
         "all": "全部请求",
         "unconfigured": "仅未配置成本"
       },
+      "filters": {
+        "group": "筛选分组"
+      },
       "summary": {
         "request_count": "请求数",
         "request_count_hint": "当前时间范围内的计费请求",

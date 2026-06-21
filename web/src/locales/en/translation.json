@@ -3039,6 +3039,9 @@
         "all": "All requests",
         "unconfigured": "Unconfigured cost only"
       },
+      "filters": {
+        "group": "Filter group"
+      },
       "summary": {
         "request_count": "Requests",
         "request_count_hint": "Billable requests in the selected range",

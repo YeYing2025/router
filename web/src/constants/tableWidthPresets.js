@@ -128,6 +128,7 @@ export const TOKEN_LIST_COLUMN_WIDTHS = {
   usedAmount: 120,
   remainingAmount: 120,
   createdTime: 148,
+  updatedTime: 148,
   expiredTime: 148,
   actions: 56,
 };
@@ -139,6 +140,7 @@ export const TOKEN_LIST_TABLE_MIN_WIDTH =
   TOKEN_LIST_COLUMN_WIDTHS.usedAmount +
   TOKEN_LIST_COLUMN_WIDTHS.remainingAmount +
   TOKEN_LIST_COLUMN_WIDTHS.createdTime +
+  TOKEN_LIST_COLUMN_WIDTHS.updatedTime +
   TOKEN_LIST_COLUMN_WIDTHS.expiredTime +
   TOKEN_LIST_COLUMN_WIDTHS.actions;
 

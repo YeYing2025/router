@@ -25,6 +25,7 @@ import {
 import {
   AppButton,
   AppFilterHeader,
+  AppIcon,
   AppInput,
   AppPagination,
   AppPopconfirm,
@@ -51,6 +52,7 @@ const normalizeTokenRow = (raw) => {
     remainingAmount: Number(raw?.remaining_amount ?? raw?.remain_quota ?? 0) || 0,
     hasUnlimitedLimitAmount: raw?.unlimited_quota === true,
     createdTime: Number(raw?.created_time ?? 0) || 0,
+    updatedTime: Number(raw?.updated_time ?? 0) || 0,
     expiredTime: Number(raw?.expired_time ?? 0) || 0,
   };
 };
@@ -405,15 +407,40 @@ const TokensTable = () => {
             key: 'key',
             width: TOKEN_LIST_COLUMN_WIDTHS.token,
             ellipsis: true,
-            render: (value) => (
-              <span
-                className='router-token-key-link'
-                onClick={(event) => stopRowClick(event)}
-                title={renderTokenPreview(value)}
-              >
-                {renderTokenPreview(value)}
-              </span>
-            ),
+            render: (value) => {
+              const preview = renderTokenPreview(value);
+              return (
+                <span
+                  className='router-action-group'
+                  onClick={(event) => stopRowClick(event)}
+                >
+                  <span
+                    className='router-token-key-link'
+                    title={preview}
+                  >
+                    {preview}
+                  </span>
+                  <button
+                    type='button'
+                    className='router-icon-button'
+                    title={t('token.buttons.copy')}
+                    onClick={async () => {
+                      if (preview === '-') {
+                        showError(t('token.messages.copy_failed'));
+                        return;
+                      }
+                      if (await copy(preview)) {
+                        showSuccess(t('token.messages.copy_success'));
+                        return;
+                      }
+                      showError(t('token.messages.copy_failed'));
+                    }}
+                  >
+                    <AppIcon name='copy outline' />
+                  </button>
+                </span>
+              );
+            },
           },
           {
             title: t('token.table.status'),
@@ -502,6 +529,18 @@ const TokensTable = () => {
             render: (value) => renderTimestamp(value),
           },
           {
+            title: t('token.table.updated_time'),
+            dataIndex: 'updatedTime',
+            key: 'updatedTime',
+            className: 'router-table-col-datetime',
+            width: TOKEN_LIST_COLUMN_WIDTHS.updatedTime,
+            sorter: (a, b) => compareNumberValue(a.updatedTime, b.updatedTime),
+            sortDirections: ['ascend', 'descend'],
+            sortOrder:
+              tableSorter.columnKey === 'updatedTime' ? tableSorter.order : null,
+            render: (value) => renderTimestamp(value),
+          },
+          {
             title: t('token.table.expired_time'),
             dataIndex: 'expiredTime',
             key: 'expiredTime',
@@ -527,22 +566,6 @@ const TokensTable = () => {
                   className='router-action-group router-table-actions-icon-compact'
                   onClick={(event) => stopRowClick(event)}
                 >
-                  <AppTableActionButton
-                    icon='copy outline'
-                    title={t('token.buttons.copy')}
-                    onClick={async () => {
-                      const preview = renderTokenPreview(token.key);
-                      if (preview === '-') {
-                        showError(t('token.messages.copy_failed'));
-                        return;
-                      }
-                      if (await copy(preview)) {
-                        showSuccess(t('token.messages.copy_success'));
-                        return;
-                      }
-                      showError(t('token.messages.copy_failed'));
-                    }}
-                  />
                   <AppPopconfirm
                     title={`${t('token.buttons.confirm_delete')} ${token.name || ''}`}
                     onConfirm={() => {
