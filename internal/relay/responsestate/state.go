@@ -5,9 +5,16 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/yeying-community/router/common"
+	"github.com/yeying-community/router/common/logger"
 )
 
-const defaultResponseRouteTTL = 6 * time.Hour
+const (
+	defaultResponseRouteTTL = 6 * time.Hour
+	responseRouteKeyPrefix  = "responses_route:"
+)
 
 type routeEntry struct {
 	ChannelID string
@@ -21,6 +28,12 @@ var (
 	routeNow      = time.Now
 	lastPrunedAt  time.Time
 	pruneInterval = 10 * time.Minute
+
+	redisRouteEnabledFunc = func() bool {
+		return common.RedisEnabled && common.RDB != nil
+	}
+	redisSetRouteFunc = common.RedisSet
+	redisGetRouteFunc = common.RedisGet
 )
 
 type RequestState struct {
@@ -66,6 +79,12 @@ func StoreRoute(responseID string, channelID string) {
 	if normalizedResponseID == "" || normalizedChannelID == "" {
 		return
 	}
+	if redisRouteEnabledFunc() {
+		if err := redisSetRouteFunc(responseRouteKey(normalizedResponseID), normalizedChannelID, routeTTL); err != nil {
+			logger.SysError("Redis set responses route error: " + err.Error())
+		}
+		return
+	}
 	now := routeNow()
 	routeMu.Lock()
 	defer routeMu.Unlock()
@@ -84,15 +103,33 @@ func LookupRoute(responseID string) (string, bool) {
 	if normalizedResponseID == "" {
 		return "", false
 	}
+	if redisRouteEnabledFunc() {
+		channelID, err := redisGetRouteFunc(responseRouteKey(normalizedResponseID))
+		if err != nil {
+			if err != redis.Nil {
+				logger.SysError("Redis get responses route error: " + err.Error())
+			}
+			return "", false
+		}
+		channelID = strings.TrimSpace(channelID)
+		if channelID == "" {
+			return "", false
+		}
+		return channelID, true
+	}
+	return lookupMemoryRoute(normalizedResponseID)
+}
+
+func lookupMemoryRoute(responseID string) (string, bool) {
 	now := routeNow()
 	routeMu.Lock()
 	defer routeMu.Unlock()
-	entry, ok := routeStore[normalizedResponseID]
+	entry, ok := routeStore[responseID]
 	if !ok {
 		return "", false
 	}
 	if !entry.ExpireAt.IsZero() && now.After(entry.ExpireAt) {
-		delete(routeStore, normalizedResponseID)
+		delete(routeStore, responseID)
 		return "", false
 	}
 	return entry.ChannelID, true
@@ -113,6 +150,15 @@ func ResetForTest() {
 	routeTTL = defaultResponseRouteTTL
 	routeNow = time.Now
 	lastPrunedAt = time.Time{}
+	redisRouteEnabledFunc = func() bool {
+		return common.RedisEnabled && common.RDB != nil
+	}
+	redisSetRouteFunc = common.RedisSet
+	redisGetRouteFunc = common.RedisGet
+}
+
+func responseRouteKey(responseID string) string {
+	return responseRouteKeyPrefix + responseID
 }
 
 func asString(value any) string {
