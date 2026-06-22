@@ -2037,10 +2037,12 @@ func parseTopupBalanceLotPageParams(c *gin.Context) (int, int, string, string, b
 	default:
 		return 0, 0, "", "", false, fmt.Errorf("无效的状态")
 	}
-	positiveOnly := true
+	positiveOnly := false
 	rawPositiveOnly := strings.TrimSpace(strings.ToLower(c.Query("positive_only")))
 	switch rawPositiveOnly {
-	case "", "1", "true", "yes", "y":
+	case "":
+		positiveOnly = false
+	case "1", "true", "yes", "y":
 		positiveOnly = true
 	case "0", "false", "no", "n":
 		positiveOnly = false

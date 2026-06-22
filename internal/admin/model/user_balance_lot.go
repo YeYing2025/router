@@ -115,9 +115,9 @@ func normalizeUserBalanceLotSourceFilter(value string) string {
 }
 
 func normalizeUserBalanceLotStatusFilter(value string) string {
-	switch normalizeUserBalanceLotStatus(value) {
+	switch strings.TrimSpace(strings.ToLower(value)) {
 	case UserBalanceLotStatusActive, UserBalanceLotStatusExhaust, UserBalanceLotStatusExpired:
-		return normalizeUserBalanceLotStatus(value)
+		return strings.TrimSpace(strings.ToLower(value))
 	default:
 		return ""
 	}

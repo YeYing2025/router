@@ -1917,7 +1917,7 @@
           "all_source": "全部来源",
           "all_status": "全部状态",
           "positive_only_yes": "仅看有剩余",
-          "positive_only_no": "包含已清零"
+          "positive_only_no": "包含历史批次"
         }
       },
       "package_none": "未开通套餐",

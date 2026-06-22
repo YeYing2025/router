@@ -1490,6 +1490,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return migrateBillingCurrencyChargeRateWithDB(tx)
 			},
 		},
+		{
+			Version:     "202606221030_user_balance_lot_amount_columns",
+			Description: "ensure user balance lot amount columns exist and backfill legacy yyc columns",
+			Up: func(tx *gorm.DB) error {
+				return ensureUserBalanceLotAmountColumnsWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

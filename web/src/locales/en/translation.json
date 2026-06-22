@@ -1917,7 +1917,7 @@
           "all_source": "All Sources",
           "all_status": "All Statuses",
           "positive_only_yes": "Remaining Only",
-          "positive_only_no": "Include Zeroed"
+          "positive_only_no": "Include History"
         }
       },
       "package_none": "No active package",

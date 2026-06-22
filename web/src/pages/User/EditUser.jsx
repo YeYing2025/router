@@ -361,8 +361,8 @@ const UserDetail = () => {
   const [balanceLotsLoading, setBalanceLotsLoading] = useState(false);
   const [balanceLotFilters, setBalanceLotFilters] = useState({
     source_type: '',
-    status: 'active',
-    positive_only: true,
+    status: '',
+    positive_only: false,
   });
   const [packageOptions, setPackageOptions] = useState([]);
   const [packageOptionsLoading, setPackageOptionsLoading] = useState(false);
@@ -1509,10 +1509,14 @@ const UserDetail = () => {
                       value={balanceLotFilters.status}
                       disabled={loading || actionLoading !== '' || editSection !== '' || balanceLotsLoading}
                       onChange={(e, { value }) =>
-                        setBalanceLotFilters((prev) => ({
-                          ...prev,
-                          status: (value || '').toString(),
-                        }))
+                        setBalanceLotFilters((prev) => {
+                          const nextStatus = (value || '').toString();
+                          return {
+                            ...prev,
+                            status: nextStatus,
+                            positive_only: nextStatus === 'active',
+                          };
+                        })
                       }
                     />
                     <AppSelect
