@@ -41,6 +41,8 @@ func ToAPIType(channelProtocol int) int {
 		apiType = apitype.Replicate
 	case Proxy:
 		apiType = apitype.Proxy
+	case VolcengineRealtime:
+		apiType = apitype.VolcengineRealtime
 	}
 
 	return apiType

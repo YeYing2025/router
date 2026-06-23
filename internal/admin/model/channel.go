@@ -59,7 +59,9 @@ type ChannelConfig struct {
 	Region            string `json:"region,omitempty"`
 	SK                string `json:"sk,omitempty"`
 	AK                string `json:"ak,omitempty"`
+	AppID             string `json:"app_id,omitempty"`
 	UserID            string `json:"user_id,omitempty"`
+	ResourceID        string `json:"resource_id,omitempty"`
 	APIVersion        string `json:"api_version,omitempty"`
 	LibraryID         string `json:"library_id,omitempty"`
 	Plugin            string `json:"plugin,omitempty"`
@@ -151,6 +153,14 @@ func (channel *Channel) ValidateProtocolConfiguration() error {
 		}
 		if baseURLHasVersionSuffix(cfg.GetAPIBaseURL(), "/v1") {
 			return fmt.Errorf("DeepSeek 渠道 config.api_base_url 不能追加 /v1，请使用 https://api.deepseek.com 或 https://api.deepseek.com/beta")
+		}
+	case relaychannel.VolcengineRealtime:
+		cfg, err := channel.LoadConfig()
+		if err != nil {
+			return nil
+		}
+		if strings.TrimSpace(cfg.AppID) == "" {
+			return fmt.Errorf("Volcengine Realtime 渠道 config.app_id 不能为空")
 		}
 	}
 	return nil

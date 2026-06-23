@@ -22,6 +22,13 @@ export const CHANNEL_PROTOCOL_OPTIONS = [
     description: 'Volcengine Ark',
   },
   {
+    key: 'volcengine-realtime',
+    text: 'Volcengine Realtime',
+    value: 'volcengine-realtime',
+    color: 'blue',
+    description: 'Volcengine Speech Realtime',
+  },
+  {
     key: 'baidu',
     text: '百度文心千帆',
     value: 'baidu',

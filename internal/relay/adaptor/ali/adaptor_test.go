@@ -46,6 +46,21 @@ func TestGetRequestURL_ResponsesUsesAliCompatibleResponsesPath(t *testing.T) {
 	}
 }
 
+func TestGetRequestURL_RealtimeUsesAliRealtimeWebSocketPath(t *testing.T) {
+	adaptor := &Adaptor{}
+	got, err := adaptor.GetRequestURL(&meta.Meta{
+		Mode:    relaymode.Realtime,
+		BaseURL: "https://dashscope.aliyuncs.com",
+	})
+	if err != nil {
+		t.Fatalf("GetRequestURL() error = %v", err)
+	}
+	want := "https://dashscope.aliyuncs.com/api-ws/v1/realtime"
+	if got != want {
+		t.Fatalf("GetRequestURL() = %q, want %q", got, want)
+	}
+}
+
 func TestGetRequestURL_QwenImageUsesMultimodalGenerationPath(t *testing.T) {
 	adaptor := &Adaptor{}
 	got, err := adaptor.GetRequestURL(&meta.Meta{

@@ -14,6 +14,7 @@ import (
 	"github.com/yeying-community/router/common/logger"
 	"github.com/yeying-community/router/internal/relay"
 	"github.com/yeying-community/router/internal/relay/adaptor/openai"
+	volcenginerealtime "github.com/yeying-community/router/internal/relay/adaptor/volcengine/realtime"
 	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"github.com/yeying-community/router/internal/relay/meta"
 	relaymodel "github.com/yeying-community/router/internal/relay/model"
@@ -105,6 +106,13 @@ func cloneRealtimeRequestHeaders(header http.Header, relayMeta *meta.Meta) http.
 		switch relayMeta.ChannelProtocol {
 		case relaychannel.Azure:
 			cloned.Set("api-key", relayMeta.APIKey)
+		case relaychannel.VolcengineRealtime:
+			volcenginerealtime.ApplyRealtimeHeaders(
+				cloned,
+				relayMeta.Config.AppID,
+				relayMeta.APIKey,
+				relayMeta.Config.ResourceID,
+			)
 		default:
 			if strings.TrimSpace(relayMeta.APIKey) != "" {
 				cloned.Set("Authorization", "Bearer "+relayMeta.APIKey)

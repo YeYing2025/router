@@ -19,6 +19,7 @@ import (
 	"github.com/yeying-community/router/internal/relay/adaptor/replicate"
 	"github.com/yeying-community/router/internal/relay/adaptor/tencent"
 	"github.com/yeying-community/router/internal/relay/adaptor/vertexai"
+	volcenginerealtime "github.com/yeying-community/router/internal/relay/adaptor/volcengine/realtime"
 	"github.com/yeying-community/router/internal/relay/adaptor/xunfei"
 	"github.com/yeying-community/router/internal/relay/adaptor/zhipu"
 	"github.com/yeying-community/router/internal/relay/apitype"
@@ -64,6 +65,8 @@ func GetAdaptor(apiType int) adaptor.Adaptor {
 		return &proxy.Adaptor{}
 	case apitype.Replicate:
 		return &replicate.Adaptor{}
+	case apitype.VolcengineRealtime:
+		return &volcenginerealtime.Adaptor{}
 	}
 	return nil
 }

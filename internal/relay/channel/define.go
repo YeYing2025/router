@@ -50,7 +50,7 @@ const (
 	Replicate
 	BaiduV2
 	XunfeiV2
-	ReservedProtocol49
+	VolcengineRealtime
 	OpenAICompatible
 	GeminiOpenAICompatible
 	Dummy
@@ -108,7 +108,7 @@ var ChannelProtocolNames = []string{
 	"replicate",
 	"baidu-v2",
 	"xunfei-v2",
-	"",
+	"volcengine-realtime",
 	"",
 	"gemini-openai-compatible",
 }

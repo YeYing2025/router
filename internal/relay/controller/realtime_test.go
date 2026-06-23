@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"testing"
 
+	adminmodel "github.com/yeying-community/router/internal/admin/model"
+	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"github.com/yeying-community/router/internal/relay/meta"
 )
 
@@ -57,5 +59,36 @@ func TestCloneRealtimeRequestHeadersDropsHopByHop(t *testing.T) {
 	}
 	if cloned.Get("Sec-WebSocket-Protocol") != "realtime" {
 		t.Fatalf("Sec-WebSocket-Protocol = %q, want realtime", cloned.Get("Sec-WebSocket-Protocol"))
+	}
+}
+
+func TestCloneRealtimeRequestHeadersUsesVolcengineRealtimeHeaders(t *testing.T) {
+	header := http.Header{
+		"Authorization":          []string{"Bearer sk-test"},
+		"OpenAI-Beta":            []string{"realtime=v1"},
+		"Sec-WebSocket-Protocol": []string{"realtime"},
+	}
+	cloned := cloneRealtimeRequestHeaders(header, &meta.Meta{
+		ChannelProtocol: relaychannel.VolcengineRealtime,
+		APIKey:          "access-456",
+		Config: adminmodel.ChannelConfig{
+			AppID:      "app-123",
+			ResourceID: "resource-789",
+		},
+	})
+	if got := cloned.Get("Authorization"); got != "" {
+		t.Fatalf("Authorization = %q, want empty", got)
+	}
+	if got := cloned.Get("OpenAI-Beta"); got != "" {
+		t.Fatalf("OpenAI-Beta = %q, want empty", got)
+	}
+	if got := cloned.Get("X-Api-App-ID"); got != "app-123" {
+		t.Fatalf("X-Api-App-ID = %q, want %q", got, "app-123")
+	}
+	if got := cloned.Get("X-Api-Access-Key"); got != "access-456" {
+		t.Fatalf("X-Api-Access-Key = %q, want %q", got, "access-456")
+	}
+	if got := cloned.Get("X-Api-Resource-Id"); got != "resource-789" {
+		t.Fatalf("X-Api-Resource-Id = %q, want %q", got, "resource-789")
 	}
 }

@@ -27,6 +27,7 @@ import (
 	relayadaptor "github.com/yeying-community/router/internal/relay/adaptor"
 	aliadaptor "github.com/yeying-community/router/internal/relay/adaptor/ali"
 	openaiadaptor "github.com/yeying-community/router/internal/relay/adaptor/openai"
+	volcenginerealtime "github.com/yeying-community/router/internal/relay/adaptor/volcengine/realtime"
 	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"github.com/yeying-community/router/internal/relay/meta"
 	relaymodel "github.com/yeying-community/router/internal/relay/model"
@@ -1812,9 +1813,11 @@ func executeChannelRealtimeModelTest(ctx context.Context, channel *model.Channel
 		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
 		return execution
 	}
-	query := parsedURL.Query()
-	query.Set("model", actualModelName)
-	parsedURL.RawQuery = query.Encode()
+	if relayMeta.ChannelProtocol != relaychannel.VolcengineRealtime {
+		query := parsedURL.Query()
+		query.Set("model", actualModelName)
+		parsedURL.RawQuery = query.Encode()
+	}
 
 	upstreamURL, err := normalizeChannelTestRealtimeWebSocketURL(parsedURL.String())
 	if err != nil {
@@ -1824,11 +1827,19 @@ func executeChannelRealtimeModelTest(ctx context.Context, channel *model.Channel
 	}
 
 	requestHeader := http.Header{}
-	requestHeader.Set("OpenAI-Beta", "realtime=v1")
 	switch relayMeta.ChannelProtocol {
 	case relaychannel.Azure:
+		requestHeader.Set("OpenAI-Beta", "realtime=v1")
 		requestHeader.Set("api-key", strings.TrimSpace(channel.Key))
+	case relaychannel.VolcengineRealtime:
+		volcenginerealtime.ApplyRealtimeHeaders(
+			requestHeader,
+			relayMeta.Config.AppID,
+			strings.TrimSpace(channel.Key),
+			relayMeta.Config.ResourceID,
+		)
 	default:
+		requestHeader.Set("OpenAI-Beta", "realtime=v1")
 		requestHeader.Set("Authorization", "Bearer "+strings.TrimSpace(channel.Key))
 	}
 	execution.InputPayload = buildHTTPRequestPayloadForLog(http.MethodGet, parsedURL.String(), requestHeader, nil)
@@ -1862,6 +1873,17 @@ func executeChannelRealtimeModelTest(ctx context.Context, channel *model.Channel
 		_ = resp.Body.Close()
 	}
 	subprotocol := strings.TrimSpace(conn.Subprotocol())
+	if relayMeta.ChannelProtocol == relaychannel.VolcengineRealtime {
+		execution.Message = "WebSocket 握手成功，Volcengine Realtime 未执行 OpenAI 风格会话测试"
+		outputMessage := execution.Message
+		if subprotocol != "" {
+			outputMessage = fmt.Sprintf("%s（subprotocol=%s）", execution.Message, subprotocol)
+		}
+		execution.OutputPayload = buildHTTPResponsePayloadForLog(http.StatusSwitchingProtocols, execution.ResponseHeader, []byte(outputMessage))
+		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "channel test complete"), time.Now().Add(2*time.Second))
+		_ = conn.Close()
+		return execution
+	}
 	if err := writeRealtimeTestEvent(conn, map[string]any{
 		"type": "session.update",
 		"session": map[string]any{

@@ -1089,6 +1089,7 @@ const normalizeProviderIdentifier = (value) => {
       return 'hunyuan';
     case 'volc':
     case 'volcengine':
+    case 'volcengine-realtime':
     case 'doubao':
     case 'ark':
     case '火山':
@@ -1820,7 +1821,9 @@ const CHANNEL_DEFAULT_CONFIG = {
   region: '',
   sk: '',
   ak: '',
+  app_id: '',
   user_id: '',
+  resource_id: '',
   api_base_url: '',
   account_base_url: '',
   vertex_ai_project_id: '',
@@ -5453,6 +5456,46 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
               </span>
             }
           />
+        )}
+        {inputs.protocol === 'volcengine-realtime' && (
+          <>
+            <AppAlert
+              type='info'
+              showIcon
+              className='router-section-message'
+              title={
+                <span>
+                  Volcengine Realtime 使用火山引擎官方语音 WebSocket 接口，请填写 App ID；默认 Resource ID 为
+                  <code>volc.speech.dialog</code>，如官方控制台分配了其他值，可在下方覆盖。
+                </span>
+              }
+            />
+            <AppFormRow>
+              <AppField label='App ID' required>
+                <AppInput
+                  className='router-section-input'
+                  name='app_id'
+                  required
+                  placeholder='请输入火山引擎语音应用 App ID'
+                  onChange={handleConfigChange}
+                  value={config.app_id}
+                  autoComplete='off'
+                  {...inputReadonlyProps}
+                />
+              </AppField>
+              <AppField label='Resource ID'>
+                <AppInput
+                  className='router-section-input'
+                  name='resource_id'
+                  placeholder='默认 volc.speech.dialog'
+                  onChange={handleConfigChange}
+                  value={config.resource_id}
+                  autoComplete='off'
+                  {...inputReadonlyProps}
+                />
+              </AppField>
+            </AppFormRow>
+          </>
         )}
         {inputs.protocol === 'awsclaude' && (
           <AppFormRow>

@@ -45,3 +45,29 @@ func TestValidateProtocolConfiguration_DeepSeekAcceptsRootAndBetaBaseURL(t *test
 		t.Fatalf("expected validation success, got %v", err)
 	}
 }
+
+func TestValidateProtocolConfiguration_VolcengineRealtimeRequiresAppID(t *testing.T) {
+	channel := &Channel{
+		Protocol: "volcengine-realtime",
+		Config:   `{"resource_id":"volc.speech.dialog"}`,
+	}
+
+	err := channel.ValidateProtocolConfiguration()
+	if err == nil {
+		t.Fatalf("expected validation error")
+	}
+	if got := err.Error(); got == "" {
+		t.Fatalf("expected non-empty validation error")
+	}
+}
+
+func TestValidateProtocolConfiguration_VolcengineRealtimeAcceptsAppID(t *testing.T) {
+	channel := &Channel{
+		Protocol: "volcengine-realtime",
+		Config:   `{"app_id":"app-123","resource_id":"volc.speech.dialog"}`,
+	}
+
+	if err := channel.ValidateProtocolConfiguration(); err != nil {
+		t.Fatalf("expected validation success, got %v", err)
+	}
+}

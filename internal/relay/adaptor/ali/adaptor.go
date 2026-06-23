@@ -31,7 +31,9 @@ func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 		fullRequestURL = fmt.Sprintf("%s/compatible-mode/v1/embeddings", meta.BaseURL)
 	case relaymode.Responses:
 		fullRequestURL = fmt.Sprintf("%s/compatible-mode/v1/responses", meta.BaseURL)
-	case relaymode.AudioSpeech, relaymode.AudioTranslation, relaymode.AudioTranscription, relaymode.Realtime, relaymode.Videos:
+	case relaymode.Realtime:
+		fullRequestURL = fmt.Sprintf("%s/api-ws/v1/realtime", meta.BaseURL)
+	case relaymode.AudioSpeech, relaymode.AudioTranslation, relaymode.AudioTranscription, relaymode.Videos:
 		fullRequestURL = openaiadaptor.GetFullRequestURL(meta.BaseURL, meta.RequestURLPath, relaychannel.OpenAI)
 	case relaymode.ImagesGenerations:
 		if isQwenImageModel(meta.ActualModelName) {
