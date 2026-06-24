@@ -165,7 +165,7 @@ func cloneRealtimeRequestHeaders(header http.Header, relayMeta *meta.Meta) http.
 }
 
 func realtimeUpstreamSubprotocols(header http.Header, relayMeta *meta.Meta) []string {
-	if relayMeta != nil && relayMeta.ChannelProtocol == relaychannel.Ali {
+	if relayMeta != nil && (relayMeta.ChannelProtocol == relaychannel.Ali || relayMeta.ChannelProtocol == relaychannel.Zhipu) {
 		return nil
 	}
 	protocols := make([]string, 0, 4)

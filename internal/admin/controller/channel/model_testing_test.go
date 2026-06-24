@@ -445,3 +445,33 @@ func TestBuildRealtimeSessionSuccessMessage(t *testing.T) {
 		t.Fatalf("unexpected success message without text: %q", withoutText)
 	}
 }
+
+func TestBuildZhipuRealtimeSessionUpdate(t *testing.T) {
+	payload := buildZhipuRealtimeSessionUpdate("glm-realtime")
+	if payload["type"] != "session.update" {
+		t.Fatalf("type = %v, want session.update", payload["type"])
+	}
+	session, ok := payload["session"].(map[string]any)
+	if !ok {
+		t.Fatalf("session = %T, want map", payload["session"])
+	}
+	if session["model"] != "glm-realtime" {
+		t.Fatalf("session.model = %v, want glm-realtime", session["model"])
+	}
+	if session["voice"] != "tongtong" {
+		t.Fatalf("session.voice = %v, want tongtong", session["voice"])
+	}
+	if session["input_audio_format"] != "wav" {
+		t.Fatalf("session.input_audio_format = %v, want wav", session["input_audio_format"])
+	}
+	if session["output_audio_format"] != "pcm" {
+		t.Fatalf("session.output_audio_format = %v, want pcm", session["output_audio_format"])
+	}
+	betaFields, ok := session["beta_fields"].(map[string]any)
+	if !ok {
+		t.Fatalf("session.beta_fields = %T, want map", session["beta_fields"])
+	}
+	if betaFields["chat_mode"] != "audio" {
+		t.Fatalf("beta_fields.chat_mode = %v, want audio", betaFields["chat_mode"])
+	}
+}

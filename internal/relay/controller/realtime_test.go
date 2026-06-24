@@ -160,6 +160,15 @@ func TestRealtimeUpstreamSubprotocolsForAliDropsAllClientProtocols(t *testing.T)
 	}
 }
 
+func TestRealtimeUpstreamSubprotocolsForZhipuDropsAllClientProtocols(t *testing.T) {
+	header := http.Header{
+		"Sec-WebSocket-Protocol": []string{"realtime, openai-insecure-api-key.user-token, openai-beta.realtime-v1"},
+	}
+	if got := realtimeUpstreamSubprotocols(header, &meta.Meta{ChannelProtocol: relaychannel.Zhipu}); len(got) != 0 {
+		t.Fatalf("realtimeUpstreamSubprotocols = %#v, want empty for zhipu", got)
+	}
+}
+
 func TestRealtimeUpstreamSubprotocolsForVolcengineDropsOpenAIBeta(t *testing.T) {
 	header := http.Header{
 		"Sec-WebSocket-Protocol": []string{"realtime, openai-insecure-api-key.user-token, openai-beta.realtime-v1"},
