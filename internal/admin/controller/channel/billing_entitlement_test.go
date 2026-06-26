@@ -130,6 +130,14 @@ func TestShouldRefreshChannelBillingInBatchIncludesInsufficientBalanceAutoDisabl
 	}
 }
 
+func TestShouldRefreshChannelBillingInBatchIncludesEnabled(t *testing.T) {
+	channel := &model.Channel{Id: "channel-1", Status: model.ChannelStatusEnabled}
+
+	if !shouldRefreshChannelBillingInBatch(channel, nil) {
+		t.Fatalf("enabled channel should be refreshed")
+	}
+}
+
 func TestShouldRefreshChannelBillingInBatchSkipsManualDisabled(t *testing.T) {
 	channel := &model.Channel{Id: "channel-1", Status: model.ChannelStatusManuallyDisabled}
 	states := map[string]model.ChannelCircuitBreakerState{
@@ -142,5 +150,108 @@ func TestShouldRefreshChannelBillingInBatchSkipsManualDisabled(t *testing.T) {
 
 	if shouldRefreshChannelBillingInBatch(channel, states) {
 		t.Fatalf("manually disabled channel should not be auto-refreshed")
+	}
+}
+
+func TestShouldRefreshChannelBillingInBatchSkipsOtherAutoDisabled(t *testing.T) {
+	channel := &model.Channel{Id: "channel-1", Status: model.ChannelStatusAutoDisabled}
+	states := map[string]model.ChannelCircuitBreakerState{
+		"channel-1": {
+			ChannelId: "channel-1",
+			State:     model.ChannelCircuitBreakerStateCanceled,
+			Reason:    "permission denied",
+		},
+	}
+
+	if shouldRefreshChannelBillingInBatch(channel, states) {
+		t.Fatalf("non-insufficient-balance auto-disabled channel should not be refreshed")
+	}
+}
+
+func TestShouldScheduleInsufficientBalanceRecoveryTestRequiresUsableEntitlement(t *testing.T) {
+	now := time.Now().Unix()
+	channel := &model.Channel{Id: "channel-1", Status: model.ChannelStatusAutoDisabled}
+	state := model.ChannelCircuitBreakerState{
+		ChannelId: "channel-1",
+		State:     model.ChannelCircuitBreakerStateCanceled,
+		Reason:    model.ChannelCircuitBreakerReasonInsufficientBalance,
+	}
+	items := []model.ChannelBillingSnapshotItem{
+		{
+			ResourceType:    model.ChannelBillingResourceTypeQuota,
+			QuotaType:       "daily",
+			RemainingAmount: 10,
+			Status:          model.ChannelBillingItemStatusActive,
+		},
+	}
+
+	if !shouldScheduleInsufficientBalanceRecoveryTest(channel, state, items, now) {
+		t.Fatalf("insufficient-balance auto-disabled channel with usable daily quota should schedule recovery test")
+	}
+}
+
+func TestShouldScheduleInsufficientBalanceRecoveryTestSkipsManualDisabled(t *testing.T) {
+	now := time.Now().Unix()
+	channel := &model.Channel{Id: "channel-1", Status: model.ChannelStatusManuallyDisabled}
+	state := model.ChannelCircuitBreakerState{
+		ChannelId: "channel-1",
+		State:     model.ChannelCircuitBreakerStateCanceled,
+		Reason:    model.ChannelCircuitBreakerReasonInsufficientBalance,
+	}
+	items := []model.ChannelBillingSnapshotItem{
+		{
+			ResourceType:    model.ChannelBillingResourceTypeCredit,
+			QuotaType:       "total",
+			RemainingAmount: 10,
+			Status:          model.ChannelBillingItemStatusActive,
+		},
+	}
+
+	if shouldScheduleInsufficientBalanceRecoveryTest(channel, state, items, now) {
+		t.Fatalf("manual disabled channel should not schedule recovery test")
+	}
+}
+
+func TestShouldScheduleInsufficientBalanceRecoveryTestSkipsOtherAutoDisabledReason(t *testing.T) {
+	now := time.Now().Unix()
+	channel := &model.Channel{Id: "channel-1", Status: model.ChannelStatusAutoDisabled}
+	state := model.ChannelCircuitBreakerState{
+		ChannelId: "channel-1",
+		State:     model.ChannelCircuitBreakerStateCanceled,
+		Reason:    "permission denied",
+	}
+	items := []model.ChannelBillingSnapshotItem{
+		{
+			ResourceType:    model.ChannelBillingResourceTypeCredit,
+			QuotaType:       "total",
+			RemainingAmount: 10,
+			Status:          model.ChannelBillingItemStatusActive,
+		},
+	}
+
+	if shouldScheduleInsufficientBalanceRecoveryTest(channel, state, items, now) {
+		t.Fatalf("non-insufficient-balance auto-disabled channel should not schedule recovery test")
+	}
+}
+
+func TestShouldScheduleInsufficientBalanceRecoveryTestRequiresUsableRecoveryEntitlement(t *testing.T) {
+	now := time.Now().Unix()
+	channel := &model.Channel{Id: "channel-1", Status: model.ChannelStatusAutoDisabled}
+	state := model.ChannelCircuitBreakerState{
+		ChannelId: "channel-1",
+		State:     model.ChannelCircuitBreakerStateCanceled,
+		Reason:    model.ChannelCircuitBreakerReasonInsufficientBalance,
+	}
+	items := []model.ChannelBillingSnapshotItem{
+		{
+			ResourceType:    model.ChannelBillingResourceTypeCredit,
+			QuotaType:       "total",
+			RemainingAmount: 0,
+			Status:          model.ChannelBillingItemStatusDepleted,
+		},
+	}
+
+	if shouldScheduleInsufficientBalanceRecoveryTest(channel, state, items, now) {
+		t.Fatalf("insufficient-balance channel without usable billing entitlement should not schedule recovery test")
 	}
 }

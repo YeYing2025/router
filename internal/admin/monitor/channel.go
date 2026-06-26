@@ -134,9 +134,13 @@ func DisableChannel(channelId string, channelName string, reason string) {
 	_ = notifyRootUser(subject, content)
 }
 
-func DisableChannelForInsufficientBalance(channelId string, channelName string, balance float64) {
-	_ = model.RecordChannelCircuitBreakerCanceled(channelId, model.ChannelCircuitBreakerReasonInsufficientBalance)
-	model.UpdateChannelStatusById(channelId, model.ChannelStatusAutoDisabled)
+func DisableChannelForInsufficientBalance(channelId string, channelName string, balance float64) error {
+	if err := model.RecordChannelCircuitBreakerCanceled(channelId, model.ChannelCircuitBreakerReasonInsufficientBalance); err != nil {
+		return err
+	}
+	if err := model.UpdateChannelStatusById(channelId, model.ChannelStatusAutoDisabled); err != nil {
+		return err
+	}
 	logger.SysLog(fmt.Sprintf("channel #%s has been disabled due to insufficient balance: %.4f", channelId, balance))
 	subject := fmt.Sprintf("渠道余额不足提醒")
 	content := message.EmailTemplate(
@@ -152,6 +156,7 @@ func DisableChannelForInsufficientBalance(channelId string, channelName string, 
 		`, channelName, channelId, balance),
 	)
 	_ = notifyRootUser(subject, content)
+	return nil
 }
 
 func MetricDisableChannel(channelId string, successRate float64) {
@@ -171,8 +176,10 @@ func MetricDisableChannel(channelId string, successRate float64) {
 }
 
 // EnableChannel enable & notify
-func EnableChannel(channelId string, channelName string) {
-	model.UpdateChannelStatusById(channelId, model.ChannelStatusEnabled)
+func EnableChannel(channelId string, channelName string) error {
+	if err := model.UpdateChannelStatusById(channelId, model.ChannelStatusEnabled); err != nil {
+		return err
+	}
 	logger.SysLog(fmt.Sprintf("channel #%s has been enabled", channelId))
 	subject := fmt.Sprintf("渠道状态变更提醒")
 	content := message.EmailTemplate(
@@ -186,6 +193,7 @@ func EnableChannel(channelId string, channelName string) {
 		`, channelName, channelId),
 	)
 	_ = notifyRootUser(subject, content)
+	return nil
 }
 
 func RecoverMetricDisabledChannel(channelId string, channelName string) {

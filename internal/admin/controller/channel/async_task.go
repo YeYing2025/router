@@ -12,7 +12,6 @@ import (
 	"github.com/yeying-community/router/common/helper"
 	"github.com/yeying-community/router/common/logger"
 	"github.com/yeying-community/router/internal/admin/model"
-	"github.com/yeying-community/router/internal/admin/monitor"
 	channelsvc "github.com/yeying-community/router/internal/admin/service/channel"
 	"gorm.io/gorm"
 )
@@ -205,6 +204,42 @@ func EnqueueChannelModelEndpointRecoveryTest(channelID string, modelID string, e
 			{
 				Model:    normalizedModelID,
 				Endpoint: normalizedEndpoint,
+			},
+		},
+		traceID,
+		"",
+		"",
+		"",
+	)
+	if err != nil {
+		return false, err
+	}
+	return createdCount > 0, nil
+}
+
+func enqueueInsufficientBalanceRecoveryTest(channelRow *model.Channel, traceID string) (bool, error) {
+	if channelRow == nil || strings.TrimSpace(channelRow.Id) == "" {
+		return false, nil
+	}
+	targetRows := resolveChannelTestTargetModels(channelRow, channelModelTestModeSingle, "", nil)
+	if len(targetRows) == 0 {
+		return false, nil
+	}
+	target := targetRows[0]
+	modelID := strings.TrimSpace(target.Model)
+	endpoint, err := resolveChannelModelTestEndpointForRow(target)
+	if err != nil {
+		return false, err
+	}
+	_, createdCount, _, err := CreateChannelModelTestTasks(
+		channelRow.Id,
+		"billing_recovery",
+		modelID,
+		[]string{modelID},
+		[]channelModelTestTargetItem{
+			{
+				Model:    modelID,
+				Endpoint: endpoint,
 			},
 		},
 		traceID,
@@ -468,7 +503,7 @@ func executeChannelRefreshBillingTask(task *model.AsyncTask) (string, error) {
 	profile, err := model.GetChannelBillingProfileByChannelIDWithDB(model.DB, channelID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", fmt.Errorf("渠道账务未配置")
+			return executeInsufficientBalanceRecoveryTestWithoutBillingProfile(channelRow)
 		}
 		return "", err
 	}
@@ -486,17 +521,29 @@ func executeChannelRefreshBillingTask(task *model.AsyncTask) (string, error) {
 	}), nil
 }
 
-func disableChannelForScheduledBillingInsufficientBalance(task *model.AsyncTask, channelRow *model.Channel, primaryAmount float64) {
-	if task == nil || channelRow == nil {
-		return
+func executeInsufficientBalanceRecoveryTestWithoutBillingProfile(channelRow *model.Channel) (string, error) {
+	if channelRow == nil {
+		return "", fmt.Errorf("渠道不存在")
 	}
-	if strings.TrimSpace(task.CreatedBy) != "" {
-		return
+	state, err := model.GetChannelCircuitBreakerState(channelRow.Id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", fmt.Errorf("渠道账务未配置")
+		}
+		return "", err
 	}
-	if primaryAmount > 0 {
-		return
+	if !isInsufficientBalanceAutoDisabledChannel(channelRow, state) {
+		return "", fmt.Errorf("渠道账务未配置")
 	}
-	monitor.DisableChannelForInsufficientBalance(channelRow.Id, channelRow.DisplayName(), primaryAmount)
+	created, err := enqueueInsufficientBalanceRecoveryTest(channelRow, "")
+	if err != nil {
+		return "", err
+	}
+	return marshalJSONForLog(map[string]any{
+		"channel_id":             strings.TrimSpace(channelRow.Id),
+		"billing_profile_exists": false,
+		"recovery_test_created":  created,
+	}), nil
 }
 
 func logChannelAsyncTestExecution(task *model.AsyncTask, result model.ChannelTest, execution channelModelTestExecution) {

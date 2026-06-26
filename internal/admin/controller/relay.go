@@ -509,6 +509,12 @@ func processChannelRelayError(ctx context.Context, userId string, groupID string
 		return
 	}
 	if monitor.ShouldDisableChannel(&err.Error, err.StatusCode) {
+		if monitor.IsInsufficientBalanceError(&err.Error, err.StatusCode) {
+			if disableErr := monitor.DisableChannelForInsufficientBalance(channelId, channelName, 0); disableErr != nil {
+				monitor.Emit(channelId, false)
+			}
+			return
+		}
 		monitor.DisableChannel(channelId, channelName, err.Message)
 	} else {
 		monitor.Emit(channelId, false)

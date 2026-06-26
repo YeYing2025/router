@@ -47,6 +47,30 @@ func ShouldDisableChannel(err *model.Error, statusCode int) bool {
 	return false
 }
 
+func IsInsufficientBalanceError(err *model.Error, statusCode int) bool {
+	if err == nil {
+		return false
+	}
+	if statusCode == http.StatusPaymentRequired {
+		return true
+	}
+	lowerType := strings.ToLower(strings.TrimSpace(err.Type))
+	if lowerType == "insufficient_quota" || lowerType == "billing_error" {
+		return true
+	}
+	code := strings.ToLower(strings.TrimSpace(fmt.Sprint(err.Code)))
+	if code == "insufficient_quota" || code == "billing_hard_limit_reached" || code == "1113" {
+		return true
+	}
+	lowerMessage := strings.ToLower(strings.TrimSpace(err.Message))
+	return strings.Contains(lowerMessage, "your credit balance is too low") ||
+		strings.Contains(lowerMessage, "credit") ||
+		strings.Contains(lowerMessage, "balance") ||
+		strings.Contains(lowerMessage, "已欠费") ||
+		strings.Contains(lowerMessage, "余额不足") ||
+		strings.Contains(lowerMessage, "无可用资源包")
+}
+
 func ShouldEnableChannel(err error, openAIErr *model.Error) bool {
 	if !config.AutomaticEnableChannelEnabled {
 		return false

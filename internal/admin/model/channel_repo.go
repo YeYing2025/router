@@ -7,7 +7,7 @@ type ChannelRepository struct {
 	UpdateModels                 func(id string, rows []ChannelModel) error
 	UpdateResponseTime           func(channel *Channel, responseTime int64)
 	Delete                       func(channel *Channel) error
-	UpdateChannelStatusById      func(id string, status int)
+	UpdateChannelStatusById      func(id string, status int) error
 	UpdateChannelUsedQuota       func(id string, quota int64)
 	UpdateChannelUsedQuotaDirect func(id string, quota int64)
 	UpdateChannelTestModelByID   func(id string, testModel string) error

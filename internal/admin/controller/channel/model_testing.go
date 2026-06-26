@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -119,7 +120,11 @@ func persistChannelModelTests(channelID string, taskID string, results []model.C
 	targetModels = model.NormalizeChannelModelIDsPreserveOrder(targetModels)
 	restoredModels := make([]string, 0)
 	restoredEndpoints := make([]channelModelEndpointRestore, 0)
-	err := model.DB.Transaction(func(tx *gorm.DB) error {
+	shouldRestoreChannel, err := shouldRestoreInsufficientBalanceChannelAfterSuccessfulTests(normalizedChannelID, results)
+	if err != nil {
+		return err
+	}
+	err = model.DB.Transaction(func(tx *gorm.DB) error {
 		if _, err := model.AppendChannelTestsForModelsWithDB(tx, normalizedChannelID, targetModels, results); err != nil {
 			return err
 		}
@@ -143,7 +148,47 @@ func persistChannelModelTests(channelID string, taskID string, results []model.C
 	if len(restoredModels) > 0 || len(restoredEndpoints) > 0 {
 		notifyAutoRestoredCapabilities(normalizedChannelID, restoredModels, restoredEndpoints)
 	}
+	if shouldRestoreChannel {
+		return monitor.EnableChannel(normalizedChannelID, normalizedChannelID)
+	}
 	return nil
+}
+
+func shouldRestoreInsufficientBalanceChannelAfterSuccessfulTests(channelID string, results []model.ChannelTest) (bool, error) {
+	normalizedChannelID := strings.TrimSpace(channelID)
+	if normalizedChannelID == "" {
+		return false, nil
+	}
+	if !hasSuccessfulChannelModelTest(results) {
+		return false, nil
+	}
+	channelRow, err := channelsvc.GetByID(normalizedChannelID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	if channelRow.Status != model.ChannelStatusAutoDisabled {
+		return false, nil
+	}
+	state, err := model.GetChannelCircuitBreakerState(normalizedChannelID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return model.IsInsufficientBalanceCircuitBreakerState(state), nil
+}
+
+func hasSuccessfulChannelModelTest(results []model.ChannelTest) bool {
+	for _, result := range model.NormalizeChannelTestRows(results) {
+		if result.Supported && model.NormalizeChannelTestStatus(result.Status) == model.ChannelTestStatusSupported {
+			return true
+		}
+	}
+	return false
 }
 
 type channelModelEndpointRestore struct {

@@ -420,7 +420,7 @@ func DeleteDisabled() (int64, error) {
 	return deleteChannelsByQuery(model.DB.Where("status = ? or status = ?", model.ChannelStatusAutoDisabled, model.ChannelStatusManuallyDisabled))
 }
 
-func UpdateStatusByID(id string, status int) {
+func UpdateStatusByID(id string, status int) error {
 	id = strings.TrimSpace(id)
 	err := model.DB.Model(&model.Channel{}).Where("id = ?", id).Updates(map[string]any{
 		"status":     status,
@@ -428,12 +428,14 @@ func UpdateStatusByID(id string, status int) {
 	}).Error
 	if err != nil {
 		logger.SysError("failed to update channel status: " + err.Error())
-		return
+		return err
 	}
 	err = model.RefreshGroupModelChannelsByChannelStatus(id, status == model.ChannelStatusEnabled)
 	if err != nil {
 		logger.SysError("failed to update ability status: " + err.Error())
+		return err
 	}
+	return nil
 }
 
 func UpdateUsedQuota(id string, quota int64) {

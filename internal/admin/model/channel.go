@@ -454,8 +454,8 @@ func (channel *Channel) LoadConfig() (ChannelConfig, error) {
 	return cfg, nil
 }
 
-func UpdateChannelStatusById(id string, status int) {
-	mustChannelRepo().UpdateChannelStatusById(id, status)
+func UpdateChannelStatusById(id string, status int) error {
+	return mustChannelRepo().UpdateChannelStatusById(id, status)
 }
 
 func UpdateChannelUsedQuota(id string, quota int64) {

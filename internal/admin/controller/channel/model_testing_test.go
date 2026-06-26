@@ -396,6 +396,31 @@ func TestRestoreRuntimeDisabledCapabilitiesAfterSuccessfulTests(t *testing.T) {
 	}
 }
 
+func TestHasSuccessfulChannelModelTest(t *testing.T) {
+	if hasSuccessfulChannelModelTest([]adminmodel.ChannelTest{
+		{
+			ChannelId: "channel-1",
+			Model:     "qwen3.7-max",
+			Endpoint:  adminmodel.ChannelModelEndpointChat,
+			Status:    adminmodel.ChannelTestStatusUnsupported,
+			Supported: false,
+		},
+	}) {
+		t.Fatalf("unsupported result should not be successful")
+	}
+	if !hasSuccessfulChannelModelTest([]adminmodel.ChannelTest{
+		{
+			ChannelId: "channel-1",
+			Model:     "qwen3.7-max",
+			Endpoint:  adminmodel.ChannelModelEndpointChat,
+			Status:    adminmodel.ChannelTestStatusSupported,
+			Supported: true,
+		},
+	}) {
+		t.Fatalf("supported result should be successful")
+	}
+}
+
 func TestResolveChannelModelTestKind_UsesEndpointBeforeQwenModelType(t *testing.T) {
 	if got := resolveChannelModelTestKind(adminmodel.ProviderModelTypeImage, adminmodel.ChannelModelEndpointChat, ""); got != channelModelTestKindText {
 		t.Fatalf("image+chat test kind = %q, want %q", got, channelModelTestKindText)

@@ -107,6 +107,16 @@ func TestRecordChannelCircuitBreakerCanceledCreatesState(t *testing.T) {
 	if !IsInsufficientBalanceCircuitBreakerState(row) {
 		t.Fatalf("state = %+v, want insufficient-balance canceled", row)
 	}
+	events, err := ListChannelCircuitBreakerEventsWithDB(db, "channel-1", 10)
+	if err != nil {
+		t.Fatalf("list events: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("event count = %d, want 1: %+v", len(events), events)
+	}
+	if events[0].Event != ChannelCircuitBreakerStateCanceled || events[0].Reason != ChannelCircuitBreakerReasonInsufficientBalance {
+		t.Fatalf("event = %+v, want insufficient-balance canceled", events[0])
+	}
 }
 
 func TestRecordChannelCircuitBreakerRecoveredUpdatesHalfOpenState(t *testing.T) {
