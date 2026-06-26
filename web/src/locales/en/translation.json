@@ -889,8 +889,36 @@
         "disable_success": "Endpoint capability disabled",
         "update_failed": "Failed to update endpoint capability",
         "filters": {
+          "runtime_state": "Runtime State",
+          "all_runtime_state": "All Runtime States",
           "test_status": "Test Status",
           "all_test_status": "All Test Statuses"
+        },
+        "summary_cards": {
+          "total": "Total Endpoints",
+          "available": "Available",
+          "paused": "Paused",
+          "blocked": "Blocked",
+          "untested": "Needs Test"
+        },
+        "runtime_state": {
+          "available": "Available",
+          "paused": "Paused",
+          "blocked": "Blocked",
+          "untested": "Needs Test",
+          "disabled": "Disabled"
+        },
+        "status_detail": {
+          "recovery_state_available": "Recovery state: participates in live routing",
+          "recovery_state_paused": "Recovery state: waiting for manual enable or auto recovery",
+          "recovery_state_blocked": "Recovery state: resolve enable blocker first",
+          "recovery_state_untested": "Recovery state: run endpoint test first",
+          "recovery_state_disabled": "Recovery state: currently disabled",
+          "pause_reason": "Pause reason: {{value}}",
+          "paused_at": "Paused at: {{value}}",
+          "paused_by": "Latest auto-pause source: {{value}}",
+          "block_reason": "Enable blocker: {{value}}",
+          "last_tested_at": "Last tested: {{value}}"
         },
         "table": {
           "model": "Model",
@@ -900,6 +928,7 @@
           "enabled": "Enabled",
           "latest_test": "Latest Test",
           "test_status": "Test Status",
+          "runtime_status": "Status Detail",
           "enable_block_reason": "Blocked Reason",
           "updated_at": "Updated At"
         }

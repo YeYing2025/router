@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
   AppAlert,
-  AppButton,
   AppDetailSection,
   AppFilterHeader,
   AppInput,
@@ -16,12 +15,31 @@ import {
 const resolveEndpointTestStatusKey = (row) =>
   (row?.last_test_status || '').toString().trim() || 'untested';
 
-const formatDisableTime = (value) => {
+const formatTimestamp = (value) => {
   const timestamp = Number(value || 0);
   if (timestamp <= 0) {
     return '';
   }
   return new Date(timestamp * 1000).toLocaleString();
+};
+
+const resolveEndpointRuntimeState = (row) => {
+  if (row?.enabled === true) {
+    return 'available';
+  }
+  if (
+    (row?.disabled_reason || '').toString().trim() ||
+    Number(row?.disabled_at || 0) > 0
+  ) {
+    return 'paused';
+  }
+  if ((row?.enable_block_reason || '').toString().trim()) {
+    return 'blocked';
+  }
+  if (resolveEndpointTestStatusKey(row) !== 'success') {
+    return 'untested';
+  }
+  return 'disabled';
 };
 
 const ChannelDetailEndpointsTab = ({
@@ -40,12 +58,11 @@ const ChannelDetailEndpointsTab = ({
   channelEndpointPoliciesError,
   endpointPolicyReadonly,
   openEndpointPolicyEditor,
-  timestamp2string,
 }) => {
   const buildDisableInfo = (row) => {
     const parts = [];
     const disabledBy = (row?.disabled_by || '').toString().trim();
-    const disabledAt = formatDisableTime(row?.disabled_at);
+    const disabledAt = formatTimestamp(row?.disabled_at);
     const disabledReason = (row?.disabled_reason || '').toString().trim();
     if (disabledBy) {
       parts.push(t('channel.edit.capability_disable.by', { value: disabledBy }));
@@ -59,6 +76,83 @@ const ChannelDetailEndpointsTab = ({
     return parts.join('\n');
   };
 
+  const buildRuntimeDetails = (row) => {
+    const state = resolveEndpointRuntimeState(row);
+    const disabledBy = (row?.disabled_by || '').toString().trim();
+    const disabledAt = formatTimestamp(row?.disabled_at);
+    const disabledReason = (row?.disabled_reason || '').toString().trim();
+    const blockReason = (row?.enable_block_reason || '').toString().trim();
+    const lastTestedAt = formatTimestamp(row?.last_tested_at);
+    const details = [];
+    if (state === 'available') {
+      details.push(
+        t(
+          'channel.edit.endpoint_capabilities.status_detail.recovery_state_available',
+        ),
+      );
+    } else if (state === 'paused') {
+      details.push(
+        t(
+          'channel.edit.endpoint_capabilities.status_detail.recovery_state_paused',
+        ),
+      );
+    } else if (state === 'blocked') {
+      details.push(
+        t(
+          'channel.edit.endpoint_capabilities.status_detail.recovery_state_blocked',
+        ),
+      );
+    } else if (state === 'untested') {
+      details.push(
+        t(
+          'channel.edit.endpoint_capabilities.status_detail.recovery_state_untested',
+        ),
+      );
+    } else {
+      details.push(
+        t(
+          'channel.edit.endpoint_capabilities.status_detail.recovery_state_disabled',
+        ),
+      );
+    }
+    if (disabledReason) {
+      details.push(
+        t('channel.edit.endpoint_capabilities.status_detail.pause_reason', {
+          value: disabledReason,
+        }),
+      );
+    }
+    if (disabledAt) {
+      details.push(
+        t('channel.edit.endpoint_capabilities.status_detail.paused_at', {
+          value: disabledAt,
+        }),
+      );
+    }
+    if (disabledBy) {
+      details.push(
+        t('channel.edit.endpoint_capabilities.status_detail.paused_by', {
+          value: disabledBy,
+        }),
+      );
+    }
+    if (blockReason) {
+      details.push(
+        t('channel.edit.endpoint_capabilities.status_detail.block_reason', {
+          value: blockReason,
+        }),
+      );
+    }
+    if (lastTestedAt) {
+      details.push(
+        t('channel.edit.endpoint_capabilities.status_detail.last_tested_at', {
+          value: lastTestedAt,
+        }),
+      );
+    }
+    return details;
+  };
+
   const policyByKey = new Map(
     channelEndpointPolicies.map((row) => [
       buildChannelEndpointKey(row.model, row.endpoint),
@@ -66,7 +160,29 @@ const ChannelDetailEndpointsTab = ({
     ]),
   );
   const [testStatusFilter, setTestStatusFilter] = useState('all');
+  const [runtimeStateFilter, setRuntimeStateFilter] = useState('all');
   const [baseURLDrafts, setBaseURLDrafts] = useState({});
+
+  const runtimeStateStats = useMemo(
+    () =>
+      channelEndpoints.reduce(
+        (acc, row) => {
+          const state = resolveEndpointRuntimeState(row);
+          acc.total += 1;
+          acc[state] = (acc[state] || 0) + 1;
+          return acc;
+        },
+        {
+          total: 0,
+          available: 0,
+          paused: 0,
+          blocked: 0,
+          untested: 0,
+          disabled: 0,
+        },
+      ),
+    [channelEndpoints],
+  );
 
   const testStatusOptions = useMemo(
     () => [
@@ -88,15 +204,43 @@ const ChannelDetailEndpointsTab = ({
     [t],
   );
 
+  const runtimeStateOptions = useMemo(
+    () => [
+      {
+        key: 'all',
+        value: 'all',
+        text: t('channel.edit.endpoint_capabilities.filters.all_runtime_state'),
+      },
+      ...['available', 'paused', 'blocked', 'untested', 'disabled'].map(
+        (state) => ({
+          key: state,
+          value: state,
+          text: t(`channel.edit.endpoint_capabilities.runtime_state.${state}`),
+        }),
+      ),
+    ],
+    [t],
+  );
+
   const filteredRows = useMemo(
     () =>
       channelEndpoints.filter((row) => {
+        const runtimeState = resolveEndpointRuntimeState(row);
         if (testStatusFilter === 'all') {
-          return true;
+          return (
+            runtimeStateFilter === 'all' ||
+            runtimeState === runtimeStateFilter
+          );
         }
-        return resolveEndpointTestStatusKey(row) === testStatusFilter;
+        if (resolveEndpointTestStatusKey(row) !== testStatusFilter) {
+          return false;
+        }
+        return (
+          runtimeStateFilter === 'all' ||
+          runtimeState === runtimeStateFilter
+        );
       }),
-    [channelEndpoints, testStatusFilter],
+    [channelEndpoints, runtimeStateFilter, testStatusFilter],
   );
 
   const resolveBaseURLDraft = (row, endpointKey) => {
@@ -119,20 +263,51 @@ const ChannelDetailEndpointsTab = ({
           className='router-section-message'
           title={t('channel.edit.endpoint_capabilities.hint')}
         />
+        <div className='router-endpoint-state-summary'>
+          {['total', 'available', 'paused', 'blocked', 'untested'].map((key) => (
+            <div
+              className={`router-endpoint-state-card router-endpoint-state-card-${key}`}
+              key={key}
+            >
+              <div className='router-endpoint-state-card-value'>
+                {runtimeStateStats[key] || 0}
+              </div>
+              <div className='router-endpoint-state-card-label'>
+                {t(`channel.edit.endpoint_capabilities.summary_cards.${key}`)}
+              </div>
+            </div>
+          ))}
+        </div>
         <AppFilterHeader
           className='router-toolbar-compact'
           startClassName='router-block-gap-sm'
           picker={
-            <AppSelect
-              className='router-section-dropdown router-detail-filter-dropdown router-dropdown-min-170'
-              options={testStatusOptions}
-              value={testStatusFilter}
-              disabled={channelEndpointsLoading || channelEndpoints.length === 0}
-              placeholder={t('channel.edit.endpoint_capabilities.filters.test_status')}
-              onChange={(e, { value }) =>
-                setTestStatusFilter((value || 'all').toString())
-              }
-            />
+            <div className='router-endpoint-filter-row'>
+              <AppSelect
+                className='router-section-dropdown router-detail-filter-dropdown router-dropdown-min-170'
+                options={runtimeStateOptions}
+                value={runtimeStateFilter}
+                disabled={channelEndpointsLoading || channelEndpoints.length === 0}
+                placeholder={t(
+                  'channel.edit.endpoint_capabilities.filters.runtime_state',
+                )}
+                onChange={(e, { value }) =>
+                  setRuntimeStateFilter((value || 'all').toString())
+                }
+              />
+              <AppSelect
+                className='router-section-dropdown router-detail-filter-dropdown router-dropdown-min-170'
+                options={testStatusOptions}
+                value={testStatusFilter}
+                disabled={channelEndpointsLoading || channelEndpoints.length === 0}
+                placeholder={t(
+                  'channel.edit.endpoint_capabilities.filters.test_status',
+                )}
+                onChange={(e, { value }) =>
+                  setTestStatusFilter((value || 'all').toString())
+                }
+              />
+            </div>
           }
         />
         <AppTable
@@ -179,7 +354,10 @@ const ChannelDetailEndpointsTab = ({
               key: 'base_url',
               width: columnWidths[2],
               render: (_, row) => {
-                const endpointKey = buildChannelEndpointKey(row.model, row.endpoint);
+                const endpointKey = buildChannelEndpointKey(
+                  row.model,
+                  row.endpoint,
+                );
                 const isMutating = endpointMutatingKey === endpointKey;
                 const draftBaseURL = resolveBaseURLDraft(row, endpointKey);
                 return (
@@ -197,8 +375,12 @@ const ChannelDetailEndpointsTab = ({
                       }));
                     }}
                     onBlur={() => {
-                      const normalizedCurrent = (row.base_url || '').toString().trim();
-                      const normalizedNext = (draftBaseURL || '').toString().trim();
+                      const normalizedCurrent = (row.base_url || '')
+                        .toString()
+                        .trim();
+                      const normalizedNext = (draftBaseURL || '')
+                        .toString()
+                        .trim();
                       if (normalizedCurrent === normalizedNext) {
                         return;
                       }
@@ -221,7 +403,10 @@ const ChannelDetailEndpointsTab = ({
               width: columnWidths[3],
               align: 'center',
               render: (_, row) => {
-                const endpointKey = buildChannelEndpointKey(row.model, row.endpoint);
+                const endpointKey = buildChannelEndpointKey(
+                  row.model,
+                  row.endpoint,
+                );
                 const isMutating = endpointMutatingKey === endpointKey;
                 const blockedReason = (row.enable_block_reason || '').trim();
                 const disableInfo = buildDisableInfo(row);
@@ -278,9 +463,40 @@ const ChannelDetailEndpointsTab = ({
               },
             },
             {
+              title: t('channel.edit.endpoint_capabilities.table.runtime_status'),
+              key: 'runtime_status',
+              width: columnWidths[5],
+              render: (_, row) => {
+                const state = resolveEndpointRuntimeState(row);
+                const details = buildRuntimeDetails(row);
+                return (
+                  <div className='router-endpoint-runtime-status'>
+                    <AppTag
+                      color={
+                        state === 'available'
+                          ? 'green'
+                          : state === 'paused'
+                            ? 'red'
+                            : state === 'blocked'
+                              ? 'orange'
+                              : 'grey'
+                      }
+                    >
+                      {t(`channel.edit.endpoint_capabilities.runtime_state.${state}`)}
+                    </AppTag>
+                    <div className='router-endpoint-runtime-lines'>
+                      {details.map((item, index) => (
+                        <div key={`${state}-${index}`}>{item}</div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              },
+            },
+            {
               title: t('channel.edit.endpoint_policies.table.policy'),
               key: 'policy',
-              width: columnWidths[5],
+              width: columnWidths[6],
               render: (_, row) => {
                 const endpointKey = buildChannelEndpointKey(row.model, row.endpoint);
                 const policyRow = policyByKey.get(endpointKey) || null;
@@ -304,7 +520,7 @@ const ChannelDetailEndpointsTab = ({
             {
               title: t('channel.edit.endpoint_policies.table.actions'),
               key: 'actions',
-              width: 52,
+              width: columnWidths[7],
               render: (_, row) => (
                 <AppTableActionButton
                   icon='setting'

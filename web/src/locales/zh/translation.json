@@ -889,8 +889,36 @@
         "disable_success": "关闭端点能力成功",
         "update_failed": "更新端点能力失败",
         "filters": {
+          "runtime_state": "运行状态",
+          "all_runtime_state": "全部运行状态",
           "test_status": "测试状态",
           "all_test_status": "全部测试状态"
+        },
+        "summary_cards": {
+          "total": "端点总数",
+          "available": "可用",
+          "paused": "已暂停",
+          "blocked": "受阻",
+          "untested": "待测试"
+        },
+        "runtime_state": {
+          "available": "可用",
+          "paused": "已暂停",
+          "blocked": "受阻",
+          "untested": "待测试",
+          "disabled": "未启用"
+        },
+        "status_detail": {
+          "recovery_state_available": "恢复状态：当前可参与真实选路",
+          "recovery_state_paused": "恢复状态：等待人工启用或自动恢复",
+          "recovery_state_blocked": "恢复状态：需先解决启用阻断",
+          "recovery_state_untested": "恢复状态：需先完成端点测试",
+          "recovery_state_disabled": "恢复状态：当前未启用",
+          "pause_reason": "暂停原因：{{value}}",
+          "paused_at": "暂停时间：{{value}}",
+          "paused_by": "最近自动暂停来源：{{value}}",
+          "block_reason": "启用阻断：{{value}}",
+          "last_tested_at": "最近测试：{{value}}"
         },
         "table": {
           "model": "模型",
@@ -900,6 +928,7 @@
           "enabled": "启用",
           "latest_test": "最近测试",
           "test_status": "测试状态",
+          "runtime_status": "状态详情",
           "enable_block_reason": "不能启用原因",
           "updated_at": "更新时间"
         }

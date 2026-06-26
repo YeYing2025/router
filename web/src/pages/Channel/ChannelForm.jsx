@@ -94,14 +94,14 @@ const resolveEffectiveAPIBaseURL = (inputs, config) =>
 const CHANNEL_IDENTIFIER_PATTERN = /^[a-z0-9-]+$/;
 const CHANNEL_IDENTIFIER_MAX_LENGTH = 64;
 const CHANNEL_ENDPOINT_COLUMN_WIDTHS = [
-  '14%',
-  '14%',
-  '18%',
-  '8%',
-  '20%',
-  '14%',
-  '12%',
-  '8%',
+  '13%',
+  '13%',
+  '17%',
+  '7%',
+  '15%',
+  '19%',
+  '9%',
+  '7%',
 ];
 const CHANNEL_MODEL_TEST_GROUP_COLUMN_WIDTHS = [
   '4%',
@@ -5886,7 +5886,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                     channelEndpointPoliciesError={channelEndpointPoliciesError}
                     endpointPolicyReadonly={endpointPolicyReadonly}
                     openEndpointPolicyEditor={openEndpointPolicyEditor}
-                    timestamp2string={timestamp2string}
                   />
                 )}
               </>

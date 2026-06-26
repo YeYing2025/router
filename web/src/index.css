@@ -3919,6 +3919,78 @@ body,
     min-width: 0;
 }
 
+.router-endpoint-state-summary {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.router-endpoint-state-card {
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.router-endpoint-state-card-available {
+    border-color: rgba(34, 197, 94, 0.26);
+}
+
+.router-endpoint-state-card-paused {
+    border-color: rgba(239, 68, 68, 0.26);
+}
+
+.router-endpoint-state-card-blocked,
+.router-endpoint-state-card-untested {
+    border-color: rgba(245, 158, 11, 0.28);
+}
+
+.router-endpoint-state-card-value {
+    color: #111827;
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.2;
+}
+
+.router-endpoint-state-card-label {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.router-endpoint-filter-row {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.router-endpoint-runtime-status {
+    display: grid;
+    gap: 6px;
+}
+
+.router-endpoint-runtime-lines {
+    display: grid;
+    gap: 3px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.router-endpoint-runtime-lines > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+    .router-endpoint-state-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 .router-create-model-provider-list .router-ui-tag.router-tag {
     max-width: 100%;
     overflow: hidden;
