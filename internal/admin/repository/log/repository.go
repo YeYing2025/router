@@ -96,6 +96,7 @@ func init() {
 		RecordLog:                      RecordLog,
 		RecordTopupLog:                 RecordTopupLog,
 		RecordConsumeLog:               RecordConsumeLog,
+		RecordRelayFailureLog:          RecordRelayFailureLog,
 		RecordTestLog:                  RecordTestLog,
 		GetAllLogs:                     GetAll,
 		GetUserLogs:                    GetUser,
@@ -159,6 +160,16 @@ func RecordConsumeLog(ctx context.Context, log *model.Log) {
 	log.Username = model.GetUsernameById(log.UserId)
 	log.CreatedAt = helper.GetTimestamp()
 	log.Type = model.LogTypeConsume
+	recordLogHelper(ctx, log)
+}
+
+func RecordRelayFailureLog(ctx context.Context, log *model.Log) {
+	if !config.LogConsumeEnabled {
+		return
+	}
+	log.Username = model.GetUsernameById(log.UserId)
+	log.CreatedAt = helper.GetTimestamp()
+	log.Type = model.LogTypeRelayFailure
 	recordLogHelper(ctx, log)
 }
 

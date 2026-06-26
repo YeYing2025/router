@@ -1675,7 +1675,8 @@
       "usage": "Usage",
       "admin": "Admin",
       "system": "System",
-      "test": "Test"
+      "test": "Test",
+      "relay_failure": "Call Failed"
     },
     "table": {
       "time": "Time",
@@ -1722,6 +1723,7 @@
       "route": {
         "summary_title": "Route Summary",
         "summary": "This request finally hit channel {{channel}}, final model {{model}}, after {{fallbackCount}} fallback(s), using estimate source {{source}} and settlement mode {{settlement}}.",
+        "failure_summary": "This request ultimately failed. The last attempted channel was {{channel}}, requested model {{model}}, after {{fallbackCount}} fallback(s).",
         "fallback_attempt_line": "#{{attempt}} {{channel}} / HTTP {{status}} / {{code}} / {{message}}",
         "fields": {
           "channel_target": "Matched Channel",
@@ -2021,6 +2023,11 @@
       "active_package_load_failed": "Failed to load active package",
       "wallet_copy_success": "Wallet address copied",
       "wallet_copy_failed": "Copy failed, please copy manually"
+    },
+    "focus": {
+      "title": "Filtered Users",
+      "summary": "This list shows {{count}} users from {{total}} matched users. You can export the current result directly.",
+      "clear": "Clear Filter"
     },
     "search": "Search users or wallet ID...",
     "table": {
@@ -2528,6 +2535,10 @@
           "active_hint": "Users whose request count is above the current rank average.",
           "long_tail": "Long-Tail Users",
           "long_tail_hint": "Users whose spend share is below 3% and token usage does not exceed the current average.",
+          "balance_risk": "Balance-Risk Users",
+          "balance_risk_hint": "Active users whose current-period spend has reached or exceeded remaining balance.",
+          "view_users": "View Users",
+          "focus_limit": "The user list receives at most the first {{count}} users.",
           "footnote": "These segments are derived only from the matched ranking sample under the current filters, not the full-site user population."
         },
         "share_chart": {

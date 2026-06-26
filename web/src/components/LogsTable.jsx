@@ -98,6 +98,12 @@ function renderType(type) {
           测试
         </AppTag>
       );
+    case 6:
+      return (
+        <AppTag color='red' className='router-tag'>
+          失败
+        </AppTag>
+      );
     default:
       return (
         <AppTag color='black' className='router-tag'>
@@ -297,6 +303,7 @@ const LogsTable = () => {
     { key: '3', text: t('log.type.admin'), value: 3 },
     { key: '4', text: t('log.type.system'), value: 4 },
     { key: '5', text: t('log.type.test'), value: 5 },
+    { key: '6', text: t('log.type.relay_failure'), value: 6 },
   ];
 
   const conditionalFilterConfig = useMemo(() => {
@@ -564,7 +571,7 @@ const LogsTable = () => {
 
   const showAmountColumns = () => {
     const effectiveLogType = activeFilterKeys.includes('log_type') ? logType : 0;
-    return effectiveLogType !== 5;
+    return effectiveLogType !== 5 && effectiveLogType !== 6;
   };
 
   const loadLogs = useCallback(

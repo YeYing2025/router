@@ -185,12 +185,57 @@ func Relay(c *gin.Context) {
 		c.Set(ctxkey.RelayErrorCode, errorCodeString(bizErr.Error.Code))
 		c.Set(ctxkey.ChannelId, lastFailedChannelId)
 		c.Set(ctxkey.ChannelName, channelName)
+		recordRelayFailureLog(c, bizErr, retryCount)
 
 		// BUG: bizErr is in race condition
 		bizErr.Error.Message = helper.MessageWithTraceID(bizErr.Error.Message, traceID)
 		c.JSON(bizErr.StatusCode, gin.H{
 			"error": bizErr.Error,
 		})
+	}
+}
+
+func recordRelayFailureLog(c *gin.Context, bizErr *model.ErrorWithStatusCode, retryCount int) {
+	entry := buildRelayFailureLog(c, bizErr, retryCount)
+	if entry == nil {
+		return
+	}
+	dbmodel.RecordRelayFailureLog(c.Request.Context(), entry)
+}
+
+func buildRelayFailureLog(c *gin.Context, bizErr *model.ErrorWithStatusCode, retryCount int) *dbmodel.Log {
+	if c == nil || bizErr == nil {
+		return nil
+	}
+	userID := strings.TrimSpace(c.GetString(ctxkey.Id))
+	if userID == "" {
+		return nil
+	}
+	requestModel := strings.TrimSpace(c.GetString(ctxkey.OriginalModel))
+	if requestModel == "" {
+		requestModel = strings.TrimSpace(c.GetString(ctxkey.RequestModel))
+	}
+	channelID := strings.TrimSpace(c.GetString(ctxkey.ChannelId))
+	return &dbmodel.Log{
+		UserId:            userID,
+		GroupId:           strings.TrimSpace(c.GetString(ctxkey.Group)),
+		ChannelId:         channelID,
+		ModelName:         requestModel,
+		TokenName:         strings.TrimSpace(c.GetString(ctxkey.TokenName)),
+		Quota:             0,
+		BillingSource:     "",
+		Content:           "relay request failed before settlement",
+		RequestModelName:  requestModel,
+		ActualModelName:   requestModel,
+		UpstreamEndpoint:  c.Request.URL.Path,
+		UpstreamProtocol:  relayProtocolName(c),
+		FallbackCount:     retryCount,
+		FallbackAttempts:  strings.TrimSpace(c.GetString(ctxkey.RelayFallbackAttempts)),
+		RelayErrorType:    strings.TrimSpace(bizErr.Error.Type),
+		RelayErrorCode:    errorCodeString(bizErr.Error.Code),
+		RelayErrorMessage: strings.TrimSpace(bizErr.Error.Message),
+		ElapsedTime:       0,
+		IsStream:          false,
 	}
 }
 

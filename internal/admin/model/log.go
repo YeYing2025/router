@@ -81,6 +81,7 @@ const (
 	LogTypeManage
 	LogTypeSystem
 	LogTypeTest
+	LogTypeRelayFailure
 )
 
 const (
@@ -105,6 +106,10 @@ func RecordTopupLog(ctx context.Context, userId string, content string, quota in
 
 func RecordConsumeLog(ctx context.Context, log *Log) {
 	mustLogRepo().RecordConsumeLog(ctx, log)
+}
+
+func RecordRelayFailureLog(ctx context.Context, log *Log) {
+	mustLogRepo().RecordRelayFailureLog(ctx, log)
 }
 
 func RecordTestLog(ctx context.Context, log *Log) {

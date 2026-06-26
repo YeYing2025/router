@@ -42,6 +42,12 @@ function renderType(type, t) {
           {t('log.type.test')}
         </AppTag>
       );
+    case 6:
+      return (
+        <AppTag color='red' className='router-tag'>
+          {t('log.type.relay_failure')}
+        </AppTag>
+      );
     default:
       return (
         <AppTag color='black' className='router-tag'>
@@ -98,7 +104,11 @@ function renderRouteExplanationSummary(log, t) {
   const source = renderText(log.billing_estimate_source);
   const settlement = renderText(log.billing_settlement_mode);
   const fallbackCount = Number(log.fallback_count || 0);
-  return t('log.detail.route.summary', {
+  const summaryKey =
+    Number(log.type) === 6
+      ? 'log.detail.route.failure_summary'
+      : 'log.detail.route.summary';
+  return t(summaryKey, {
     channel,
     model,
     source,
