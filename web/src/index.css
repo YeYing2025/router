@@ -2131,6 +2131,30 @@ body,
     margin-top: 0;
 }
 
+.router-balance-lot-summary {
+    margin: -2px 0 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #6b7280;
+}
+
+.router-balance-lot-source-cell {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.router-balance-lot-source-type {
+    font-size: 12px;
+    line-height: 1.3;
+    color: #6b7280;
+}
+
+.router-balance-lot-source-id-link {
+    max-width: 100%;
+}
+
 .router-inline-stat-card {
     min-height: 38px;
     height: 38px;
@@ -2728,6 +2752,23 @@ body,
 
 .router-link-inline {
     color: #2185d0;
+}
+
+.router-link-button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    line-height: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+
+.router-link-button:hover,
+.router-link-button:focus-visible {
+    color: #1677ff;
+    text-decoration: underline;
 }
 
 .router-copy-relaxed {

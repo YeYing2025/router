@@ -25,6 +25,7 @@ import {
   AppInput,
   AppInputNumber,
   AppModal,
+  AppPagination,
   AppSelect,
   AppTable,
   AppTabs,
@@ -34,6 +35,8 @@ import {
 import {
   formatAmountWithUnit,
 } from '../../helpers/render';
+
+const BALANCE_LOT_PAGE_SIZE = 20;
 
 const ROLE_OPTIONS = (t) => [
   { key: 1, value: 1, text: t('user.table.role_types.normal') },
@@ -359,6 +362,9 @@ const UserDetail = () => {
   const [packageQuotaSummary, setPackageQuotaSummary] = useState(createEmptyQuotaSummary());
   const [balanceLots, setBalanceLots] = useState([]);
   const [balanceLotsLoading, setBalanceLotsLoading] = useState(false);
+  const [balanceLotsPage, setBalanceLotsPage] = useState(1);
+  const [balanceLotsPageSize, setBalanceLotsPageSize] = useState(BALANCE_LOT_PAGE_SIZE);
+  const [balanceLotsTotal, setBalanceLotsTotal] = useState(0);
   const [balanceLotFilters, setBalanceLotFilters] = useState({
     source_type: '',
     status: '',
@@ -505,12 +511,14 @@ const UserDetail = () => {
   }, [t, userId]);
 
   const loadBalanceLots = useCallback(
-    async ({ silent = false } = {}) => {
+    async ({ silent = false, page = balanceLotsPage } = {}) => {
       const normalizedUserId = (userId || '').toString().trim();
       if (normalizedUserId === '') {
         setBalanceLots([]);
+        setBalanceLotsTotal(0);
         return;
       }
+      const nextPage = Math.max(1, Number(page || 1) || 1);
       if (!silent) {
         setBalanceLotsLoading(true);
       }
@@ -519,8 +527,8 @@ const UserDetail = () => {
           `/api/v1/admin/user/${encodeURIComponent(normalizedUserId)}/topup/balance/lots`,
           {
             params: {
-              page: 1,
-              page_size: 20,
+              page: nextPage,
+              page_size: BALANCE_LOT_PAGE_SIZE,
               source_type: (balanceLotFilters.source_type || '').toString().trim() || undefined,
               status: (balanceLotFilters.status || '').toString().trim() || undefined,
               positive_only: balanceLotFilters.positive_only !== false,
@@ -534,7 +542,14 @@ const UserDetail = () => {
           }
           return;
         }
-        setBalanceLots(Array.isArray(data?.items) ? data.items : []);
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const responsePage = Math.max(1, Number(data?.page || nextPage) || nextPage);
+        const responsePageSize = Math.max(1, Number(data?.page_size || BALANCE_LOT_PAGE_SIZE) || BALANCE_LOT_PAGE_SIZE);
+        const responseTotal = Math.max(0, Number(data?.total ?? items.length ?? 0) || 0);
+        setBalanceLots(items);
+        setBalanceLotsPage(responsePage);
+        setBalanceLotsPageSize(responsePageSize);
+        setBalanceLotsTotal(responseTotal);
       } catch (error) {
         if (!silent) {
           showError(error?.message || error);
@@ -546,6 +561,7 @@ const UserDetail = () => {
       }
     },
     [
+      balanceLotsPage,
       balanceLotFilters.positive_only,
       balanceLotFilters.source_type,
       balanceLotFilters.status,
@@ -732,6 +748,104 @@ const UserDetail = () => {
     ],
     [t],
   );
+  const balanceLotTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(balanceLotsTotal / Math.max(1, balanceLotsPageSize))),
+    [balanceLotsPageSize, balanceLotsTotal],
+  );
+
+  const currentDetailPath = useMemo(
+    () => `${location.pathname}${location.search}${location.hash}`,
+    [location.hash, location.pathname, location.search],
+  );
+
+  const resolveBalanceLotSourcePath = useCallback((lot) => {
+    const detailPath = (lot?.source_detail?.detail_path || '').toString().trim();
+    if (detailPath !== '') {
+      return detailPath;
+    }
+    const sourceID = (lot?.source_id || '').toString().trim();
+    if (sourceID === '') {
+      return '';
+    }
+    switch ((lot?.source_type || '').toString().trim()) {
+      case 'topup_order':
+        return `/admin/flow/topup/${encodeURIComponent(sourceID)}`;
+      case 'redemption':
+        return `/admin/flow/redemption/${encodeURIComponent(sourceID)}`;
+      default:
+        return '';
+    }
+  }, []);
+
+  const goToBalanceLotSource = useCallback(
+    (lot) => {
+      const path = resolveBalanceLotSourcePath(lot);
+      if (path === '') {
+        return;
+      }
+      navigate(path, {
+        state: { from: currentDetailPath },
+      });
+    },
+    [currentDetailPath, navigate, resolveBalanceLotSourcePath],
+  );
+
+  const renderBalanceLotSourceLink = useCallback(
+    (lot, content, className = '') => {
+      if (resolveBalanceLotSourcePath(lot) === '') {
+        return content;
+      }
+      return (
+        <button
+          type='button'
+          className={`router-link-button router-link-inline ${className}`.trim()}
+          onClick={(event) => {
+            event.stopPropagation();
+            goToBalanceLotSource(lot);
+          }}
+        >
+          {content}
+        </button>
+      );
+    },
+    [goToBalanceLotSource, resolveBalanceLotSourcePath],
+  );
+
+  const renderBalanceLotSourceCell = useCallback(
+    (lot) => {
+      const sourceLabel = formatBalanceLotSource(lot?.source_type, t);
+      const title = (lot?.source_detail?.title || '').toString().trim();
+      const content = (
+        <span className='router-balance-lot-source-cell'>
+          <span>{title || sourceLabel}</span>
+          {title && title !== sourceLabel ? (
+            <span className='router-balance-lot-source-type'>{sourceLabel}</span>
+          ) : null}
+        </span>
+      );
+      return renderBalanceLotSourceLink(lot, content);
+    },
+    [renderBalanceLotSourceLink, t],
+  );
+
+  const renderBalanceLotSourceIDCell = useCallback(
+    (lot) => {
+      const value = (lot?.source_id || '').toString();
+      if (value === '') {
+        return readOnlyValue(value);
+      }
+      const content = (
+        <span
+          className='router-monospace-value router-monospace-truncate'
+          title={value}
+        >
+          {value}
+        </span>
+      );
+      return renderBalanceLotSourceLink(lot, content, 'router-balance-lot-source-id-link');
+    },
+    [renderBalanceLotSourceLink],
+  );
 
   useEffect(() => {
     loadActivePackage().then();
@@ -740,6 +854,12 @@ const UserDetail = () => {
   useEffect(() => {
     loadBalanceLots({ silent: true }).then();
   }, [loadBalanceLots]);
+
+  useEffect(() => {
+    if (balanceLotsPage > balanceLotTotalPages) {
+      setBalanceLotsPage(balanceLotTotalPages);
+    }
+  }, [balanceLotTotalPages, balanceLotsPage]);
 
   const roleControl = useMemo(() => {
     return (
@@ -1497,10 +1617,13 @@ const UserDetail = () => {
                       value={balanceLotFilters.source_type}
                       disabled={loading || actionLoading !== '' || editSection !== '' || balanceLotsLoading}
                       onChange={(e, { value }) =>
-                        setBalanceLotFilters((prev) => ({
-                          ...prev,
-                          source_type: (value || '').toString(),
-                        }))
+                        {
+                          setBalanceLotsPage(1);
+                          setBalanceLotFilters((prev) => ({
+                            ...prev,
+                            source_type: (value || '').toString(),
+                          }));
+                        }
                       }
                     />
                     <AppSelect
@@ -1509,14 +1632,17 @@ const UserDetail = () => {
                       value={balanceLotFilters.status}
                       disabled={loading || actionLoading !== '' || editSection !== '' || balanceLotsLoading}
                       onChange={(e, { value }) =>
-                        setBalanceLotFilters((prev) => {
-                          const nextStatus = (value || '').toString();
-                          return {
-                            ...prev,
-                            status: nextStatus,
-                            positive_only: nextStatus === 'active',
-                          };
-                        })
+                        {
+                          setBalanceLotsPage(1);
+                          setBalanceLotFilters((prev) => {
+                            const nextStatus = (value || '').toString();
+                            return {
+                              ...prev,
+                              status: nextStatus,
+                              positive_only: nextStatus === 'active',
+                            };
+                          });
+                        }
                       }
                     />
                     <AppSelect
@@ -1525,10 +1651,13 @@ const UserDetail = () => {
                       value={balanceLotFilters.positive_only ? '1' : '0'}
                       disabled={loading || actionLoading !== '' || editSection !== '' || balanceLotsLoading}
                       onChange={(e, { value }) =>
-                        setBalanceLotFilters((prev) => ({
-                          ...prev,
-                          positive_only: (value || '1').toString() !== '0',
-                        }))
+                        {
+                          setBalanceLotsPage(1);
+                          setBalanceLotFilters((prev) => ({
+                            ...prev,
+                            positive_only: (value || '1').toString() !== '0',
+                          }));
+                        }
                       }
                     />
                     <AppButton
@@ -1544,83 +1673,91 @@ const UserDetail = () => {
                   }
                 />
 
+                <div className='router-balance-lot-summary'>
+                  {t('user.detail.balance_lots.summary', {
+                    page_count: balanceLots.length,
+                    total_count: balanceLotsTotal,
+                  })}
+                </div>
+
                 {balanceLots.length === 0 ? (
                   <div className='router-empty'>{t('user.detail.balance_lots.empty')}</div>
                 ) : (
-                  <div className='router-table-scroll-x'>
-                    <AppTable
-                      className='router-table router-list-table router-table-fit-page'
-                      pagination={false}
-                      scroll={{ x: BALANCE_LOT_DETAIL_TABLE_MIN_WIDTH }}
-                      rowKey={(lot) => lot.id || `${lot.source_type}-${lot.source_id}`}
-                      dataSource={balanceLots}
-                      columns={[
-                        {
-                          title: t('user.detail.balance_lots.columns.source'),
-                          key: 'source',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.source,
-                          render: (_, lot) => formatBalanceLotSource(lot.source_type, t),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.source_id'),
-                          dataIndex: 'source_id',
-                          key: 'source_id',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.sourceId,
-                          render: (value) =>
-                            value ? (
-                              <span
-                                className='router-monospace-value router-monospace-truncate'
-                                title={value}
-                              >
-                                {value}
-                              </span>
-                            ) : (
-                              readOnlyValue(value)
-                            ),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.remaining'),
-                          key: 'remaining_amount',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.remaining,
-                          render: (_, lot) =>
-                            formatAmountBySelectedUnit(lot.remaining_amount || 0),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.total'),
-                          key: 'total_amount',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.total,
-                          render: (_, lot) =>
-                            formatAmountBySelectedUnit(lot.total_amount || 0),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.status'),
-                          key: 'status',
-                          className: 'router-table-col-status-compact',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.status,
-                          render: (_, lot) => renderBalanceLotStatusLabel(lot.status, t),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.granted_at'),
-                          dataIndex: 'granted_at',
-                          key: 'granted_at',
-                          className: 'router-table-col-datetime',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.grantedAt,
-                          render: (value) => formatDateTime(value),
-                        },
-                        {
-                          title: t('user.detail.balance_lots.columns.expires_at'),
-                          dataIndex: 'expires_at',
-                          key: 'expires_at',
-                          className: 'router-table-col-datetime',
-                          width: BALANCE_LOT_COLUMN_WIDTHS.expiresAt,
-                          render: (value) =>
-                            Number(value || 0) > 0
-                              ? formatDateTime(value)
-                              : t('common.never'),
-                        },
-                      ]}
-                    />
-                  </div>
+                  <>
+                    <div className='router-table-scroll-x'>
+                      <AppTable
+                        className='router-table router-list-table router-table-fit-page'
+                        pagination={false}
+                        scroll={{ x: BALANCE_LOT_DETAIL_TABLE_MIN_WIDTH }}
+                        rowKey={(lot) => lot.id || `${lot.source_type}-${lot.source_id}`}
+                        dataSource={balanceLots}
+                        columns={[
+                          {
+                            title: t('user.detail.balance_lots.columns.source'),
+                            key: 'source',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.source,
+                            render: (_, lot) => renderBalanceLotSourceCell(lot),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.source_id'),
+                            dataIndex: 'source_id',
+                            key: 'source_id',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.sourceId,
+                            render: (_, lot) => renderBalanceLotSourceIDCell(lot),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.remaining'),
+                            key: 'remaining_amount',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.remaining,
+                            render: (_, lot) =>
+                              formatAmountBySelectedUnit(lot.remaining_amount || 0),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.total'),
+                            key: 'total_amount',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.total,
+                            render: (_, lot) =>
+                              formatAmountBySelectedUnit(lot.total_amount || 0),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.status'),
+                            key: 'status',
+                            className: 'router-table-col-status-compact',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.status,
+                            render: (_, lot) => renderBalanceLotStatusLabel(lot.status, t),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.granted_at'),
+                            dataIndex: 'granted_at',
+                            key: 'granted_at',
+                            className: 'router-table-col-datetime',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.grantedAt,
+                            render: (value) => formatDateTime(value),
+                          },
+                          {
+                            title: t('user.detail.balance_lots.columns.expires_at'),
+                            dataIndex: 'expires_at',
+                            key: 'expires_at',
+                            className: 'router-table-col-datetime',
+                            width: BALANCE_LOT_COLUMN_WIDTHS.expiresAt,
+                            render: (value) =>
+                              Number(value || 0) > 0
+                                ? formatDateTime(value)
+                                : t('common.never'),
+                          },
+                        ]}
+                      />
+                    </div>
+                    {balanceLotTotalPages > 1 ? (
+                      <div className='router-pagination-wrap'>
+                        <AppPagination
+                          activePage={balanceLotsPage}
+                          totalPages={balanceLotTotalPages}
+                          onPageChange={(event, { activePage }) => setBalanceLotsPage(activePage)}
+                        />
+                      </div>
+                    ) : null}
+                  </>
                 )}
               </AppDetailSection>
               ) : null}

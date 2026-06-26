@@ -1979,6 +1979,7 @@
       "balance_lots": {
         "title": "余额批次",
         "empty": "暂无符合条件的余额批次",
+        "summary": "当前页 {{page_count}} 条 / 共 {{total_count}} 条",
         "columns": {
           "source": "来源",
           "source_id": "来源ID",

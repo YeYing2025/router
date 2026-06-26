@@ -1235,11 +1235,19 @@ func GetUserTopUpBalanceLots(c *gin.Context) {
 		})
 		return
 	}
+	adminItems, err := buildAdminTopUpBalanceLotListItemsWithSources(model.DB, items)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data": topUpBalanceLotListData{
-			Items:    items,
+		"data": adminTopUpBalanceLotListData{
+			Items:    adminItems,
 			Total:    total,
 			Page:     page,
 			PageSize: pageSize,
@@ -2017,6 +2025,164 @@ type topUpBalanceLotListData struct {
 	Total    int64                  `json:"total"`
 	Page     int                    `json:"page"`
 	PageSize int                    `json:"page_size"`
+}
+
+type adminTopUpBalanceLotListItem struct {
+	model.UserBalanceLot
+	SourceDetail *topUpBalanceLotSourceDetail `json:"source_detail,omitempty"`
+}
+
+type adminTopUpBalanceLotListData struct {
+	Items    []adminTopUpBalanceLotListItem `json:"items"`
+	Total    int64                          `json:"total"`
+	Page     int                            `json:"page"`
+	PageSize int                            `json:"page_size"`
+}
+
+type topUpBalanceLotSourceDetail struct {
+	Type         string  `json:"type"`
+	ID           string  `json:"id"`
+	Title        string  `json:"title,omitempty"`
+	Status       string  `json:"status,omitempty"`
+	Amount       float64 `json:"amount,omitempty"`
+	Currency     string  `json:"currency,omitempty"`
+	CreditAmount int64   `json:"credit_amount,omitempty"`
+	OccurredAt   int64   `json:"occurred_at,omitempty"`
+	DetailPath   string  `json:"detail_path,omitempty"`
+}
+
+func buildAdminTopUpBalanceLotListItemsWithSources(db *gorm.DB, lots []model.UserBalanceLot) ([]adminTopUpBalanceLotListItem, error) {
+	items := make([]adminTopUpBalanceLotListItem, 0, len(lots))
+	if len(lots) == 0 {
+		return items, nil
+	}
+	topupIDs := make([]string, 0)
+	redemptionIDs := make([]string, 0)
+	for _, lot := range lots {
+		items = append(items, adminTopUpBalanceLotListItem{UserBalanceLot: lot})
+		sourceID := strings.TrimSpace(lot.SourceID)
+		if sourceID == "" {
+			continue
+		}
+		switch strings.TrimSpace(strings.ToLower(lot.SourceType)) {
+		case model.UserBalanceLotSourceTopup:
+			topupIDs = appendUniqueString(topupIDs, sourceID)
+		case model.UserBalanceLotSourceRedeem:
+			redemptionIDs = appendUniqueString(redemptionIDs, sourceID)
+		}
+	}
+	if db == nil {
+		return items, fmt.Errorf("database handle is nil")
+	}
+	topupDetails, err := loadTopupBalanceLotTopupSourceDetails(db, topupIDs)
+	if err != nil {
+		return nil, err
+	}
+	redemptionDetails, err := loadTopupBalanceLotRedemptionSourceDetails(db, redemptionIDs)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		sourceID := strings.TrimSpace(items[i].SourceID)
+		if sourceID == "" {
+			continue
+		}
+		switch strings.TrimSpace(strings.ToLower(items[i].SourceType)) {
+		case model.UserBalanceLotSourceTopup:
+			if detail, ok := topupDetails[sourceID]; ok {
+				items[i].SourceDetail = &detail
+			}
+		case model.UserBalanceLotSourceRedeem:
+			if detail, ok := redemptionDetails[sourceID]; ok {
+				items[i].SourceDetail = &detail
+			}
+		}
+	}
+	return items, nil
+}
+
+func appendUniqueString(items []string, value string) []string {
+	normalized := strings.TrimSpace(value)
+	if normalized == "" {
+		return items
+	}
+	for _, item := range items {
+		if item == normalized {
+			return items
+		}
+	}
+	return append(items, normalized)
+}
+
+func loadTopupBalanceLotTopupSourceDetails(db *gorm.DB, ids []string) (map[string]topUpBalanceLotSourceDetail, error) {
+	details := make(map[string]topUpBalanceLotSourceDetail, len(ids))
+	if len(ids) == 0 {
+		return details, nil
+	}
+	orders := make([]model.TopupOrder, 0, len(ids))
+	if err := db.Where("id IN ?", ids).Find(&orders).Error; err != nil {
+		return nil, err
+	}
+	for _, order := range orders {
+		id := strings.TrimSpace(order.Id)
+		if id == "" {
+			continue
+		}
+		occurredAt := order.RedeemedAt
+		if occurredAt <= 0 {
+			occurredAt = order.PaidAt
+		}
+		if occurredAt <= 0 {
+			occurredAt = order.CreatedAt
+		}
+		details[id] = topUpBalanceLotSourceDetail{
+			Type:         model.UserBalanceLotSourceTopup,
+			ID:           id,
+			Title:        strings.TrimSpace(order.Title),
+			Status:       strings.TrimSpace(order.Status),
+			Amount:       order.Amount,
+			Currency:     strings.TrimSpace(order.Currency),
+			CreditAmount: order.Quota,
+			OccurredAt:   occurredAt,
+			DetailPath:   "/admin/flow/topup/" + id,
+		}
+	}
+	return details, nil
+}
+
+func loadTopupBalanceLotRedemptionSourceDetails(db *gorm.DB, ids []string) (map[string]topUpBalanceLotSourceDetail, error) {
+	details := make(map[string]topUpBalanceLotSourceDetail, len(ids))
+	if len(ids) == 0 {
+		return details, nil
+	}
+	redemptions := make([]model.Redemption, 0, len(ids))
+	if err := db.
+		Where("id IN ? AND redeemed_time > 0 AND status = ?", ids, model.RedemptionCodeStatusUsed).
+		Find(&redemptions).Error; err != nil {
+		return nil, err
+	}
+	for _, redemption := range redemptions {
+		id := strings.TrimSpace(redemption.Id)
+		if id == "" {
+			continue
+		}
+		occurredAt := redemption.RedeemedTime
+		if occurredAt <= 0 {
+			occurredAt = redemption.CreatedTime
+		}
+		details[id] = topUpBalanceLotSourceDetail{
+			Type:         model.UserBalanceLotSourceRedeem,
+			ID:           id,
+			Title:        strings.TrimSpace(redemption.Name),
+			Status:       "used",
+			Amount:       redemption.FaceValueAmount,
+			Currency:     strings.TrimSpace(redemption.FaceValueUnit),
+			CreditAmount: redemption.Quota,
+			OccurredAt:   occurredAt,
+			DetailPath:   "/admin/flow/redemption/" + id,
+		}
+	}
+	return details, nil
 }
 
 func writeTopUpError(c *gin.Context, err error) {

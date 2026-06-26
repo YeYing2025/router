@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yeying-community/router/internal/admin/model"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func newTopupBalanceLotQueryContext(rawQuery string) *gin.Context {
@@ -44,6 +46,85 @@ func TestParseTopupBalanceLotPageParamsAcceptsExplicitFilters(t *testing.T) {
 	}
 	if !positiveOnly {
 		t.Fatalf("positiveOnly explicit true = false, want true")
+	}
+}
+
+func TestBuildAdminTopUpBalanceLotListItemsWithSources(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=private"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&model.UserBalanceLot{}, &model.TopupOrder{}, &model.Redemption{}); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+	if err := db.Create(&model.TopupOrder{
+		Id:         "order-1",
+		Status:     model.TopupOrderStatusFulfilled,
+		Title:      "Starter credits",
+		Amount:     12.5,
+		Currency:   "CNY",
+		Quota:      1250,
+		RedeemedAt: 100,
+		CreatedAt:  90,
+	}).Error; err != nil {
+		t.Fatalf("create topup order: %v", err)
+	}
+	if err := db.Create(&model.Redemption{
+		Id:              "redemption-1",
+		Status:          model.RedemptionCodeStatusUsed,
+		Name:            "Gift code",
+		FaceValueAmount: 8,
+		FaceValueUnit:   model.RedemptionFaceValueUnitYYC,
+		Quota:           800,
+		RedeemedTime:    110,
+		CreatedTime:     95,
+	}).Error; err != nil {
+		t.Fatalf("create redemption: %v", err)
+	}
+	lots := []model.UserBalanceLot{
+		{
+			Id:         "lot-topup",
+			SourceType: model.UserBalanceLotSourceTopup,
+			SourceID:   "order-1",
+		},
+		{
+			Id:         "lot-redemption",
+			SourceType: model.UserBalanceLotSourceRedeem,
+			SourceID:   "redemption-1",
+		},
+		{
+			Id:         "lot-legacy",
+			SourceType: model.UserBalanceLotSourceLegacy,
+			SourceID:   "legacy-1",
+		},
+	}
+	items, err := buildAdminTopUpBalanceLotListItemsWithSources(db, lots)
+	if err != nil {
+		t.Fatalf("build list items: %v", err)
+	}
+	if len(items) != len(lots) {
+		t.Fatalf("items len=%d, want %d", len(items), len(lots))
+	}
+	if items[0].SourceDetail == nil {
+		t.Fatalf("topup source detail missing")
+	}
+	if items[0].SourceDetail.DetailPath != "/admin/flow/topup/order-1" {
+		t.Fatalf("topup detail path=%q", items[0].SourceDetail.DetailPath)
+	}
+	if items[0].SourceDetail.Title != "Starter credits" {
+		t.Fatalf("topup title=%q", items[0].SourceDetail.Title)
+	}
+	if items[1].SourceDetail == nil {
+		t.Fatalf("redemption source detail missing")
+	}
+	if items[1].SourceDetail.DetailPath != "/admin/flow/redemption/redemption-1" {
+		t.Fatalf("redemption detail path=%q", items[1].SourceDetail.DetailPath)
+	}
+	if items[1].SourceDetail.Title != "Gift code" {
+		t.Fatalf("redemption title=%q", items[1].SourceDetail.Title)
+	}
+	if items[2].SourceDetail != nil {
+		t.Fatalf("legacy source detail=%#v, want nil", items[2].SourceDetail)
 	}
 }
 
