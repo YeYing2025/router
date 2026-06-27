@@ -254,6 +254,41 @@ func TestGetImageCostRatio(t *testing.T) {
 	}
 }
 
+func TestResolveImageRequestPackageAmount(t *testing.T) {
+	tests := []struct {
+		name    string
+		request *relaymodel.ImageRequest
+		want    int64
+	}{
+		{
+			name:    "nil request",
+			request: nil,
+			want:    1,
+		},
+		{
+			name: "default one",
+			request: &relaymodel.ImageRequest{
+				N: 0,
+			},
+			want: 1,
+		},
+		{
+			name: "multiple images",
+			request: &relaymodel.ImageRequest{
+				N: 4,
+			},
+			want: 4,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveImageRequestPackageAmount(tt.request); got != tt.want {
+				t.Fatalf("resolveImageRequestPackageAmount() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestValidateImageBillingPricing_AllowsTraditionalTokenBillingForGPTImage(t *testing.T) {
 	pricing := adminmodel.ResolvedModelPricing{
 		Model:       "gpt-image-2",

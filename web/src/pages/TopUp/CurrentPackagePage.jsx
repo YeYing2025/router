@@ -15,37 +15,63 @@ import {
   renderTopupIntegerAmountWithExactPopup,
   useTopUpWorkspace,
 } from './shared.jsx';
+import {
+  formatRequestCount,
+  formatRequestQuotaConcurrency,
+  getServicePackagePeriodLabel,
+  getServicePackageTypeLabel,
+  isRequestQuotaPackage,
+  normalizeServicePackageType,
+} from '../../helpers/package';
 
 const createEmptyActivePackage = () => ({
   has_active_subscription: false,
+  current_package: null,
+  next_package: null,
   subscription: null,
 });
 
+const normalizePackageView = (raw) => {
+  if (!raw) {
+    return null;
+  }
+  return {
+    id: (raw.id || '').toString().trim(),
+    package_id: (raw.package_id || '').toString().trim(),
+    package_name: (raw.package_name || '').toString().trim(),
+    group_id: (raw.group_id || '').toString().trim(),
+    group_name: (raw.group_name || '').toString().trim(),
+    source: (raw.source || '').toString().trim(),
+    status: Number(raw.status || 0),
+    package_type: (raw.package_type || '').toString().trim(),
+    quota_metric: (raw.quota_metric || '').toString().trim(),
+    period_type: (raw.period_type || '').toString().trim(),
+    period_limit: Number(raw.period_limit || 0),
+    max_concurrency_per_user: Number(raw.max_concurrency_per_user || 0),
+    max_concurrency_per_package: Number(raw.max_concurrency_per_package || 0),
+    allow_balance_fallback: raw.allow_balance_fallback === true,
+    daily_quota_limit: Number(raw.daily_quota_limit || 0),
+    package_emergency_quota_limit: Number(
+      raw.package_emergency_quota_limit || 0,
+    ),
+    usage: raw.usage || null,
+    quota_reset_timezone: (raw.quota_reset_timezone || '').toString().trim(),
+    started_at: Number(raw.started_at || 0),
+    expires_at: Number(raw.expires_at || 0),
+  };
+};
+
 const normalizeActivePackage = (raw) => {
-  const subscription = raw?.subscription
-    ? {
-        id: (raw.subscription.id || '').toString().trim(),
-        package_id: (raw.subscription.package_id || '').toString().trim(),
-        package_name: (raw.subscription.package_name || '').toString().trim(),
-        group_id: (raw.subscription.group_id || '').toString().trim(),
-        group_name: (raw.subscription.group_name || '').toString().trim(),
-        source: (raw.subscription.source || '').toString().trim(),
-        status: Number(raw.subscription.status || 0),
-        daily_quota_limit: Number(raw.subscription.daily_quota_limit || 0),
-        package_emergency_quota_limit: Number(
-          raw.subscription.package_emergency_quota_limit || 0,
-        ),
-        quota_reset_timezone: (
-          raw.subscription.quota_reset_timezone || ''
-        ).toString().trim(),
-        started_at: Number(raw.subscription.started_at || 0),
-        expires_at: Number(raw.subscription.expires_at || 0),
-      }
-    : null;
+  const currentPackage = normalizePackageView(
+    raw?.current_package || raw?.subscription,
+  );
+  const nextPackage = normalizePackageView(raw?.next_package);
   return {
     has_active_subscription:
-      raw?.has_active_subscription === true && subscription !== null,
-    subscription,
+      raw?.has_active_subscription === true && currentPackage !== null,
+    current_package: currentPackage,
+    next_package: nextPackage,
+    subscription: currentPackage,
   };
 };
 
@@ -70,6 +96,14 @@ const createEmptyQuotaSummary = () => ({
     enabled: false,
   },
 });
+
+const resolvePackageTypeKey = (item) =>
+  normalizeServicePackageType(item?.package_type, item?.quota_metric);
+
+const resolvePackageSalePrice = (item) => {
+  const normalized = Number(item?.sale_price ?? 0);
+  return Number.isFinite(normalized) ? normalized : 0;
+};
 
 const normalizeDailySnapshot = (raw) => ({
   biz_date: (raw?.biz_date || '').toString().trim(),
@@ -190,11 +224,12 @@ const CurrentPackagePage = () => {
   const [dailySnapshot, setDailySnapshot] = useState(createEmptyDailySnapshot());
   const [quotaSummary, setQuotaSummary] = useState(createEmptyQuotaSummary());
   const [renewing, setRenewing] = useState(false);
-  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
-  const [loadingUpgradeTargets, setLoadingUpgradeTargets] = useState(false);
-  const [upgradeTargets, setUpgradeTargets] = useState([]);
-  const [selectedUpgradePackageId, setSelectedUpgradePackageId] = useState('');
-  const [submittingUpgrade, setSubmittingUpgrade] = useState(false);
+  const [changeModalOpen, setChangeModalOpen] = useState(false);
+  const [loadingChangeTargets, setLoadingChangeTargets] = useState(false);
+  const [changeTargets, setChangeTargets] = useState([]);
+  const [selectedChangePackageId, setSelectedChangePackageId] = useState('');
+  const [submittingChange, setSubmittingChange] = useState(false);
+  const [changeOperationType, setChangeOperationType] = useState('');
 
   const renderIntegerAmount = useCallback(
     (chargeAmount) =>
@@ -247,6 +282,11 @@ const CurrentPackagePage = () => {
       const normalizedPackage = normalizeActivePackage(data);
       setActivePackage(normalizedPackage);
       if (normalizedPackage.has_active_subscription) {
+        if (isRequestQuotaPackage(normalizedPackage.subscription)) {
+          setDailySnapshot(createEmptyDailySnapshot());
+          setQuotaSummary(createEmptyQuotaSummary());
+          return;
+        }
         await Promise.all([
           loadDailySnapshot(normalizedPackage.subscription?.group_id),
           loadQuotaSummary(),
@@ -267,14 +307,16 @@ const CurrentPackagePage = () => {
   }, [loadPackageStatus]);
 
   const activeSubscription = activePackage.has_active_subscription
-    ? activePackage.subscription
+    ? activePackage.current_package
     : null;
+  const nextSubscription = activePackage.next_package;
+  const activeRequestQuotaPackage = isRequestQuotaPackage(activeSubscription);
 
   const infoItems = useMemo(() => {
     if (!activeSubscription) {
       return [];
     }
-    return [
+    const baseItems = [
       {
         key: 'package_name',
         label: t('user.detail.package_name'),
@@ -286,17 +328,43 @@ const CurrentPackagePage = () => {
         value: renderPackageStatus(activeSubscription.status, t),
       },
       {
-        key: 'daily_limit',
-        label: t('user.detail.package_daily_limit'),
-        value: renderIntegerAmount(activeSubscription.daily_quota_limit || 0),
+        key: 'package_type',
+        label: t('package_manage.table.package_type'),
+        value: getServicePackageTypeLabel(activeSubscription, t),
       },
-      {
-        key: 'emergency_limit',
-        label: t('user.detail.package_emergency_limit'),
-        value: renderIntegerAmount(
-          activeSubscription.package_emergency_quota_limit || 0,
-        ),
-      },
+    ];
+    const entitlementItems = activeRequestQuotaPackage
+      ? [
+        {
+          key: 'period_limit',
+          label: t('package_manage.table.period_entitlement'),
+          value: `${formatRequestCount(activeSubscription.period_limit || 0)} ${t(
+            'package_manage.request_unit',
+          )} / ${getServicePackagePeriodLabel(activeSubscription.period_type, t)}`,
+        },
+        {
+          key: 'concurrency',
+          label: t('package_manage.table.extra_entitlement'),
+          value: formatRequestQuotaConcurrency(activeSubscription, t),
+        },
+      ]
+      : [
+        {
+          key: 'daily_limit',
+          label: t('user.detail.package_daily_limit'),
+          value: renderIntegerAmount(activeSubscription.daily_quota_limit || 0),
+        },
+        {
+          key: 'emergency_limit',
+          label: t('user.detail.package_emergency_limit'),
+          value: renderIntegerAmount(
+            activeSubscription.package_emergency_quota_limit || 0,
+          ),
+        },
+      ];
+    return [
+      ...baseItems,
+      ...entitlementItems,
       {
         key: 'timezone',
         label: t('user.detail.package_timezone'),
@@ -317,10 +385,77 @@ const CurrentPackagePage = () => {
           : '-',
       },
     ];
-  }, [activeSubscription, renderIntegerAmount, t]);
+  }, [activeRequestQuotaPackage, activeSubscription, renderIntegerAmount, t]);
+
+  const nextInfoItems = useMemo(() => {
+    if (!nextSubscription) {
+      return [];
+    }
+    const entitlementItems = isRequestQuotaPackage(nextSubscription)
+      ? [
+        {
+          key: 'period_limit',
+          label: t('package_manage.table.period_entitlement'),
+          value: `${formatRequestCount(nextSubscription.period_limit || 0)} ${t(
+            'package_manage.request_unit',
+          )} / ${getServicePackagePeriodLabel(nextSubscription.period_type, t)}`,
+        },
+        {
+          key: 'concurrency',
+          label: t('package_manage.table.extra_entitlement'),
+          value: formatRequestQuotaConcurrency(nextSubscription, t),
+        },
+      ]
+      : [
+        {
+          key: 'daily_limit',
+          label: t('user.detail.package_daily_limit'),
+          value: renderIntegerAmount(nextSubscription.daily_quota_limit || 0),
+        },
+        {
+          key: 'emergency_limit',
+          label: t('user.detail.package_emergency_limit'),
+          value: renderIntegerAmount(
+            nextSubscription.package_emergency_quota_limit || 0,
+          ),
+        },
+      ];
+    return [
+      {
+        key: 'package_name',
+        label: t('user.detail.package_name'),
+        value: nextSubscription.package_name || '-',
+      },
+      {
+        key: 'status',
+        label: t('user.detail.package_status'),
+        value: renderPackageStatus(nextSubscription.status, t),
+      },
+      {
+        key: 'package_type',
+        label: t('package_manage.table.package_type'),
+        value: getServicePackageTypeLabel(nextSubscription, t),
+      },
+      ...entitlementItems,
+      {
+        key: 'started_at',
+        label: t('topup.package_status.next_effective_at'),
+        value: nextSubscription.started_at
+          ? timestamp2string(nextSubscription.started_at)
+          : '-',
+      },
+      {
+        key: 'expires_at',
+        label: t('user.detail.package_expires_at'),
+        value: nextSubscription.expires_at
+          ? timestamp2string(nextSubscription.expires_at)
+          : '-',
+      },
+    ];
+  }, [nextSubscription, renderIntegerAmount, t]);
 
   const dailyItems = useMemo(() => {
-    if (!activeSubscription) {
+    if (!activeSubscription || activeRequestQuotaPackage) {
       return [];
     }
     return [
@@ -344,11 +479,11 @@ const CurrentPackagePage = () => {
           : renderIntegerAmount(dailySnapshot.remaining_quota),
       },
     ];
-  }, [activeSubscription, dailySnapshot, renderIntegerAmount, t]);
+  }, [activeRequestQuotaPackage, activeSubscription, dailySnapshot, renderIntegerAmount, t]);
 
   const emergencySnapshot = quotaSummary.package_emergency;
   const emergencyItems = useMemo(() => {
-    if (!activeSubscription) {
+    if (!activeSubscription || activeRequestQuotaPackage) {
       return [];
     }
     return [
@@ -374,7 +509,35 @@ const CurrentPackagePage = () => {
           : '-',
       },
     ];
-  }, [activeSubscription, emergencySnapshot, renderIntegerAmount, t]);
+  }, [activeRequestQuotaPackage, activeSubscription, emergencySnapshot, renderIntegerAmount, t]);
+
+  const requestUsage = activeSubscription?.usage || {};
+  const requestUsageItems = useMemo(() => {
+    if (!activeSubscription || !activeRequestQuotaPackage) {
+      return [];
+    }
+    return [
+      {
+        key: 'request_limit',
+        label: t('package_manage.form.period_limit'),
+        value: requestUsage.unlimited
+          ? t('common.unlimited')
+          : formatRequestCount(requestUsage.limit_amount || activeSubscription.period_limit || 0),
+      },
+      {
+        key: 'request_consumed',
+        label: t('user.detail.used_amount'),
+        value: formatRequestCount(requestUsage.consumed_amount || 0),
+      },
+      {
+        key: 'request_remaining',
+        label: t('user.detail.remaining_amount'),
+        value: requestUsage.unlimited
+          ? t('common.unlimited')
+          : formatRequestCount(requestUsage.remaining_amount || 0),
+      },
+    ];
+  }, [activeRequestQuotaPackage, activeSubscription, requestUsage, t]);
 
   const goPricing = useCallback(
     (intent = '') => {
@@ -429,7 +592,7 @@ const CurrentPackagePage = () => {
     }
   }, [activeSubscription?.package_id, quickPurchasePackage, t]);
 
-  const buildUpgradeOptionText = useCallback((item) => {
+  const buildPackageOptionText = useCallback((item) => {
     const name = String(item?.name || item?.package_name || item?.id || '-').trim();
     const price = Number(item?.sale_price ?? 0);
     const currency = String(item?.sale_currency || 'USD').toUpperCase();
@@ -439,13 +602,13 @@ const CurrentPackagePage = () => {
     return `${name} (${currency} ${price.toFixed(2)})`;
   }, []);
 
-  const loadUpgradeTargets = useCallback(async () => {
+  const loadPackageChangeTargets = useCallback(async (operationType) => {
     const currentPackageID = (activeSubscription?.package_id || '').toString().trim();
     if (currentPackageID === '') {
       showInfo(t('topup.package_status.no_active_package'));
       return [];
     }
-    setLoadingUpgradeTargets(true);
+    setLoadingChangeTargets(true);
     try {
       const res = await API.get('/api/v1/public/user/packages');
       const { success, message, data } = res?.data || {};
@@ -453,70 +616,125 @@ const CurrentPackagePage = () => {
         throw new Error(message || t('topup.external_topup.request_failed'));
       }
       const rows = Array.isArray(data) ? data : [];
+      const currentType = resolvePackageTypeKey(activeSubscription);
+      const currentPrice = resolvePackageSalePrice(activeSubscription);
+      const normalizedOperationType = String(operationType || '').trim().toLowerCase();
       const candidates = rows.filter((row) => {
         const rowID = String(row?.id || '').trim();
         if (rowID === '' || rowID === currentPackageID) {
           return false;
         }
         const status = Number(row?.status ?? 1);
-        return !Number.isFinite(status) || status === 1;
+        if (Number.isFinite(status) && status !== 1) {
+          return false;
+        }
+        const rowType = resolvePackageTypeKey(row);
+        const rowPrice = resolvePackageSalePrice(row);
+        if (normalizedOperationType === 'upgrade') {
+          return rowType === currentType && rowPrice > currentPrice;
+        }
+        if (normalizedOperationType === 'downgrade') {
+          return rowType === currentType && rowPrice < currentPrice;
+        }
+        if (normalizedOperationType === 'convert') {
+          return rowType !== currentType;
+        }
+        return false;
       });
       return candidates;
     } catch (error) {
       showError(error?.message || t('topup.external_topup.request_failed'));
       return [];
     } finally {
-      setLoadingUpgradeTargets(false);
+      setLoadingChangeTargets(false);
     }
-  }, [activeSubscription?.package_id, t]);
+  }, [activeSubscription, t]);
 
-  const handleUpgrade = useCallback(async () => {
-    const candidates = await loadUpgradeTargets();
+  const openPackageChangeModal = useCallback(async (operationType) => {
+    const candidates = await loadPackageChangeTargets(operationType);
     if (candidates.length === 0) {
-      showInfo(t('topup.package_status.no_upgrade_target'));
+      const messageKey =
+        operationType === 'downgrade'
+          ? 'topup.package_status.no_downgrade_target'
+          : operationType === 'convert'
+            ? 'topup.package_status.no_convert_target'
+            : 'topup.package_status.no_upgrade_target';
+      showInfo(t(messageKey));
       return;
     }
     if (candidates.length === 1) {
-      setSubmittingUpgrade(true);
+      setSubmittingChange(true);
       try {
-        await quickPurchasePackage(candidates[0]?.id, 'upgrade');
+        await quickPurchasePackage(candidates[0]?.id, operationType);
       } finally {
-        setSubmittingUpgrade(false);
+        setSubmittingChange(false);
       }
       return;
     }
     const defaultTargetID = String(candidates[0]?.id || '').trim();
-    setUpgradeTargets(candidates);
-    setSelectedUpgradePackageId(defaultTargetID);
-    setUpgradeModalOpen(true);
-  }, [loadUpgradeTargets, quickPurchasePackage, t]);
+    setChangeTargets(candidates);
+    setSelectedChangePackageId(defaultTargetID);
+    setChangeOperationType(operationType);
+    setChangeModalOpen(true);
+  }, [loadPackageChangeTargets, quickPurchasePackage, t]);
 
-  const handleConfirmUpgrade = useCallback(async () => {
-    const targetPackageID = (selectedUpgradePackageId || '').trim();
+  const handleUpgrade = useCallback(async () => {
+    await openPackageChangeModal('upgrade');
+  }, [openPackageChangeModal]);
+
+  const handleDowngrade = useCallback(async () => {
+    await openPackageChangeModal('downgrade');
+  }, [openPackageChangeModal]);
+
+  const handleConvert = useCallback(async () => {
+    await openPackageChangeModal('convert');
+  }, [openPackageChangeModal]);
+
+  const handleConfirmChange = useCallback(async () => {
+    const targetPackageID = (selectedChangePackageId || '').trim();
     if (targetPackageID === '') {
       showInfo(t('topup.external_topup.package_select_required'));
       return;
     }
-    setSubmittingUpgrade(true);
+    setSubmittingChange(true);
     try {
-      const created = await quickPurchasePackage(targetPackageID, 'upgrade');
+      const created = await quickPurchasePackage(targetPackageID, changeOperationType);
       if (created) {
-        setUpgradeModalOpen(false);
+        setChangeModalOpen(false);
       }
     } finally {
-      setSubmittingUpgrade(false);
+      setSubmittingChange(false);
     }
-  }, [quickPurchasePackage, selectedUpgradePackageId, t]);
+  }, [changeOperationType, quickPurchasePackage, selectedChangePackageId, t]);
 
-  const upgradeOptions = useMemo(
+  const changeOptions = useMemo(
     () =>
-      (upgradeTargets || []).map((item) => ({
+      (changeTargets || []).map((item) => ({
         key: String(item?.id || ''),
         value: String(item?.id || ''),
-        text: buildUpgradeOptionText(item),
+        text: buildPackageOptionText(item),
       })),
-    [buildUpgradeOptionText, upgradeTargets],
+    [buildPackageOptionText, changeTargets],
   );
+
+  const changeTitleKey =
+    changeOperationType === 'downgrade'
+      ? 'topup.package_status.select_downgrade_target'
+      : changeOperationType === 'convert'
+        ? 'topup.package_status.select_convert_target'
+        : 'topup.package_status.select_upgrade_target';
+  const changeHintKey =
+    changeOperationType === 'downgrade'
+      ? 'topup.package_status.select_downgrade_target_hint'
+      : changeOperationType === 'convert'
+        ? 'topup.package_status.select_convert_target_hint'
+        : 'topup.package_status.select_upgrade_target_hint';
+  const changeConfirmKey =
+    changeOperationType === 'downgrade'
+      ? 'topup.package_status.downgrade_next_cycle'
+      : changeOperationType === 'convert'
+        ? 'topup.package_status.convert_next_cycle'
+        : 'topup.package_status.upgrade_now';
 
   return (
     <div className='router-topup-balance-layout'>
@@ -537,7 +755,7 @@ const CurrentPackagePage = () => {
           <AppButton
             className='router-section-button'
             basic
-            disabled={!activeSubscription || loadingUpgradeTargets}
+            disabled={!activeSubscription || loadingChangeTargets}
             loading={renewing}
             onClick={handleRenew}
           >
@@ -547,10 +765,28 @@ const CurrentPackagePage = () => {
             className='router-section-button'
             basic
             disabled={!activeSubscription}
-            loading={loadingUpgradeTargets || submittingUpgrade}
+            loading={loadingChangeTargets || submittingChange}
             onClick={handleUpgrade}
           >
             {t('topup.external_topup.package_operation.upgrade')}
+          </AppButton>
+          <AppButton
+            className='router-section-button'
+            basic
+            disabled={!activeSubscription}
+            loading={loadingChangeTargets || submittingChange}
+            onClick={handleDowngrade}
+          >
+            {t('topup.external_topup.package_operation.downgrade')}
+          </AppButton>
+          <AppButton
+            className='router-section-button'
+            basic
+            disabled={!activeSubscription}
+            loading={loadingChangeTargets || submittingChange}
+            onClick={handleConvert}
+          >
+            {t('topup.external_topup.package_operation.convert')}
           </AppButton>
           </>
         }
@@ -577,7 +813,43 @@ const CurrentPackagePage = () => {
         )}
       </AppSection>
 
-      {activeSubscription ? (
+      {nextSubscription ? (
+        <AppSection
+          title={
+            <div className='router-title-accent-positive'>
+              {t('topup.package_status.next_package_title')}
+            </div>
+          }
+        >
+          <div className='router-current-package-info-grid'>
+            {nextInfoItems.map((item) => (
+              <div key={item.key} className='router-current-package-info-card'>
+                <div className='router-current-package-info-label'>
+                  {item.label}
+                </div>
+                <div className='router-current-package-info-value'>{item.value}</div>
+              </div>
+            ))}
+          </div>
+        </AppSection>
+      ) : null}
+
+      {activeSubscription && activeRequestQuotaPackage ? (
+        <PackageUsageCard
+          title={t('package_manage.table.period_entitlement')}
+          period={`${t('topup.package_status.period')}: ${requestUsage.period_key || '-'}`}
+          timezone={`${t('user.detail.package_timezone')}: ${activeSubscription.quota_reset_timezone || '-'}`}
+          footer={
+            <>
+              {t('topup.package_status.reserved')}:{' '}
+              {formatRequestCount(requestUsage.reserved_amount || 0)}
+            </>
+          }
+          items={requestUsageItems}
+        />
+      ) : null}
+
+      {activeSubscription && !activeRequestQuotaPackage ? (
         <>
           <PackageUsageCard
             title={t('topup.package_status.daily_title')}
@@ -609,20 +881,20 @@ const CurrentPackagePage = () => {
 
       <AppModal
         size='small'
-        open={upgradeModalOpen}
+        open={changeModalOpen}
         onClose={() => {
-          if (submittingUpgrade) {
+          if (submittingChange) {
             return;
           }
-          setUpgradeModalOpen(false);
+          setChangeModalOpen(false);
         }}
-        title={t('topup.package_status.select_upgrade_target')}
+        title={t(changeTitleKey)}
         footer={[
           <AppButton
             key='cancel'
             className='router-section-button'
-            onClick={() => setUpgradeModalOpen(false)}
-            disabled={submittingUpgrade}
+            onClick={() => setChangeModalOpen(false)}
+            disabled={submittingChange}
           >
             {t('common.cancel')}
           </AppButton>,
@@ -630,24 +902,24 @@ const CurrentPackagePage = () => {
             key='confirm'
             color='blue'
             className='router-section-button'
-            loading={submittingUpgrade}
-            disabled={submittingUpgrade || selectedUpgradePackageId === ''}
-            onClick={handleConfirmUpgrade}
+            loading={submittingChange}
+            disabled={submittingChange || selectedChangePackageId === ''}
+            onClick={handleConfirmChange}
           >
-            {t('topup.package_status.upgrade_now')}
+            {t(changeConfirmKey)}
           </AppButton>,
         ]}
       >
         <div className='router-current-package-upgrade-body'>
           <div className='router-text-muted'>
-            {t('topup.package_status.select_upgrade_target_hint')}
+            {t(changeHintKey)}
           </div>
           <AppSelect
             className='router-page-dropdown'
-            options={upgradeOptions}
-            value={selectedUpgradePackageId}
+            options={changeOptions}
+            value={selectedChangePackageId}
             onChange={(_, data) =>
-              setSelectedUpgradePackageId(String(data?.value || ''))
+              setSelectedChangePackageId(String(data?.value || ''))
             }
           />
         </div>

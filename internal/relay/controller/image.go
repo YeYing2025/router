@@ -569,6 +569,17 @@ func getImageCostRatio(imageRequest *relaymodel.ImageRequest) (float64, error) {
 	return imageCostRatio, nil
 }
 
+func resolveImageRequestPackageAmount(imageRequest *relaymodel.ImageRequest) int64 {
+	if imageRequest == nil {
+		return 1
+	}
+	count := int64(imageRequest.N)
+	if count <= 0 {
+		return 1
+	}
+	return count
+}
+
 func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatusCode {
 	ctx := c.Request.Context()
 	meta := meta.GetByContext(c)
@@ -687,7 +698,8 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		}
 	}
 
-	if requestPackagePlan, matched, quotaErr := tryBuildRequestPackageBillingPlan(ctx, meta); quotaErr != nil || (matched && requestPackagePlan.UsesRequestPackage()) {
+	requestPackageAmount := resolveImageRequestPackageAmount(imageRequest)
+	if requestPackagePlan, matched, quotaErr := tryBuildRequestPackageBillingPlanWithAmount(ctx, meta, requestPackageAmount); quotaErr != nil || (matched && requestPackagePlan.UsesRequestPackage()) {
 		if quotaErr != nil {
 			return quotaErr
 		}

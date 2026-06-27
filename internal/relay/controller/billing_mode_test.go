@@ -108,3 +108,59 @@ func TestTryBuildRequestPackageBillingPlanMatchesGroupBeforePricing(t *testing.T
 		t.Fatalf("request package reservation inactive: %+v", plan.RequestPackageReservation)
 	}
 }
+
+func TestTryBuildRequestPackageBillingPlanWithAmountReservesRequestedCount(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=private"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(
+		&adminmodel.User{},
+		&adminmodel.GroupCatalog{},
+		&adminmodel.ServicePackage{},
+		&adminmodel.ServicePackageVisibleUser{},
+		&adminmodel.UserPackageSubscription{},
+		&adminmodel.UserPackageUsageCounter{},
+	); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+	previousDB := adminmodel.DB
+	adminmodel.DB = db
+	t.Cleanup(func() {
+		adminmodel.DB = previousDB
+	})
+	if err := db.Create(&adminmodel.GroupCatalog{Id: "group-1", Name: "request package group", Enabled: true}).Error; err != nil {
+		t.Fatalf("seed group: %v", err)
+	}
+	if err := db.Create(&adminmodel.User{Id: "user-1", Username: "user1", Password: "password123", Status: adminmodel.UserStatusEnabled}).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	servicePackage, err := adminmodel.CreateServicePackage(adminmodel.ServicePackage{
+		Name:        "request monthly",
+		GroupID:     "group-1",
+		PackageType: adminmodel.ServicePackageTypeRequestQuota,
+		QuotaMetric: adminmodel.ServicePackageQuotaMetricRequestCount,
+		PeriodLimit: 25000,
+		Enabled:     true,
+	})
+	if err != nil {
+		t.Fatalf("CreateServicePackage returned error: %v", err)
+	}
+	if _, err := adminmodel.AssignServicePackageToUser(servicePackage.Id, "user-1", 0); err != nil {
+		t.Fatalf("AssignServicePackageToUser returned error: %v", err)
+	}
+
+	plan, matched, relayErr := tryBuildRequestPackageBillingPlanWithAmount(context.Background(), &relaymeta.Meta{
+		UserId: "user-1",
+		Group:  "group-1",
+	}, 4)
+	if relayErr != nil {
+		t.Fatalf("tryBuildRequestPackageBillingPlanWithAmount returned error: %+v", relayErr)
+	}
+	if !matched {
+		t.Fatalf("matched=false, want true")
+	}
+	if plan.RequestPackageReservation.ReservedAmount != 4 {
+		t.Fatalf("reserved_amount=%d, want 4", plan.RequestPackageReservation.ReservedAmount)
+	}
+}

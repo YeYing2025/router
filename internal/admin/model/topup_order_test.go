@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/yeying-community/router/common/config"
+	"github.com/yeying-community/router/common/helper"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -189,6 +190,18 @@ func TestResolveTopupOrderOperationType(t *testing.T) {
 			wantResult:   TopupOrderOperationUpgrade,
 		},
 		{
+			name:         "explicit downgrade",
+			businessType: TopupOrderBusinessPackage,
+			value:        TopupOrderOperationDowngrade,
+			wantResult:   TopupOrderOperationDowngrade,
+		},
+		{
+			name:         "explicit convert",
+			businessType: TopupOrderBusinessPackage,
+			value:        TopupOrderOperationConvert,
+			wantResult:   TopupOrderOperationConvert,
+		},
+		{
 			name:         "fallback to new for package",
 			businessType: TopupOrderBusinessPackage,
 			value:        "",
@@ -307,5 +320,203 @@ func TestApplyTopupOrderCallbackDoesNotDowngradeFulfilledOrder(t *testing.T) {
 	}
 	if got.StatusMessage != "" {
 		t.Fatalf("status_message = %q, want unchanged", got.StatusMessage)
+	}
+}
+
+func TestPreviewPackagePurchaseUsesCurrentActiveSubscriptionAcrossGroups(t *testing.T) {
+	db := newServicePackageScopeTestDB(t)
+	now := helper.GetTimestamp()
+	if err := db.Create(&GroupCatalog{
+		Id:      "group-2",
+		Name:    "second",
+		Enabled: true,
+	}).Error; err != nil {
+		t.Fatalf("seed second group: %v", err)
+	}
+	currentPackage, err := createServicePackageWithDB(db, ServicePackage{
+		Name:         "glm monthly",
+		GroupID:      "group-1",
+		PackageType:  ServicePackageTypeRequestQuota,
+		QuotaMetric:  ServicePackageQuotaMetricRequestCount,
+		PeriodLimit:  100,
+		SalePrice:    100,
+		SaleCurrency: "CNY",
+		DurationDays: 30,
+		Enabled:      true,
+	})
+	if err != nil {
+		t.Fatalf("create current package: %v", err)
+	}
+	targetPackage, err := createServicePackageWithDB(db, ServicePackage{
+		Name:         "qwen monthly plus",
+		GroupID:      "group-2",
+		PackageType:  ServicePackageTypeRequestQuota,
+		QuotaMetric:  ServicePackageQuotaMetricRequestCount,
+		PeriodLimit:  200,
+		SalePrice:    150,
+		SaleCurrency: "CNY",
+		DurationDays: 30,
+		Enabled:      true,
+	})
+	if err != nil {
+		t.Fatalf("create target package: %v", err)
+	}
+	subscription, err := AssignServicePackageToUserWithDB(db, currentPackage.Id, "user-1", now)
+	if err != nil {
+		t.Fatalf("assign current package: %v", err)
+	}
+
+	preview, err := PreviewPackagePurchaseWithDB(db, "user-1", targetPackage.Id, "", now+60)
+	if err != nil {
+		t.Fatalf("preview package purchase: %v", err)
+	}
+	if preview.OperationType != TopupOrderOperationUpgrade {
+		t.Fatalf("operation_type=%q, want %q", preview.OperationType, TopupOrderOperationUpgrade)
+	}
+	if preview.CurrentPackageID != currentPackage.Id || preview.CurrentPackageName != currentPackage.Name {
+		t.Fatalf("current package=%q/%q, want %q/%q", preview.CurrentPackageID, preview.CurrentPackageName, currentPackage.Id, currentPackage.Name)
+	}
+	if preview.CurrentExpiresAt != subscription.ExpiresAt {
+		t.Fatalf("current_expires_at=%d, want %d", preview.CurrentExpiresAt, subscription.ExpiresAt)
+	}
+}
+
+func TestPreviewPackagePurchaseRenewRequiresCurrentActivePackage(t *testing.T) {
+	db := newServicePackageScopeTestDB(t)
+	now := helper.GetTimestamp()
+	if err := db.Create(&GroupCatalog{
+		Id:      "group-2",
+		Name:    "second",
+		Enabled: true,
+	}).Error; err != nil {
+		t.Fatalf("seed second group: %v", err)
+	}
+	currentPackage, err := createServicePackageWithDB(db, ServicePackage{
+		Name:         "glm monthly",
+		GroupID:      "group-1",
+		PackageType:  ServicePackageTypeRequestQuota,
+		QuotaMetric:  ServicePackageQuotaMetricRequestCount,
+		PeriodLimit:  100,
+		SalePrice:    100,
+		SaleCurrency: "CNY",
+		DurationDays: 30,
+		Enabled:      true,
+	})
+	if err != nil {
+		t.Fatalf("create current package: %v", err)
+	}
+	otherPackage, err := createServicePackageWithDB(db, ServicePackage{
+		Name:         "qwen monthly",
+		GroupID:      "group-2",
+		PackageType:  ServicePackageTypeRequestQuota,
+		QuotaMetric:  ServicePackageQuotaMetricRequestCount,
+		PeriodLimit:  200,
+		SalePrice:    80,
+		SaleCurrency: "CNY",
+		DurationDays: 30,
+		Enabled:      true,
+	})
+	if err != nil {
+		t.Fatalf("create other package: %v", err)
+	}
+	if _, err := AssignServicePackageToUserWithDB(db, currentPackage.Id, "user-1", now); err != nil {
+		t.Fatalf("assign current package: %v", err)
+	}
+
+	if _, err := PreviewPackagePurchaseWithDB(db, "user-1", otherPackage.Id, TopupOrderOperationRenew, now+60); err == nil {
+		t.Fatal("expected renew preview to fail for non-current package")
+	}
+}
+
+func TestPreviewPackagePurchaseDowngradeSchedulesNextPackage(t *testing.T) {
+	db := newServicePackageScopeTestDB(t)
+	now := helper.GetTimestamp()
+	currentPackage, err := createServicePackageWithDB(db, ServicePackage{
+		Name:         "pro monthly",
+		GroupID:      "group-1",
+		PackageType:  ServicePackageTypeRequestQuota,
+		QuotaMetric:  ServicePackageQuotaMetricRequestCount,
+		PeriodLimit:  1000,
+		SalePrice:    200,
+		SaleCurrency: "CNY",
+		DurationDays: 30,
+		Enabled:      true,
+	})
+	if err != nil {
+		t.Fatalf("create current package: %v", err)
+	}
+	targetPackage, err := createServicePackageWithDB(db, ServicePackage{
+		Name:         "basic monthly",
+		GroupID:      "group-1",
+		PackageType:  ServicePackageTypeRequestQuota,
+		QuotaMetric:  ServicePackageQuotaMetricRequestCount,
+		PeriodLimit:  100,
+		SalePrice:    80,
+		SaleCurrency: "CNY",
+		DurationDays: 30,
+		Enabled:      true,
+	})
+	if err != nil {
+		t.Fatalf("create target package: %v", err)
+	}
+	subscription, err := AssignServicePackageToUserWithDB(db, currentPackage.Id, "user-1", now)
+	if err != nil {
+		t.Fatalf("assign current package: %v", err)
+	}
+	preview, err := PreviewPackagePurchaseWithDB(db, "user-1", targetPackage.Id, TopupOrderOperationDowngrade, now+60)
+	if err != nil {
+		t.Fatalf("preview downgrade: %v", err)
+	}
+	if preview.OperationType != TopupOrderOperationDowngrade {
+		t.Fatalf("operation_type=%q, want %q", preview.OperationType, TopupOrderOperationDowngrade)
+	}
+	if preview.StartAt != subscription.ExpiresAt {
+		t.Fatalf("start_at=%d, want %d", preview.StartAt, subscription.ExpiresAt)
+	}
+	if preview.PayableAmount != normalizeTopupOrderAmount(targetPackage.SalePrice) {
+		t.Fatalf("payable_amount=%.2f, want %.2f", preview.PayableAmount, normalizeTopupOrderAmount(targetPackage.SalePrice))
+	}
+}
+
+func TestPreviewPackagePurchaseConvertRequiresDifferentType(t *testing.T) {
+	db := newServicePackageScopeTestDB(t)
+	now := helper.GetTimestamp()
+	currentPackage, err := createServicePackageWithDB(db, ServicePackage{
+		Name:            "yyc package",
+		GroupID:         "group-1",
+		PackageType:     ServicePackageTypeYYCQuota,
+		QuotaMetric:     ServicePackageQuotaMetricYYC,
+		DailyQuotaLimit: 1000,
+		SalePrice:       50,
+		SaleCurrency:    "CNY",
+		DurationDays:    30,
+		Enabled:         true,
+	})
+	if err != nil {
+		t.Fatalf("create current package: %v", err)
+	}
+	targetPackage, err := createServicePackageWithDB(db, ServicePackage{
+		Name:         "request package",
+		GroupID:      "group-1",
+		PackageType:  ServicePackageTypeRequestQuota,
+		QuotaMetric:  ServicePackageQuotaMetricRequestCount,
+		PeriodLimit:  100,
+		SalePrice:    80,
+		SaleCurrency: "CNY",
+		DurationDays: 30,
+		Enabled:      true,
+	})
+	if err != nil {
+		t.Fatalf("create target package: %v", err)
+	}
+	if _, err := AssignServicePackageToUserWithDB(db, currentPackage.Id, "user-1", now); err != nil {
+		t.Fatalf("assign current package: %v", err)
+	}
+	preview, err := PreviewPackagePurchaseWithDB(db, "user-1", targetPackage.Id, TopupOrderOperationConvert, now+60)
+	if err != nil {
+		t.Fatalf("preview convert: %v", err)
+	}
+	if preview.OperationType != TopupOrderOperationConvert {
+		t.Fatalf("operation_type=%q, want %q", preview.OperationType, TopupOrderOperationConvert)
 	}
 }

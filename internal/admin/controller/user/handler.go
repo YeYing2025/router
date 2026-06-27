@@ -82,6 +82,8 @@ type activeUserPackageUsageView struct {
 
 type activeUserPackageSubscriptionPayload struct {
 	HasActiveSubscription bool                                 `json:"has_active_subscription"`
+	CurrentPackage        *activeUserPackageSubscriptionView   `json:"current_package,omitempty"`
+	NextPackage           *activeUserPackageSubscriptionView   `json:"next_package,omitempty"`
 	Subscription          *activeUserPackageSubscriptionView   `json:"subscription,omitempty"`
 	Subscriptions         []*activeUserPackageSubscriptionView `json:"subscriptions,omitempty"`
 }
@@ -255,9 +257,20 @@ func loadActiveUserPackageSubscriptionPayload(userID string) (activeUserPackageS
 	if err != nil {
 		return activeUserPackageSubscriptionPayload{}, err
 	}
+	var nextPackageView *activeUserPackageSubscriptionView
+	nextSubscription, nextErr := model.GetNextUserPackageSubscription(strings.TrimSpace(userID))
+	if nextErr == nil {
+		nextPackageView, err = buildActiveUserPackageSubscriptionView(nextSubscription)
+		if err != nil {
+			return activeUserPackageSubscriptionPayload{}, err
+		}
+	} else if !errors.Is(nextErr, gorm.ErrRecordNotFound) {
+		return activeUserPackageSubscriptionPayload{}, nextErr
+	}
 	if len(subscriptions) == 0 {
 		return activeUserPackageSubscriptionPayload{
 			HasActiveSubscription: false,
+			NextPackage:           nextPackageView,
 		}, nil
 	}
 	views := make([]*activeUserPackageSubscriptionView, 0, len(subscriptions))
@@ -268,9 +281,12 @@ func loadActiveUserPackageSubscriptionPayload(userID string) (activeUserPackageS
 		}
 		views = append(views, view)
 	}
+	currentPackage := selectPrimaryActiveUserPackageSubscriptionView(views)
 	return activeUserPackageSubscriptionPayload{
 		HasActiveSubscription: true,
-		Subscription:          selectPrimaryActiveUserPackageSubscriptionView(views),
+		CurrentPackage:        currentPackage,
+		NextPackage:           nextPackageView,
+		Subscription:          currentPackage,
 		Subscriptions:         views,
 	}, nil
 }
