@@ -15,6 +15,13 @@ import {
   renderTopupIntegerAmountWithExactPopup,
   useTopUpWorkspace,
 } from './shared.jsx';
+import {
+  formatRequestCount,
+  formatRequestQuotaConcurrency,
+  getServicePackagePeriodLabel,
+  getServicePackageTypeLabel,
+  isRequestQuotaPackage,
+} from '../../helpers/package';
 
 const createEmptyActivePackage = () => ({
   has_active_subscription: false,
@@ -31,10 +38,18 @@ const normalizeActivePackage = (raw) => {
         group_name: (raw.subscription.group_name || '').toString().trim(),
         source: (raw.subscription.source || '').toString().trim(),
         status: Number(raw.subscription.status || 0),
+        package_type: (raw.subscription.package_type || '').toString().trim(),
+        quota_metric: (raw.subscription.quota_metric || '').toString().trim(),
+        period_type: (raw.subscription.period_type || '').toString().trim(),
+        period_limit: Number(raw.subscription.period_limit || 0),
+        max_concurrency_per_user: Number(raw.subscription.max_concurrency_per_user || 0),
+        max_concurrency_per_package: Number(raw.subscription.max_concurrency_per_package || 0),
+        allow_balance_fallback: raw.subscription.allow_balance_fallback === true,
         daily_quota_limit: Number(raw.subscription.daily_quota_limit || 0),
         package_emergency_quota_limit: Number(
           raw.subscription.package_emergency_quota_limit || 0,
         ),
+        usage: raw.subscription.usage || null,
         quota_reset_timezone: (
           raw.subscription.quota_reset_timezone || ''
         ).toString().trim(),
@@ -247,6 +262,11 @@ const CurrentPackagePage = () => {
       const normalizedPackage = normalizeActivePackage(data);
       setActivePackage(normalizedPackage);
       if (normalizedPackage.has_active_subscription) {
+        if (isRequestQuotaPackage(normalizedPackage.subscription)) {
+          setDailySnapshot(createEmptyDailySnapshot());
+          setQuotaSummary(createEmptyQuotaSummary());
+          return;
+        }
         await Promise.all([
           loadDailySnapshot(normalizedPackage.subscription?.group_id),
           loadQuotaSummary(),
@@ -269,12 +289,13 @@ const CurrentPackagePage = () => {
   const activeSubscription = activePackage.has_active_subscription
     ? activePackage.subscription
     : null;
+  const activeRequestQuotaPackage = isRequestQuotaPackage(activeSubscription);
 
   const infoItems = useMemo(() => {
     if (!activeSubscription) {
       return [];
     }
-    return [
+    const baseItems = [
       {
         key: 'package_name',
         label: t('user.detail.package_name'),
@@ -286,17 +307,43 @@ const CurrentPackagePage = () => {
         value: renderPackageStatus(activeSubscription.status, t),
       },
       {
-        key: 'daily_limit',
-        label: t('user.detail.package_daily_limit'),
-        value: renderIntegerAmount(activeSubscription.daily_quota_limit || 0),
+        key: 'package_type',
+        label: t('package_manage.table.package_type'),
+        value: getServicePackageTypeLabel(activeSubscription, t),
       },
-      {
-        key: 'emergency_limit',
-        label: t('user.detail.package_emergency_limit'),
-        value: renderIntegerAmount(
-          activeSubscription.package_emergency_quota_limit || 0,
-        ),
-      },
+    ];
+    const entitlementItems = activeRequestQuotaPackage
+      ? [
+        {
+          key: 'period_limit',
+          label: t('package_manage.table.period_entitlement'),
+          value: `${formatRequestCount(activeSubscription.period_limit || 0)} ${t(
+            'package_manage.request_unit',
+          )} / ${getServicePackagePeriodLabel(activeSubscription.period_type, t)}`,
+        },
+        {
+          key: 'concurrency',
+          label: t('package_manage.table.extra_entitlement'),
+          value: formatRequestQuotaConcurrency(activeSubscription, t),
+        },
+      ]
+      : [
+        {
+          key: 'daily_limit',
+          label: t('user.detail.package_daily_limit'),
+          value: renderIntegerAmount(activeSubscription.daily_quota_limit || 0),
+        },
+        {
+          key: 'emergency_limit',
+          label: t('user.detail.package_emergency_limit'),
+          value: renderIntegerAmount(
+            activeSubscription.package_emergency_quota_limit || 0,
+          ),
+        },
+      ];
+    return [
+      ...baseItems,
+      ...entitlementItems,
       {
         key: 'timezone',
         label: t('user.detail.package_timezone'),
@@ -317,10 +364,10 @@ const CurrentPackagePage = () => {
           : '-',
       },
     ];
-  }, [activeSubscription, renderIntegerAmount, t]);
+  }, [activeRequestQuotaPackage, activeSubscription, renderIntegerAmount, t]);
 
   const dailyItems = useMemo(() => {
-    if (!activeSubscription) {
+    if (!activeSubscription || activeRequestQuotaPackage) {
       return [];
     }
     return [
@@ -344,11 +391,11 @@ const CurrentPackagePage = () => {
           : renderIntegerAmount(dailySnapshot.remaining_quota),
       },
     ];
-  }, [activeSubscription, dailySnapshot, renderIntegerAmount, t]);
+  }, [activeRequestQuotaPackage, activeSubscription, dailySnapshot, renderIntegerAmount, t]);
 
   const emergencySnapshot = quotaSummary.package_emergency;
   const emergencyItems = useMemo(() => {
-    if (!activeSubscription) {
+    if (!activeSubscription || activeRequestQuotaPackage) {
       return [];
     }
     return [
@@ -374,7 +421,35 @@ const CurrentPackagePage = () => {
           : '-',
       },
     ];
-  }, [activeSubscription, emergencySnapshot, renderIntegerAmount, t]);
+  }, [activeRequestQuotaPackage, activeSubscription, emergencySnapshot, renderIntegerAmount, t]);
+
+  const requestUsage = activeSubscription?.usage || {};
+  const requestUsageItems = useMemo(() => {
+    if (!activeSubscription || !activeRequestQuotaPackage) {
+      return [];
+    }
+    return [
+      {
+        key: 'request_limit',
+        label: t('package_manage.form.period_limit'),
+        value: requestUsage.unlimited
+          ? t('common.unlimited')
+          : formatRequestCount(requestUsage.limit_amount || activeSubscription.period_limit || 0),
+      },
+      {
+        key: 'request_consumed',
+        label: t('user.detail.used_amount'),
+        value: formatRequestCount(requestUsage.consumed_amount || 0),
+      },
+      {
+        key: 'request_remaining',
+        label: t('user.detail.remaining_amount'),
+        value: requestUsage.unlimited
+          ? t('common.unlimited')
+          : formatRequestCount(requestUsage.remaining_amount || 0),
+      },
+    ];
+  }, [activeRequestQuotaPackage, activeSubscription, requestUsage, t]);
 
   const goPricing = useCallback(
     (intent = '') => {
@@ -577,7 +652,22 @@ const CurrentPackagePage = () => {
         )}
       </AppSection>
 
-      {activeSubscription ? (
+      {activeSubscription && activeRequestQuotaPackage ? (
+        <PackageUsageCard
+          title={t('package_manage.table.period_entitlement')}
+          period={`${t('topup.package_status.period')}: ${requestUsage.period_key || '-'}`}
+          timezone={`${t('user.detail.package_timezone')}: ${activeSubscription.quota_reset_timezone || '-'}`}
+          footer={
+            <>
+              {t('topup.package_status.reserved')}:{' '}
+              {formatRequestCount(requestUsage.reserved_amount || 0)}
+            </>
+          }
+          items={requestUsageItems}
+        />
+      ) : null}
+
+      {activeSubscription && !activeRequestQuotaPackage ? (
         <>
           <PackageUsageCard
             title={t('topup.package_status.daily_title')}

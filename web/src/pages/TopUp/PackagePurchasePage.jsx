@@ -3,6 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { API, showError, showInfo, timestamp2string } from '../../helpers';
 import { buildTopUpReturnURL, useTopUpWorkspace } from './shared.jsx';
 import { AppButton, AppModal, AppSection } from '../../router-ui';
+import {
+  formatRequestQuotaConcurrency,
+  formatRequestQuotaEntitlement,
+  getServicePackageTypeLabel,
+  isRequestQuotaPackage,
+} from '../../helpers/package';
 
 const formatMoney = (amount, currency) =>
   `${Number(amount || 0).toFixed(2)} ${String(currency || 'USD').toUpperCase()}`;
@@ -141,6 +147,7 @@ const PackagePurchasePage = () => {
             ) : (
               <div className='router-package-purchase-list'>
                 {packages.map((item) => {
+                  const requestQuotaPackage = isRequestQuotaPackage(item);
                   return (
                     <div key={item?.id || '-'} className='router-package-purchase-card'>
                         <div className='router-package-purchase-card-header'>
@@ -161,6 +168,14 @@ const PackagePurchasePage = () => {
                         <div className='router-package-purchase-meta-grid'>
                           <div className='router-package-purchase-meta-card'>
                             <div className='router-package-purchase-meta-label'>
+                              {t('package_manage.table.package_type')}
+                            </div>
+                            <div className='router-package-purchase-meta-value'>
+                              {getServicePackageTypeLabel(item, t)}
+                            </div>
+                          </div>
+                          <div className='router-package-purchase-meta-card'>
+                            <div className='router-package-purchase-meta-label'>
                               {t('package_manage.table.duration_days')}
                             </div>
                             <div className='router-package-purchase-meta-value'>
@@ -169,20 +184,28 @@ const PackagePurchasePage = () => {
                           </div>
                           <div className='router-package-purchase-meta-card'>
                             <div className='router-package-purchase-meta-label'>
-                              {t('user.detail.package_daily_limit')}
+                              {requestQuotaPackage
+                                ? t('package_manage.table.period_entitlement')
+                                : t('user.detail.package_daily_limit')}
                             </div>
                             <div className='router-package-purchase-meta-value'>
-                              {renderDisplayAmount(item?.daily_quota_limit || 0)}
+                              {requestQuotaPackage
+                                ? formatRequestQuotaEntitlement(item, t)
+                                : renderDisplayAmount(item?.daily_quota_limit || 0)}
                             </div>
                           </div>
                           <div className='router-package-purchase-meta-card'>
                             <div className='router-package-purchase-meta-label'>
-                              {t('user.detail.package_emergency_limit')}
+                              {requestQuotaPackage
+                                ? t('package_manage.table.extra_entitlement')
+                                : t('user.detail.package_emergency_limit')}
                             </div>
                             <div className='router-package-purchase-meta-value'>
-                              {renderDisplayAmount(
-                                item?.package_emergency_quota_limit || 0,
-                              )}
+                              {requestQuotaPackage
+                                ? formatRequestQuotaConcurrency(item, t)
+                                : renderDisplayAmount(
+                                  item?.package_emergency_quota_limit || 0,
+                                )}
                             </div>
                           </div>
                         </div>

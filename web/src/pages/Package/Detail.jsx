@@ -13,6 +13,21 @@ import {
   chargeAmountToBillingInputValue,
 } from '../../helpers/billing';
 import { formatDecimalNumber } from '../../helpers/render';
+import {
+  SERVICE_PACKAGE_PERIOD_DAILY,
+  SERVICE_PACKAGE_QUOTA_METRIC_REQUEST_COUNT,
+  SERVICE_PACKAGE_QUOTA_METRIC_YYC,
+  SERVICE_PACKAGE_TYPE_REQUEST_QUOTA,
+  SERVICE_PACKAGE_TYPE_YYC_QUOTA,
+  formatRequestQuotaConcurrency,
+  formatRequestQuotaEntitlement,
+  getServicePackagePeriodOptions,
+  getServicePackagePeriodLabel,
+  getServicePackageTypeLabel,
+  isRequestQuotaPackage,
+  normalizeServicePackagePeriodType,
+  normalizeServicePackageType,
+} from '../../helpers/package';
 import UnitDropdown from '../../components/UnitDropdown';
 import {
   AppButton,
@@ -38,6 +53,13 @@ const createEmptyForm = (defaultBillingUnit = 'USD') => ({
   name: '',
   description: '',
   group_id: '',
+  package_type: SERVICE_PACKAGE_TYPE_YYC_QUOTA,
+  quota_metric: SERVICE_PACKAGE_QUOTA_METRIC_YYC,
+  period_type: SERVICE_PACKAGE_PERIOD_DAILY,
+  period_limit: 0,
+  max_concurrency_per_user: 0,
+  max_concurrency_per_package: 0,
+  allow_balance_fallback: true,
   visibility_scope: 'all',
   visible_user_ids: [],
   sale_price: '0',
@@ -239,6 +261,31 @@ const PackageDetail = () => {
     [displayUnitOptions, form.sale_currency],
   );
 
+  const packageTypeOptions = useMemo(
+    () => [
+      {
+        key: SERVICE_PACKAGE_TYPE_YYC_QUOTA,
+        value: SERVICE_PACKAGE_TYPE_YYC_QUOTA,
+        text: t('package_manage.package_type.yyc_quota'),
+      },
+      {
+        key: SERVICE_PACKAGE_TYPE_REQUEST_QUOTA,
+        value: SERVICE_PACKAGE_TYPE_REQUEST_QUOTA,
+        text: t('package_manage.package_type.request_quota'),
+      },
+    ],
+    [t],
+  );
+
+  const periodTypeOptions = useMemo(() => getServicePackagePeriodOptions(t), [t]);
+
+  const requestQuotaForm = useMemo(
+    () =>
+      normalizeServicePackageType(form.package_type, form.quota_metric) ===
+      SERVICE_PACKAGE_TYPE_REQUEST_QUOTA,
+    [form.package_type, form.quota_metric],
+  );
+
   const selectedVisibleUsers = useMemo(
     () => resolveSelectedUserListFromOptions(visibilityUserIDs, userOptions),
     [visibilityUserIDs, userOptions],
@@ -416,6 +463,36 @@ const PackageDetail = () => {
     setEditOpen(false);
   };
 
+  const updateFormPackageType = (value) => {
+    const nextType = normalizeServicePackageType(value);
+    setForm((prev) => {
+      if (nextType === SERVICE_PACKAGE_TYPE_REQUEST_QUOTA) {
+        return {
+          ...prev,
+          package_type: SERVICE_PACKAGE_TYPE_REQUEST_QUOTA,
+          quota_metric: SERVICE_PACKAGE_QUOTA_METRIC_REQUEST_COUNT,
+          period_type: normalizeServicePackagePeriodType(prev.period_type),
+          period_limit: Number(prev.period_limit || 0) > 0 ? prev.period_limit : 25000,
+          daily_amount: '0',
+          emergency_amount: '0',
+          max_concurrency_per_user: Number(prev.max_concurrency_per_user || 0),
+          max_concurrency_per_package: Number(prev.max_concurrency_per_package || 0),
+          allow_balance_fallback: false,
+        };
+      }
+      return {
+        ...prev,
+        package_type: SERVICE_PACKAGE_TYPE_YYC_QUOTA,
+        quota_metric: SERVICE_PACKAGE_QUOTA_METRIC_YYC,
+        period_type: SERVICE_PACKAGE_PERIOD_DAILY,
+        period_limit: 0,
+        max_concurrency_per_user: 0,
+        max_concurrency_per_package: 0,
+        allow_balance_fallback: true,
+      };
+    });
+  };
+
   const openEditModal = () => {
     if (!detail || submitting) return;
     const defaultBillingUnit = resolveDefaultBillingUnit(currencyIndex);
@@ -429,6 +506,13 @@ const PackageDetail = () => {
       name: detail.name || '',
       description: detail.description || '',
       group_id: resolvedGroupID,
+      package_type: normalizeServicePackageType(detail?.package_type, detail?.quota_metric),
+      quota_metric: detail?.quota_metric || SERVICE_PACKAGE_QUOTA_METRIC_YYC,
+      period_type: detail?.period_type || SERVICE_PACKAGE_PERIOD_DAILY,
+      period_limit: Number(detail?.period_limit || 0),
+      max_concurrency_per_user: Number(detail?.max_concurrency_per_user || 0),
+      max_concurrency_per_package: Number(detail?.max_concurrency_per_package || 0),
+      allow_balance_fallback: Boolean(detail?.allow_balance_fallback),
       visibility_scope: detail?.visibility_scope || 'all',
       visible_user_ids: Array.isArray(detail?.visible_user_ids)
         ? detail.visible_user_ids.map((item) => (item || '').toString()).filter(Boolean)
@@ -474,16 +558,22 @@ const PackageDetail = () => {
     const visibleUserIDs = Array.isArray(form.visible_user_ids)
       ? [...new Set(form.visible_user_ids.map((item) => (item || '').toString().trim()).filter(Boolean))]
       : [];
-    const dailyStored = billingInputValueToChargeAmount(
-      form.daily_amount ?? 0,
-      form.daily_amount_unit,
-      currencyIndex,
-    );
-    const emergencyStored = billingInputValueToChargeAmount(
-      form.emergency_amount ?? 0,
-      form.emergency_amount_unit,
-      currencyIndex,
-    );
+    const packageType = normalizeServicePackageType(form.package_type, form.quota_metric);
+    const requestQuota = packageType === SERVICE_PACKAGE_TYPE_REQUEST_QUOTA;
+    const dailyStored = requestQuota
+      ? 0
+      : billingInputValueToChargeAmount(
+        form.daily_amount ?? 0,
+        form.daily_amount_unit,
+        currencyIndex,
+      );
+    const emergencyStored = requestQuota
+      ? 0
+      : billingInputValueToChargeAmount(
+        form.emergency_amount ?? 0,
+        form.emergency_amount_unit,
+        currencyIndex,
+      );
     if (
       !Number.isFinite(Number(form.sale_price || 0)) ||
       Number(form.sale_price || 0) < 0 ||
@@ -500,11 +590,40 @@ const PackageDetail = () => {
       showInfo(t('package_manage.messages.duration_invalid'));
       return null;
     }
+    const periodLimit = Math.trunc(Number(form.period_limit || 0));
+    if (requestQuota && (!Number.isFinite(periodLimit) || periodLimit <= 0)) {
+      showInfo(t('package_manage.messages.period_limit_invalid'));
+      return null;
+    }
+    const maxConcurrencyPerUser = Math.trunc(Number(form.max_concurrency_per_user || 0));
+    const maxConcurrencyPerPackage = Math.trunc(Number(form.max_concurrency_per_package || 0));
+    if (
+      !Number.isFinite(maxConcurrencyPerUser) ||
+      maxConcurrencyPerUser < 0 ||
+      !Number.isFinite(maxConcurrencyPerPackage) ||
+      maxConcurrencyPerPackage < 0
+    ) {
+      showInfo(t('package_manage.messages.concurrency_invalid'));
+      return null;
+    }
     return {
       id: (form.id || '').trim(),
       name,
       description: (form.description || '').trim(),
       group_id: groupID,
+      package_type: packageType,
+      quota_metric: requestQuota
+        ? SERVICE_PACKAGE_QUOTA_METRIC_REQUEST_COUNT
+        : SERVICE_PACKAGE_QUOTA_METRIC_YYC,
+      period_type: requestQuota
+        ? normalizeServicePackagePeriodType(form.period_type)
+        : SERVICE_PACKAGE_PERIOD_DAILY,
+      period_limit: requestQuota ? periodLimit : 0,
+      max_concurrency_per_user: requestQuota ? maxConcurrencyPerUser : 0,
+      max_concurrency_per_package: requestQuota ? maxConcurrencyPerPackage : 0,
+      allow_balance_fallback: requestQuota
+        ? Boolean(form.allow_balance_fallback)
+        : true,
       visibility_scope: visibilityScope,
       visible_user_ids: visibleUserIDs,
       sale_price: Number(form.sale_price || 0),
@@ -564,6 +683,13 @@ const PackageDetail = () => {
         name: detail.name || '',
         description: detail.description || '',
         group_id: detail.group_id || '',
+        package_type: normalizeServicePackageType(detail?.package_type, detail?.quota_metric),
+        quota_metric: detail?.quota_metric || SERVICE_PACKAGE_QUOTA_METRIC_YYC,
+        period_type: detail?.period_type || SERVICE_PACKAGE_PERIOD_DAILY,
+        period_limit: Number(detail?.period_limit || 0),
+        max_concurrency_per_user: Number(detail?.max_concurrency_per_user || 0),
+        max_concurrency_per_package: Number(detail?.max_concurrency_per_package || 0),
+        allow_balance_fallback: Boolean(detail?.allow_balance_fallback),
         visibility_scope: normalizedScope,
         visible_user_ids: normalizedUserIDs,
         sale_price: Number(detail.sale_price || 0),
@@ -676,6 +802,18 @@ const PackageDetail = () => {
       </AppFormRow>
 
       <AppFormRow className='router-modal-form-row'>
+        <AppField label={t('package_manage.form.package_type')} required>
+          <AppSelect
+            className='router-section-dropdown'
+            options={packageTypeOptions}
+            value={normalizeServicePackageType(form.package_type, form.quota_metric)}
+            onChange={(e, { value }) => updateFormPackageType(value)}
+          />
+        </AppField>
+        <AppField />
+      </AppFormRow>
+
+      <AppFormRow className='router-modal-form-row'>
         <AppField label={t('package_manage.form.sale_price')}>
           <AppCompact className='router-section-input-with-unit' block>
             <AppInputNumber
@@ -706,81 +844,164 @@ const PackageDetail = () => {
         <AppField />
       </AppFormRow>
 
-      <AppFormRow className='router-modal-form-row'>
-        <AppField label={t('package_manage.form.daily_quota_limit')}>
-          <AppCompact className='router-section-input-with-unit' block>
-            <AppInputNumber
-              className='router-section-input router-section-input-with-unit-field'
-              value={form.daily_amount}
-              step={resolveBillingInputStep(form.daily_amount_unit, currencyIndex)}
-              min={0}
-              precision={6}
-              fluid
-              onChange={(e, { value }) =>
-                setForm((prev) => ({ ...prev, daily_amount: value ?? '0' }))
-              }
-            />
-            <UnitDropdown
-              variant='inputUnit'
-              bordered={false}
-              options={billingUnitOptions}
-              value={form.daily_amount_unit}
-              onChange={(_, { value }) => {
-                const nextUnit = (value || 'YYC').toString().trim().toUpperCase();
-                setForm((prev) => ({
-                  ...prev,
-                  daily_amount: convertBillingInputValueUnit(
-                    prev.daily_amount,
-                    prev.daily_amount_unit,
-                    nextUnit,
-                    currencyIndex,
-                  ),
-                  daily_amount_unit: nextUnit,
-                }));
-              }}
-              aria-label={t('package_manage.form.daily_quota_limit')}
-            />
-          </AppCompact>
-        </AppField>
-        <AppField label={t('package_manage.form.package_emergency_quota_limit')}>
-          <AppCompact className='router-section-input-with-unit' block>
-            <AppInputNumber
-              className='router-section-input router-section-input-with-unit-field'
-              value={form.emergency_amount}
-              step={resolveBillingInputStep(form.emergency_amount_unit, currencyIndex)}
-              min={0}
-              precision={6}
-              fluid
-              onChange={(e, { value }) =>
-                setForm((prev) => ({
-                  ...prev,
-                  emergency_amount: value ?? '0',
-                }))
-              }
-            />
-            <UnitDropdown
-              variant='inputUnit'
-              bordered={false}
-              options={billingUnitOptions}
-              value={form.emergency_amount_unit}
-              onChange={(_, { value }) => {
-                const nextUnit = (value || 'YYC').toString().trim().toUpperCase();
-                setForm((prev) => ({
-                  ...prev,
-                  emergency_amount: convertBillingInputValueUnit(
-                    prev.emergency_amount,
-                    prev.emergency_amount_unit,
-                    nextUnit,
-                    currencyIndex,
-                  ),
-                  emergency_amount_unit: nextUnit,
-                }));
-              }}
-              aria-label={t('package_manage.form.package_emergency_quota_limit')}
-            />
-          </AppCompact>
-        </AppField>
-      </AppFormRow>
+      {requestQuotaForm ? (
+        <>
+          <AppFormRow className='router-modal-form-row'>
+            <AppField label={t('package_manage.form.period_type')} required>
+              <AppSelect
+                className='router-section-dropdown'
+                options={periodTypeOptions}
+                value={normalizeServicePackagePeriodType(form.period_type)}
+                onChange={(e, { value }) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    period_type: normalizeServicePackagePeriodType(value),
+                  }))
+                }
+              />
+            </AppField>
+            <AppField label={t('package_manage.form.period_limit')} required>
+              <AppInputNumber
+                className='router-section-input'
+                min={1}
+                step={1}
+                precision={0}
+                fluid
+                value={form.period_limit}
+                onChange={(e, { value }) =>
+                  setForm((prev) => ({ ...prev, period_limit: value ?? 0 }))
+                }
+              />
+            </AppField>
+          </AppFormRow>
+
+          <AppFormRow className='router-modal-form-row'>
+            <AppField label={t('package_manage.form.max_concurrency_per_user')}>
+              <AppInputNumber
+                className='router-section-input'
+                min={0}
+                step={1}
+                precision={0}
+                fluid
+                value={form.max_concurrency_per_user}
+                onChange={(e, { value }) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    max_concurrency_per_user: value ?? 0,
+                  }))
+                }
+              />
+            </AppField>
+            <AppField label={t('package_manage.form.max_concurrency_per_package')}>
+              <AppInputNumber
+                className='router-section-input'
+                min={0}
+                step={1}
+                precision={0}
+                fluid
+                value={form.max_concurrency_per_package}
+                onChange={(e, { value }) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    max_concurrency_per_package: value ?? 0,
+                  }))
+                }
+              />
+            </AppField>
+          </AppFormRow>
+
+          <AppFormRow className='router-modal-form-row'>
+            <AppField label={t('package_manage.form.allow_balance_fallback')}>
+              <AppSwitch
+                checked={Boolean(form.allow_balance_fallback)}
+                onChange={(e, { checked }) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    allow_balance_fallback: Boolean(checked),
+                  }))
+                }
+              />
+            </AppField>
+            <AppField />
+          </AppFormRow>
+        </>
+      ) : (
+        <AppFormRow className='router-modal-form-row'>
+          <AppField label={t('package_manage.form.daily_quota_limit')}>
+            <AppCompact className='router-section-input-with-unit' block>
+              <AppInputNumber
+                className='router-section-input router-section-input-with-unit-field'
+                value={form.daily_amount}
+                step={resolveBillingInputStep(form.daily_amount_unit, currencyIndex)}
+                min={0}
+                precision={6}
+                fluid
+                onChange={(e, { value }) =>
+                  setForm((prev) => ({ ...prev, daily_amount: value ?? '0' }))
+                }
+              />
+              <UnitDropdown
+                variant='inputUnit'
+                bordered={false}
+                options={billingUnitOptions}
+                value={form.daily_amount_unit}
+                onChange={(_, { value }) => {
+                  const nextUnit = (value || 'YYC').toString().trim().toUpperCase();
+                  setForm((prev) => ({
+                    ...prev,
+                    daily_amount: convertBillingInputValueUnit(
+                      prev.daily_amount,
+                      prev.daily_amount_unit,
+                      nextUnit,
+                      currencyIndex,
+                    ),
+                    daily_amount_unit: nextUnit,
+                  }));
+                }}
+                aria-label={t('package_manage.form.daily_quota_limit')}
+              />
+            </AppCompact>
+          </AppField>
+          <AppField label={t('package_manage.form.package_emergency_quota_limit')}>
+            <AppCompact className='router-section-input-with-unit' block>
+              <AppInputNumber
+                className='router-section-input router-section-input-with-unit-field'
+                value={form.emergency_amount}
+                step={resolveBillingInputStep(form.emergency_amount_unit, currencyIndex)}
+                min={0}
+                precision={6}
+                fluid
+                onChange={(e, { value }) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    emergency_amount: value ?? '0',
+                  }))
+                }
+              />
+              <UnitDropdown
+                variant='inputUnit'
+                bordered={false}
+                options={billingUnitOptions}
+                value={form.emergency_amount_unit}
+                onChange={(_, { value }) => {
+                  const nextUnit = (value || 'YYC').toString().trim().toUpperCase();
+                  setForm((prev) => ({
+                    ...prev,
+                    emergency_amount: convertBillingInputValueUnit(
+                      prev.emergency_amount,
+                      prev.emergency_amount_unit,
+                      nextUnit,
+                      currencyIndex,
+                    ),
+                    emergency_amount_unit: nextUnit,
+                  }));
+                }}
+                aria-label={t('package_manage.form.package_emergency_quota_limit')}
+              />
+            </AppCompact>
+          </AppField>
+        </AppFormRow>
+      )}
 
       <AppFormRow className='router-modal-form-row'>
         <AppField label={t('package_manage.form.duration_days')}>
@@ -904,6 +1125,13 @@ const PackageDetail = () => {
                           </AppField>
                         </AppFormRow>
                         <AppFormRow>
+                          <AppField label={t('package_manage.form.package_type')} readOnly>
+                            <AppInput
+                              className='router-section-input'
+                              value={detail ? getServicePackageTypeLabel(detail, t) : '-'}
+                              readOnly
+                            />
+                          </AppField>
                           <AppField label={t('package_manage.form.sale_price')} readOnly>
                             <AppCompact className='router-section-input-with-unit' block>
                               <AppInputNumber
@@ -922,54 +1150,103 @@ const PackageDetail = () => {
                               />
                             </AppCompact>
                           </AppField>
-                          <AppField />
                         </AppFormRow>
-                        <AppFormRow>
-                          <AppField label={t('package_manage.table.daily_quota_limit')} readOnly>
-                            <AppCompact className='router-section-input-with-unit' block>
-                              <AppInput
-                                className='router-section-input router-section-input-with-unit-field'
-                                value={renderPackageAmountValue(
-                                  resolvePackageChargeAmount(detail, 'daily'),
-                                  dailyDisplayUnit,
-                                  currencyIndex,
-                                )}
-                                readOnly
-                              />
-                              <UnitDropdown
-                                variant='inputUnit'
-                                options={displayUnitOptions}
-                                value={dailyDisplayUnit}
-                                onChange={(_, { value }) =>
-                                  setDailyDisplayUnit((value || '').toString().trim().toUpperCase())
-                                }
-                                aria-label={t('package_manage.table.daily_quota_limit')}
-                              />
-                            </AppCompact>
-                          </AppField>
-                          <AppField label={t('package_manage.table.package_emergency_quota_limit')} readOnly>
-                            <AppCompact className='router-section-input-with-unit' block>
-                              <AppInput
-                                className='router-section-input router-section-input-with-unit-field'
-                                value={renderPackageAmountValue(
-                                  resolvePackageChargeAmount(detail, 'emergency'),
-                                  emergencyDisplayUnit,
-                                  currencyIndex,
-                                )}
-                                readOnly
-                              />
-                              <UnitDropdown
-                                variant='inputUnit'
-                                options={displayUnitOptions}
-                                value={emergencyDisplayUnit}
-                                onChange={(_, { value }) =>
-                                  setEmergencyDisplayUnit((value || '').toString().trim().toUpperCase())
-                                }
-                                aria-label={t('package_manage.table.package_emergency_quota_limit')}
-                              />
-                            </AppCompact>
-                          </AppField>
-                        </AppFormRow>
+                        {isRequestQuotaPackage(detail) ? (
+                          <>
+                            <AppFormRow>
+                              <AppField label={t('package_manage.form.period_type')} readOnly>
+                                <AppInput
+                                  className='router-section-input'
+                                  value={getServicePackagePeriodLabel(detail?.period_type, t)}
+                                  readOnly
+                                />
+                              </AppField>
+                              <AppField label={t('package_manage.form.period_limit')} readOnly>
+                                <AppInput
+                                  className='router-section-input'
+                                  value={formatRequestQuotaEntitlement(detail, t)}
+                                  readOnly
+                                />
+                              </AppField>
+                            </AppFormRow>
+                            <AppFormRow>
+                              <AppField label={t('package_manage.form.max_concurrency_per_user')} readOnly>
+                                <AppInput
+                                  className='router-section-input'
+                                  value={Number(detail?.max_concurrency_per_user || 0) || t('common.unlimited')}
+                                  readOnly
+                                />
+                              </AppField>
+                              <AppField label={t('package_manage.form.max_concurrency_per_package')} readOnly>
+                                <AppInput
+                                  className='router-section-input'
+                                  value={Number(detail?.max_concurrency_per_package || 0) || t('common.unlimited')}
+                                  readOnly
+                                />
+                              </AppField>
+                            </AppFormRow>
+                            <AppFormRow>
+                              <AppField label={t('package_manage.form.allow_balance_fallback')} readOnly>
+                                <AppInput
+                                  className='router-section-input'
+                                  value={
+                                    detail?.allow_balance_fallback
+                                      ? t('common.enabled')
+                                      : t('common.disabled')
+                                  }
+                                  readOnly
+                                />
+                              </AppField>
+                            </AppFormRow>
+                          </>
+                        ) : (
+                          <AppFormRow>
+                            <AppField label={t('package_manage.table.daily_quota_limit')} readOnly>
+                              <AppCompact className='router-section-input-with-unit' block>
+                                <AppInput
+                                  className='router-section-input router-section-input-with-unit-field'
+                                  value={renderPackageAmountValue(
+                                    resolvePackageChargeAmount(detail, 'daily'),
+                                    dailyDisplayUnit,
+                                    currencyIndex,
+                                  )}
+                                  readOnly
+                                />
+                                <UnitDropdown
+                                  variant='inputUnit'
+                                  options={displayUnitOptions}
+                                  value={dailyDisplayUnit}
+                                  onChange={(_, { value }) =>
+                                    setDailyDisplayUnit((value || '').toString().trim().toUpperCase())
+                                  }
+                                  aria-label={t('package_manage.table.daily_quota_limit')}
+                                />
+                              </AppCompact>
+                            </AppField>
+                            <AppField label={t('package_manage.table.package_emergency_quota_limit')} readOnly>
+                              <AppCompact className='router-section-input-with-unit' block>
+                                <AppInput
+                                  className='router-section-input router-section-input-with-unit-field'
+                                  value={renderPackageAmountValue(
+                                    resolvePackageChargeAmount(detail, 'emergency'),
+                                    emergencyDisplayUnit,
+                                    currencyIndex,
+                                  )}
+                                  readOnly
+                                />
+                                <UnitDropdown
+                                  variant='inputUnit'
+                                  options={displayUnitOptions}
+                                  value={emergencyDisplayUnit}
+                                  onChange={(_, { value }) =>
+                                    setEmergencyDisplayUnit((value || '').toString().trim().toUpperCase())
+                                  }
+                                  aria-label={t('package_manage.table.package_emergency_quota_limit')}
+                                />
+                              </AppCompact>
+                            </AppField>
+                          </AppFormRow>
+                        )}
                         <AppFormRow>
                           <AppField label={t('package_manage.table.duration_days')} readOnly>
                             <AppInput className='router-section-input' value={Number(detail?.duration_days || 0) || '-'} readOnly />

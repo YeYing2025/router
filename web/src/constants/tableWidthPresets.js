@@ -53,9 +53,10 @@ export const TOPUP_PLAN_LIST_TABLE_MIN_WIDTH =
 export const PACKAGE_LIST_COLUMN_WIDTHS = {
   name: 120,
   group: 110,
+  type: 96,
   salePrice: 80,
-  dailyQuota: 120,
-  emergencyQuota: 120,
+  dailyQuota: 140,
+  emergencyQuota: 150,
   durationDays: 80,
   status: 100,
   createdAt: 148,
@@ -66,6 +67,7 @@ export const PACKAGE_LIST_COLUMN_WIDTHS = {
 export const PACKAGE_LIST_TABLE_MIN_WIDTH =
   PACKAGE_LIST_COLUMN_WIDTHS.name +
   PACKAGE_LIST_COLUMN_WIDTHS.group +
+  PACKAGE_LIST_COLUMN_WIDTHS.type +
   PACKAGE_LIST_COLUMN_WIDTHS.salePrice +
   PACKAGE_LIST_COLUMN_WIDTHS.dailyQuota +
   PACKAGE_LIST_COLUMN_WIDTHS.emergencyQuota +

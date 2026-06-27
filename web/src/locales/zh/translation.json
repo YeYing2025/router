@@ -1391,9 +1391,12 @@
     "table": {
       "name": "名称",
       "group": "分组",
+      "package_type": "类型",
       "sale_price": "售价",
       "daily_quota_limit": "每日额度",
       "package_emergency_quota_limit": "应急额度",
+      "period_entitlement": "周期权益",
+      "extra_entitlement": "附加权益",
       "duration_days": "使用天数",
       "status": "状态",
       "public_visible": "对外展示",
@@ -1420,6 +1423,12 @@
       "description": "描述",
       "group": "分组",
       "group_placeholder": "请选择分组",
+      "package_type": "套餐类型",
+      "period_type": "周期类型",
+      "period_limit": "周期次数",
+      "max_concurrency_per_user": "单用户并发",
+      "max_concurrency_per_package": "套餐并发",
+      "allow_balance_fallback": "不足时回落余额",
       "visibility_scope": "可见范围",
       "visibility_scope_all": "全部用户可见",
       "visibility_scope_partial_users": "部分用户可见",
@@ -1435,6 +1444,16 @@
       "sort_order": "排序",
       "source": "来源"
     },
+    "package_type": {
+      "yyc_quota": "额度套餐",
+      "request_quota": "次数套餐"
+    },
+    "period_type": {
+      "daily": "每日",
+      "monthly": "每月",
+      "package_total": "套餐总量"
+    },
+    "request_unit": "次",
     "assign": {
       "user_id": "用户",
       "user_id_placeholder": "请选择用户",
@@ -1461,6 +1480,8 @@
       "visible_users_required": "部分用户可见时必须选择用户",
       "visible_users_required_for_toggle": "请先编辑套餐并选择可见用户，再切换为部分用户可见",
       "quota_invalid": "金额配置必须大于或等于 0",
+      "period_limit_invalid": "周期次数必须大于 0",
+      "concurrency_invalid": "并发限制必须大于或等于 0",
       "duration_invalid": "使用天数必须大于 0",
       "user_required": "请选择用户",
       "start_at_invalid": "生效时间格式不正确",

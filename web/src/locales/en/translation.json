@@ -1391,9 +1391,12 @@
     "table": {
       "name": "Name",
       "group": "Group",
+      "package_type": "Type",
       "sale_price": "Sale Price",
       "daily_quota_limit": "Daily Amount",
       "package_emergency_quota_limit": "Emergency Amount",
+      "period_entitlement": "Period Entitlement",
+      "extra_entitlement": "Extra Entitlement",
       "duration_days": "Duration (Days)",
       "status": "Status",
       "public_visible": "Public Visible",
@@ -1420,6 +1423,12 @@
       "description": "Description",
       "group": "Group",
       "group_placeholder": "Select group",
+      "package_type": "Package Type",
+      "period_type": "Period Type",
+      "period_limit": "Period Requests",
+      "max_concurrency_per_user": "Per-user Concurrency",
+      "max_concurrency_per_package": "Package Concurrency",
+      "allow_balance_fallback": "Fallback to Balance",
       "visibility_scope": "Visibility",
       "visibility_scope_all": "Visible to All",
       "visibility_scope_partial_users": "Visible to Selected Users",
@@ -1435,6 +1444,16 @@
       "sort_order": "Sort Order",
       "source": "Source"
     },
+    "package_type": {
+      "yyc_quota": "Quota Package",
+      "request_quota": "Request Package"
+    },
+    "period_type": {
+      "daily": "Daily",
+      "monthly": "Monthly",
+      "package_total": "Package Total"
+    },
+    "request_unit": "requests",
     "assign": {
       "user_id": "User",
       "user_id_placeholder": "Select user",
@@ -1461,6 +1480,8 @@
       "visible_users_required": "Please select visible users for partial visibility",
       "visible_users_required_for_toggle": "Edit the package and select visible users before switching to selected-user visibility",
       "quota_invalid": "Amount values must be greater than or equal to 0",
+      "period_limit_invalid": "Period request limit must be greater than 0",
+      "concurrency_invalid": "Concurrency limits must be greater than or equal to 0",
       "duration_invalid": "Duration must be greater than 0",
       "user_required": "Please select a user",
       "start_at_invalid": "Invalid start time format",
