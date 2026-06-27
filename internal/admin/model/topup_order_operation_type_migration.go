@@ -27,11 +27,13 @@ func ensureTopupOrderOperationTypeWithDB(tx *gorm.DB) error {
 		 SET operation_type = ?
 		 WHERE COALESCE(TRIM(business_type), '') = ?
 		   AND (COALESCE(TRIM(operation_type), '') = ''
-		     OR TRIM(operation_type) NOT IN (?, ?, ?))`,
+		     OR TRIM(operation_type) NOT IN (?, ?, ?, ?, ?))`,
 		TopupOrderOperationNew,
 		TopupOrderBusinessPackage,
 		TopupOrderOperationNew,
 		TopupOrderOperationRenew,
 		TopupOrderOperationUpgrade,
+		TopupOrderOperationDowngrade,
+		TopupOrderOperationConvert,
 	).Error
 }

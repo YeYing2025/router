@@ -362,7 +362,7 @@ func TestReserveRequestPackageIgnoresDifferentGroup(t *testing.T) {
 	}
 }
 
-func TestAssignServicePackageAllowsDifferentGroupsToCoexist(t *testing.T) {
+func TestAssignServicePackageReplacesPreviousActiveAcrossGroups(t *testing.T) {
 	db := newServicePackageScopeTestDB(t)
 	if err := db.Create(&GroupCatalog{
 		Id:      "group-2",
@@ -404,15 +404,20 @@ func TestAssignServicePackageAllowsDifferentGroupsToCoexist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list active subscriptions: %v", err)
 	}
-	if len(rows) != 2 {
-		t.Fatalf("active subscription count=%d, want 2: %+v", len(rows), rows)
+	if len(rows) != 1 {
+		t.Fatalf("active subscription count=%d, want 1: %+v", len(rows), rows)
 	}
-	groups := map[string]bool{}
-	for _, row := range rows {
-		groups[row.GroupID] = true
+	if rows[0].PackageID != secondPackage.Id || rows[0].GroupID != "group-2" {
+		t.Fatalf("active subscription=%+v, want second package in group-2", rows[0])
 	}
-	if !groups["group-1"] || !groups["group-2"] {
-		t.Fatalf("active groups=%v, want group-1 and group-2", groups)
+	replaced := int64(0)
+	if err := db.Model(&UserPackageSubscription{}).
+		Where("package_id = ? AND status = ?", firstPackage.Id, UserPackageSubscriptionStatusReplaced).
+		Count(&replaced).Error; err != nil {
+		t.Fatalf("count replaced first package: %v", err)
+	}
+	if replaced != 1 {
+		t.Fatalf("replaced first package count=%d, want 1", replaced)
 	}
 }
 

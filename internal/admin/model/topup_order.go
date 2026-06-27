@@ -19,22 +19,24 @@ import (
 )
 
 const (
-	TopupOrdersTableName       = "topup_orders"
-	TopupOrderStatusCreated    = "created"
-	TopupOrderStatusPending    = "pending"
-	TopupOrderStatusPaid       = "paid"
-	TopupOrderStatusFulfilled  = "fulfilled"
-	TopupOrderStatusFailed     = "failed"
-	TopupOrderStatusCanceled   = "canceled"
-	TopupOrderSourceTopUp      = "top_up_link"
-	TopupOrderSourceTopUpAPI   = "top_up_api"
-	TopupOrderBusinessBalance  = "balance_topup"
-	TopupOrderBusinessPackage  = "package_purchase"
-	TopupOrderCurrencyCNY      = "CNY"
-	TopupOrderOperationTopup   = "topup"
-	TopupOrderOperationNew     = "purchase"
-	TopupOrderOperationRenew   = "renew"
-	TopupOrderOperationUpgrade = "upgrade"
+	TopupOrdersTableName         = "topup_orders"
+	TopupOrderStatusCreated      = "created"
+	TopupOrderStatusPending      = "pending"
+	TopupOrderStatusPaid         = "paid"
+	TopupOrderStatusFulfilled    = "fulfilled"
+	TopupOrderStatusFailed       = "failed"
+	TopupOrderStatusCanceled     = "canceled"
+	TopupOrderSourceTopUp        = "top_up_link"
+	TopupOrderSourceTopUpAPI     = "top_up_api"
+	TopupOrderBusinessBalance    = "balance_topup"
+	TopupOrderBusinessPackage    = "package_purchase"
+	TopupOrderCurrencyCNY        = "CNY"
+	TopupOrderOperationTopup     = "topup"
+	TopupOrderOperationNew       = "purchase"
+	TopupOrderOperationRenew     = "renew"
+	TopupOrderOperationUpgrade   = "upgrade"
+	TopupOrderOperationDowngrade = "downgrade"
+	TopupOrderOperationConvert   = "convert"
 )
 
 type TopupOrder struct {
@@ -190,6 +192,10 @@ func normalizeTopupOrderOperationType(value string) string {
 		return TopupOrderOperationRenew
 	case TopupOrderOperationUpgrade:
 		return TopupOrderOperationUpgrade
+	case TopupOrderOperationDowngrade:
+		return TopupOrderOperationDowngrade
+	case TopupOrderOperationConvert:
+		return TopupOrderOperationConvert
 	default:
 		return ""
 	}
@@ -344,6 +350,11 @@ func resolvePackagePurchaseOperationType(requestedOperationType string, activeSu
 	return TopupOrderOperationUpgrade
 }
 
+func isSamePackageType(current UserPackageSubscription, target ServicePackage) bool {
+	return strings.TrimSpace(current.PackageType) == strings.TrimSpace(target.PackageType) &&
+		strings.TrimSpace(current.QuotaMetric) == strings.TrimSpace(target.QuotaMetric)
+}
+
 func calcPackageChargeAmount(amount float64, currency string) (int64, error) {
 	if amount <= 0 {
 		return 0, nil
@@ -456,7 +467,7 @@ func PreviewPackagePurchaseWithDB(db *gorm.DB, userID string, packageID string, 
 		return PackagePurchasePreview{}, err
 	}
 	var active *UserPackageSubscription
-	activeSubscription, activeErr := getActiveUserPackageSubscriptionForPackageGroupWithDB(db, normalizedUserID, targetPackage, effectiveNow)
+	activeSubscription, activeErr := getActiveUserPackageSubscriptionWithDB(db, normalizedUserID)
 	if activeErr == nil {
 		active = &activeSubscription
 	} else if !errors.Is(activeErr, gorm.ErrRecordNotFound) {
@@ -484,7 +495,7 @@ func PreviewPackagePurchaseWithDB(db *gorm.DB, userID string, packageID string, 
 		if strings.TrimSpace(active.PackageID) != normalizedPackageID {
 			return PackagePurchasePreview{}, fmt.Errorf("当前生效套餐与续费套餐不一致")
 		}
-		tailEnd, hasUnlimitedTail, err := latestUserPackageSubscriptionTailForPackageGroupWithDB(db, normalizedUserID, targetPackage)
+		tailEnd, hasUnlimitedTail, err := latestUserPackageSubscriptionTailWithDB(db, normalizedUserID)
 		if err != nil {
 			return PackagePurchasePreview{}, err
 		}
@@ -531,6 +542,36 @@ func PreviewPackagePurchaseWithDB(db *gorm.DB, userID string, packageID string, 
 			preview.PayableAmount = normalizeTopupOrderAmount(payableAmount)
 			preview.StartAt = effectiveNow
 			preview.ExpiresAt = active.ExpiresAt
+			break
+		}
+		fallthrough
+	case TopupOrderOperationDowngrade, TopupOrderOperationConvert:
+		if active == nil {
+			operationType = TopupOrderOperationNew
+			preview.OperationType = operationType
+		} else {
+			if strings.TrimSpace(active.PackageID) == normalizedPackageID {
+				return PackagePurchasePreview{}, fmt.Errorf("目标套餐与当前套餐一致，请使用续费")
+			}
+			if operationType == TopupOrderOperationConvert && isSamePackageType(*active, targetPackage) {
+				return PackagePurchasePreview{}, fmt.Errorf("目标套餐与当前套餐类型一致，请使用升级或降级")
+			}
+			if active.ExpiresAt <= 0 {
+				return PackagePurchasePreview{}, fmt.Errorf("当前套餐无到期时间，无法安排下期切换")
+			}
+			durationDays := normalizeServicePackageDurationDays(targetPackage.DurationDays)
+			expiresAt := int64(0)
+			if durationDays > 0 {
+				expiresAt = active.ExpiresAt + int64(durationDays)*86400
+			}
+			preview.StartAt = active.ExpiresAt
+			preview.ExpiresAt = expiresAt
+			preview.PayableAmount = normalizeTopupOrderAmount(targetPackage.SalePrice)
+			payableChargeAmount, err := calcPackageChargeAmount(preview.PayableAmount, preview.PayableCurrency)
+			if err != nil {
+				return PackagePurchasePreview{}, err
+			}
+			preview.PayableChargeAmount = payableChargeAmount
 			break
 		}
 		fallthrough
@@ -796,6 +837,18 @@ func CreateTopupOrderWithDB(db *gorm.DB, userID string, username string, input C
 					order.Title = "升级套餐：" + order.PackageName
 				} else {
 					order.Title = "升级套餐"
+				}
+			case TopupOrderOperationDowngrade:
+				if order.PackageName != "" {
+					order.Title = "降级套餐：" + order.PackageName
+				} else {
+					order.Title = "降级套餐"
+				}
+			case TopupOrderOperationConvert:
+				if order.PackageName != "" {
+					order.Title = "转换套餐：" + order.PackageName
+				} else {
+					order.Title = "转换套餐"
 				}
 			default:
 				if order.PackageName != "" {
@@ -1211,6 +1264,23 @@ func FulfillTopupOrderWithDB(db *gorm.DB, orderID string) (TopupOrder, bool, err
 				}
 			case TopupOrderOperationUpgrade:
 				if _, err := UpgradeServicePackageForUserWithDB(tx, order.PackageID, order.UserID, helper.GetTimestamp()); err != nil {
+					return err
+				}
+			case TopupOrderOperationDowngrade, TopupOrderOperationConvert:
+				activeSubscription, err := getActiveUserPackageSubscriptionWithDB(tx, order.UserID)
+				if err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						if _, err := AssignServicePackageToUserWithDB(tx, order.PackageID, order.UserID, helper.GetTimestamp()); err != nil {
+							return err
+						}
+						break
+					}
+					return err
+				}
+				if activeSubscription.ExpiresAt <= 0 {
+					return fmt.Errorf("当前套餐无到期时间，无法安排下期切换")
+				}
+				if _, err := AssignServicePackageToUserWithDB(tx, order.PackageID, order.UserID, activeSubscription.ExpiresAt); err != nil {
 					return err
 				}
 			default:
