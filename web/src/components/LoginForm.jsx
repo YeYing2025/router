@@ -330,7 +330,6 @@ const LoginForm = () => {
                   disabled={
                     walletLoginDisabled ||
                     walletLoginSubmitting ||
-                    selectedWalletAddress === '' ||
                     (!walletProviderStatus.detecting &&
                       !walletProviderStatus.available)
                   }
