@@ -2,6 +2,13 @@ import {API} from './api';
 import {CHANNEL_PROTOCOL_OPTIONS} from '../constants';
 
 const CHANNEL_PROTOCOLS_STORAGE_KEY = 'channel_protocol_options';
+const CHANNEL_PROTOCOL_DISPLAY_MAP = {
+  ali: {name: 'ali', text: 'QianWen'},
+  zhipu: {name: 'zhipu', text: 'ZhiPu'},
+  tencent: {name: 'tencent', text: 'Hunyuan'},
+  doubao: {name: 'doubao', text: 'VolcEngine'},
+  'volcengine-realtime': {name: 'doubao', text: 'VolcEngine'},
+};
 
 let channelProtocolOptions = undefined;
 let channelProtocolMapByName = undefined;
@@ -28,16 +35,20 @@ const normalizeChannelOption = (item) => {
   if (protocol === '') {
     return null;
   }
-  const text = String(item.text ?? item.label ?? item.name ?? protocol).trim();
+  const displayConfig = CHANNEL_PROTOCOL_DISPLAY_MAP[protocol] || null;
+  const visibleProtocol = displayConfig?.name || protocol;
+  const text = String(
+    displayConfig?.text ?? item.text ?? item.label ?? item.name ?? protocol
+  ).trim();
   return {
-    key: protocol,
-    value: protocol,
+    key: visibleProtocol,
+    value: visibleProtocol,
     text: text || protocol,
     color: typeof item.color === 'string' ? item.color.trim() : '',
     description:
       typeof item.description === 'string' ? item.description.trim() : '',
     tip: typeof item.tip === 'string' ? item.tip.trim() : '',
-    name: protocol,
+    name: visibleProtocol,
     sort_order: Number.isFinite(Number(item.sort_order))
       ? Number(item.sort_order)
       : Number.MAX_SAFE_INTEGER,
@@ -54,7 +65,9 @@ const normalizeChannelOptions = (items) => {
     if (!normalized) {
       return;
     }
-    unique.set(normalized.name, normalized);
+    if (!unique.has(normalized.name)) {
+      unique.set(normalized.name, normalized);
+    }
   });
   return Array.from(unique.values()).sort((a, b) => {
     if (a.sort_order !== b.sort_order) {
