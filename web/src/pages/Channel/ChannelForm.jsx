@@ -132,8 +132,7 @@ const resolveModelTestStreamEnabled = (row) => {
 const normalizeChannelIdentifier = (value) =>
   (value || '').toString().trim().toLowerCase();
 
-const VOLCENGINE_STANDARD_PROTOCOL = 'doubao';
-const VOLCENGINE_REALTIME_PROTOCOL = 'volcengine-realtime';
+const VOLCENGINE_STANDARD_PROTOCOL = 'volcengine';
 
 function isVolcengineDisplayProtocol(protocol) {
   return normalizeChannelProtocol(protocol) === VOLCENGINE_STANDARD_PROTOCOL;
@@ -155,18 +154,10 @@ function hasVolcengineRealtimeChannelModel(channelModels, protocol) {
 
 function resolveDisplayProtocolFromChannelPayload(payload) {
   const protocol = normalizeChannelProtocol(payload?.protocol);
-  if (protocol === VOLCENGINE_REALTIME_PROTOCOL) {
-    return VOLCENGINE_STANDARD_PROTOCOL;
-  }
   if (protocol !== '') {
     return protocol;
   }
   return 'openai';
-}
-
-function resolveVolcengineProtocolModeFromPayload(payload) {
-  const protocol = normalizeChannelProtocol(payload?.protocol);
-  return protocol === VOLCENGINE_REALTIME_PROTOCOL ? 'realtime' : '';
 }
 
 function resolveEffectiveProtocolFromInputs(inputs) {
@@ -174,29 +165,11 @@ function resolveEffectiveProtocolFromInputs(inputs) {
   if (!isVolcengineDisplayProtocol(protocol)) {
     return protocol || 'openai';
   }
-  const hasRealtimeModel = hasVolcengineRealtimeChannelModel(
-    inputs?.channel_models,
-    protocol
-  );
-  if (hasRealtimeModel) {
-    return VOLCENGINE_REALTIME_PROTOCOL;
-  }
-  const hasAnyModel =
-    normalizeChannelModels(inputs?.channel_models, protocol).length > 0;
-  if (
-    !hasAnyModel &&
-    (inputs?.protocol_mode || '').toString().trim().toLowerCase() ===
-      'realtime'
-  ) {
-    return VOLCENGINE_REALTIME_PROTOCOL;
-  }
   return VOLCENGINE_STANDARD_PROTOCOL;
 }
 
 function isEffectiveVolcengineRealtimeProtocol(inputs) {
-  return (
-    resolveEffectiveProtocolFromInputs(inputs) === VOLCENGINE_REALTIME_PROTOCOL
-  );
+  return hasVolcengineRealtimeChannelModel(inputs?.channel_models, inputs?.protocol);
 }
 
 const validateChannelIdentifier = (value, t) => {
@@ -1156,7 +1129,6 @@ const normalizeProviderIdentifier = (value) => {
       return 'hunyuan';
     case 'volc':
     case 'volcengine':
-    case 'volcengine-realtime':
     case 'doubao':
     case 'ark':
     case '火山':
@@ -1873,7 +1845,6 @@ const CHANNEL_ORIGIN_INPUTS = {
   id: '',
   name: '',
   protocol: 'openai',
-  protocol_mode: '',
   key: '',
   key_preview: '',
   base_url: '',
@@ -2929,13 +2900,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
 
   const handleInputChange = (e, { name, value }) => {
     const nextValue = name === 'id' ? normalizeChannelIdentifier(value) : value;
-    setInputs((inputs) => {
-      const nextInputs = { ...inputs, [name]: nextValue };
-      if (name === 'protocol' && normalizeChannelProtocol(nextValue) !== VOLCENGINE_STANDARD_PROTOCOL) {
-        nextInputs.protocol_mode = '';
-      }
-      return nextInputs;
-    });
+    setInputs((inputs) => ({ ...inputs, [name]: nextValue }));
   };
 
   const handleConfigChange = (e, { name, value }) => {
@@ -2995,7 +2960,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       localInputs.id = (localInputs.id || '').toString().trim();
       localInputs.name = normalizeChannelIdentifier(localInputs.name);
       localInputs.protocol = effectiveProtocol;
-      delete localInputs.protocol_mode;
       if (localInputs.key === 'undefined|undefined|undefined') {
         localInputs.key = '';
       }
@@ -3946,7 +3910,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             id: data.id,
             name: data.name || '',
             protocol: normalizedProtocol,
-            protocol_mode: resolveVolcengineProtocolModeFromPayload(data),
             key: '',
             key_preview: data.key_preview || '',
             base_url: data.base_url || '',
@@ -5512,7 +5475,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             title={t('channel.edit.coze_notice')}
           />
         )}
-        {inputs.protocol === 'doubao' && !isVolcengineRealtime && (
+        {inputs.protocol === VOLCENGINE_STANDARD_PROTOCOL &&
+          !isVolcengineRealtime && (
           <AppAlert
             type='info'
             showIcon

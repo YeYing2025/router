@@ -37,6 +37,9 @@ func GetChannelProtocols(c *gin.Context) {
 		if name == "" {
 			continue
 		}
+		if name == "volcengine-realtime" {
+			continue
+		}
 		label := strings.TrimSpace(row.Label)
 		if label == "" {
 			label = name

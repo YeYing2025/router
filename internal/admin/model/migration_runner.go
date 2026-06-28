@@ -9,6 +9,7 @@ import (
 	"github.com/yeying-community/router/common/helper"
 	"github.com/yeying-community/router/common/logger"
 	"github.com/yeying-community/router/common/random"
+	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"gorm.io/gorm"
 )
 
@@ -1540,34 +1541,6 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			},
 		},
 		{
-			Version:     "202606231330_add_volcengine_realtime_protocol",
-			Description: "add volcengine realtime channel protocol catalog item",
-			Up: func(tx *gorm.DB) error {
-				now := helper.GetTimestamp()
-				item := ChannelProtocolCatalog{
-					Name:        "volcengine-realtime",
-					ProtocolID:  49,
-					Label:       "Volcengine Realtime",
-					Color:       "blue",
-					Description: "Volcengine Speech Realtime",
-					Source:      "default",
-					Enabled:     true,
-					SortOrder:   11,
-					UpdatedAt:   now,
-				}
-				return tx.Where("name = ?", item.Name).Assign(map[string]any{
-					"id":          item.ProtocolID,
-					"label":       item.Label,
-					"color":       item.Color,
-					"description": item.Description,
-					"source":      item.Source,
-					"enabled":     item.Enabled,
-					"sort_order":  item.SortOrder,
-					"updated_at":  item.UpdatedAt,
-				}).FirstOrCreate(&item).Error
-			},
-		},
-		{
 			Version:     "202606241850_procurement_cost_table_schema_repair",
 			Description: "ensure procurement cost unit columns exist for previously migrated databases",
 			Up: func(tx *gorm.DB) error {
@@ -1589,6 +1562,13 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			},
 		},
 		{
+			Version:     "202606281030_rename_doubao_protocol_to_volcengine",
+			Description: "rename historical doubao protocol key to volcengine while keeping runtime alias compatibility",
+			Up: func(tx *gorm.DB) error {
+				return renameDoubaoProtocolToVolcengineWithDB(tx)
+			},
+		},
+		{
 			Version:     "202606281130_entitlement_concurrency_counters",
 			Description: "add shared entitlement concurrency counters and topup concurrency fields",
 			Up: func(tx *gorm.DB) error {
@@ -1607,6 +1587,25 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			Description: "refresh qwen, hunyuan, baidu, and zhipu provider display names",
 			Up: func(tx *gorm.DB) error {
 				return upsertProviderMigrationProvidersWithDB(tx, "qwen", "hunyuan", "baidu", "zhipu")
+			},
+		},
+		{
+			Version:     "202606281430_hide_volcengine_realtime_protocol_catalog_item",
+			Description: "hide legacy volcengine realtime protocol catalog item from admin protocol selector",
+			Up: func(tx *gorm.DB) error {
+				return tx.Model(&ChannelProtocolCatalog{}).
+					Where("name = ?", "volcengine-realtime").
+					Updates(map[string]any{
+						"enabled":    false,
+						"updated_at": helper.GetTimestamp(),
+					}).Error
+			},
+		},
+		{
+			Version:     "202606281530_rename_volcengine_realtime_channels_to_volcengine",
+			Description: "rename historical volcengine realtime channel rows to canonical volcengine protocol",
+			Up: func(tx *gorm.DB) error {
+				return renameVolcengineRealtimeChannelsToVolcengineWithDB(tx)
 			},
 		},
 	}
@@ -1989,6 +1988,7 @@ func renameVolcengineOldModelNamesWithDB(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
 	}
+	channelIDs := db.Model(&Channel{}).Select("id").Where("protocol IN ?", []string{"doubao", "volcengine"})
 	for oldModelName, officialModel := range volcengineOldModelNameToOfficialModelMap() {
 		for _, tableName := range []string{
 			ChannelModelsTableName,
@@ -2000,7 +2000,7 @@ func renameVolcengineOldModelNamesWithDB(db *gorm.DB) error {
 			ChannelModelEndpointPoliciesTableName,
 		} {
 			if err := db.Table(tableName).
-				Where("channel_id IN (?)", db.Model(&Channel{}).Select("id").Where("protocol = ?", "doubao")).
+				Where("channel_id IN (?)", channelIDs).
 				Where("model = ?", oldModelName).
 				Updates(map[string]any{"model": officialModel}).Error; err != nil {
 				return err
@@ -2013,7 +2013,7 @@ func renameVolcengineOldModelNamesWithDB(db *gorm.DB) error {
 			ChannelTestsTableName,
 		} {
 			if err := db.Table(tableName).
-				Where("channel_id IN (?)", db.Model(&Channel{}).Select("id").Where("protocol = ?", "doubao")).
+				Where("channel_id IN (?)", channelIDs).
 				Where("upstream_model = ? OR upstream_model = ?", oldModelName, officialModel).
 				Updates(map[string]any{"upstream_model": officialModel}).Error; err != nil {
 				return err
@@ -2044,7 +2044,7 @@ func cleanupChannelEndpointBaselineWithDB(db *gorm.DB, channelProtocol string, p
 	if db == nil {
 		return fmt.Errorf("database handle is nil")
 	}
-	normalizedProtocol := strings.TrimSpace(strings.ToLower(channelProtocol))
+	normalizedProtocol := relaychannel.NormalizeProtocolName(channelProtocol)
 	normalizedProvider := NormalizeGroupModelProviderValue(provider)
 	if normalizedProtocol == "" || normalizedProvider == "" {
 		return nil
@@ -2115,6 +2115,74 @@ func cleanupChannelEndpointBaselineWithDB(db *gorm.DB, channelProtocol string, p
 		}
 	}
 	return nil
+}
+
+func renameDoubaoProtocolToVolcengineWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	now := helper.GetTimestamp()
+	if err := db.Model(&Channel{}).
+		Where("protocol = ?", "doubao").
+		Update("protocol", "volcengine").Error; err != nil {
+		return err
+	}
+
+	legacyCatalog := ChannelProtocolCatalog{}
+	err := db.Where("name = ?", "doubao").First(&legacyCatalog).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	if err == nil {
+		if legacyCatalog.ProtocolID == 0 {
+			legacyCatalog.ProtocolID = relaychannel.VolcEngine
+		}
+		if strings.TrimSpace(legacyCatalog.Label) == "" {
+			legacyCatalog.Label = "VolcEngine"
+		}
+		if strings.TrimSpace(legacyCatalog.Color) == "" {
+			legacyCatalog.Color = "blue"
+		}
+		if strings.TrimSpace(legacyCatalog.Description) == "" {
+			legacyCatalog.Description = "Volcengine Ark"
+		}
+		legacyCatalog.Name = "volcengine"
+		legacyCatalog.UpdatedAt = now
+		if err := db.Where("name = ?", "doubao").Delete(&ChannelProtocolCatalog{}).Error; err != nil {
+			return err
+		}
+	}
+
+	catalogItem := ChannelProtocolCatalog{
+		Name:        "volcengine",
+		ProtocolID:  relaychannel.VolcEngine,
+		Label:       "VolcEngine",
+		Color:       "blue",
+		Description: "Volcengine Ark",
+		Source:      "default",
+		Enabled:     true,
+		SortOrder:   10,
+		UpdatedAt:   now,
+	}
+	return db.Where("name = ?", catalogItem.Name).Assign(map[string]any{
+		"id":          catalogItem.ProtocolID,
+		"label":       catalogItem.Label,
+		"color":       catalogItem.Color,
+		"description": catalogItem.Description,
+		"source":      catalogItem.Source,
+		"enabled":     catalogItem.Enabled,
+		"sort_order":  catalogItem.SortOrder,
+		"updated_at":  catalogItem.UpdatedAt,
+	}).FirstOrCreate(&catalogItem).Error
+}
+
+func renameVolcengineRealtimeChannelsToVolcengineWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	return db.Model(&Channel{}).
+		Where("protocol = ?", "volcengine-realtime").
+		Update("protocol", "volcengine").Error
 }
 
 func channelModelMatchesProviderEndpointBaseline(row ChannelModel, provider string, providerEndpoints map[string][]string) bool {

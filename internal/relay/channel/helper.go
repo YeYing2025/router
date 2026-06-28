@@ -1,6 +1,10 @@
 package channel
 
-import "github.com/yeying-community/router/internal/relay/apitype"
+import (
+	"strings"
+
+	"github.com/yeying-community/router/internal/relay/apitype"
+)
 
 func ToAPIType(channelProtocol int) int {
 	apiType := apitype.OpenAI
@@ -41,11 +45,29 @@ func ToAPIType(channelProtocol int) int {
 		apiType = apitype.Replicate
 	case Proxy:
 		apiType = apitype.Proxy
-	case VolcengineRealtime:
-		apiType = apitype.VolcengineRealtime
 	}
 
 	return apiType
+}
+
+func IsVolcengineRealtimeRequest(channelProtocol int, requestPaths ...string) bool {
+	switch channelProtocol {
+	case VolcEngine:
+		for _, path := range requestPaths {
+			normalized := strings.TrimSpace(strings.ToLower(path))
+			if strings.HasPrefix(normalized, "/v1/realtime") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func ToAPITypeForRequest(channelProtocol int, requestPaths ...string) int {
+	if IsVolcengineRealtimeRequest(channelProtocol, requestPaths...) {
+		return apitype.VolcengineRealtime
+	}
+	return ToAPIType(channelProtocol)
 }
 
 func ToAPITypeByProtocol(protocol string) int {

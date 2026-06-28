@@ -41,7 +41,7 @@ const (
 	Cloudflare
 	DeepL
 	TogetherAI
-	Doubao
+	VolcEngine
 	Novita
 	VertextAI
 	Proxy
@@ -50,11 +50,13 @@ const (
 	Replicate
 	BaiduV2
 	XunfeiV2
-	VolcengineRealtime
+	legacyVolcengineRealtimeReserved
 	OpenAICompatible
 	GeminiOpenAICompatible
 	Dummy
 )
+
+const LegacyVolcengineRealtimeProtocolID = 49
 
 // ChannelProtocolNames maps channel protocol id to its canonical protocol name.
 // Index aligns exactly with the const list above; keep length == Dummy.
@@ -99,7 +101,7 @@ var ChannelProtocolNames = []string{
 	"cloudflare",
 	"deepl",
 	"togetherai",
-	"doubao",
+	"volcengine",
 	"novita",
 	"vertexai",
 	"proxy",
@@ -108,7 +110,7 @@ var ChannelProtocolNames = []string{
 	"replicate",
 	"baidu-v2",
 	"xunfei-v2",
-	"volcengine-realtime",
+	"",
 	"",
 	"gemini-openai-compatible",
 }

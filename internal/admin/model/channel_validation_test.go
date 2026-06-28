@@ -46,25 +46,38 @@ func TestValidateProtocolConfiguration_DeepSeekAcceptsRootAndBetaBaseURL(t *test
 	}
 }
 
-func TestValidateProtocolConfiguration_VolcengineRealtimeRequiresAppID(t *testing.T) {
+func TestValidateProtocolConfiguration_VolcengineRealtimeEndpointRequiresAppID(t *testing.T) {
 	channel := &Channel{
-		Protocol: "volcengine-realtime",
-		Config:   `{"resource_id":"volc.speech.dialog"}`,
+		Protocol: "volcengine",
+		ChannelModels: []ChannelModel{
+			{
+				Model:     "speech-realtime-1",
+				Selected:  true,
+				Type:      ProviderModelTypeAudio,
+				Endpoint:  ChannelModelEndpointRealtime,
+				Endpoints: []string{ChannelModelEndpointRealtime},
+			},
+		},
+		Config: `{"resource_id":"volc.speech.dialog"}`,
 	}
 
 	err := channel.ValidateProtocolConfiguration()
 	if err == nil {
 		t.Fatalf("expected validation error")
 	}
-	if got := err.Error(); got == "" {
-		t.Fatalf("expected non-empty validation error")
-	}
 }
 
-func TestValidateProtocolConfiguration_VolcengineRealtimeAcceptsAppID(t *testing.T) {
+func TestValidateProtocolConfiguration_VolcengineNonRealtimeDoesNotRequireAppID(t *testing.T) {
 	channel := &Channel{
-		Protocol: "volcengine-realtime",
-		Config:   `{"app_id":"app-123","resource_id":"volc.speech.dialog"}`,
+		Protocol: "volcengine",
+		ChannelModels: []ChannelModel{
+			{
+				Model:    "doubao-seed-2-0-pro-260215",
+				Selected: true,
+				Type:     ProviderModelTypeText,
+				Endpoint: ChannelModelEndpointResponses,
+			},
+		},
 	}
 
 	if err := channel.ValidateProtocolConfiguration(); err != nil {

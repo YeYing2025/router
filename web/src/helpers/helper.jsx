@@ -6,8 +6,8 @@ const CHANNEL_PROTOCOL_DISPLAY_MAP = {
   ali: {name: 'ali', text: 'QianWen'},
   zhipu: {name: 'zhipu', text: 'ZhiPu'},
   tencent: {name: 'tencent', text: 'Hunyuan'},
-  doubao: {name: 'doubao', text: 'VolcEngine'},
-  'volcengine-realtime': {name: 'doubao', text: 'VolcEngine'},
+  volcengine: {name: 'volcengine', text: 'VolcEngine'},
+  doubao: {name: 'volcengine', text: 'VolcEngine'},
 };
 
 let channelProtocolOptions = undefined;

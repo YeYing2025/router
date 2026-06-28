@@ -275,7 +275,7 @@ func resolveProviderForDashboardProtocol(channelProtocol int) string {
 		return ""
 	}
 	switch relaychannel.NormalizeProtocolName(relaychannel.ChannelProtocolNames[channelProtocol]) {
-	case "openai", "anthropic", "zhipu", "ali", "gemini", "moonshot", "baichuan", "minimax", "mistral", "groq", "lingyiwanwu", "stepfun", "cohere", "deepseek", "togetherai", "doubao", "novita", "siliconflow", "xai", "baidu-v2", "gemini-openai-compatible":
+	case "openai", "anthropic", "zhipu", "ali", "gemini", "moonshot", "baichuan", "minimax", "mistral", "groq", "lingyiwanwu", "stepfun", "cohere", "deepseek", "togetherai", "volcengine", "novita", "siliconflow", "xai", "baidu-v2", "gemini-openai-compatible":
 		return commonutils.NormalizeProvider(relaychannel.ChannelProtocolNames[channelProtocol])
 	default:
 		return ""

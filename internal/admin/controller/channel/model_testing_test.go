@@ -101,7 +101,7 @@ func TestBuildChannelModelTestResult_PreserveIsStream(t *testing.T) {
 }
 
 func TestResolveChannelImageModelTestSize_UsesLargeSizeForVolcengineSeedream(t *testing.T) {
-	channel := &adminmodel.Channel{Protocol: "doubao"}
+	channel := &adminmodel.Channel{Protocol: "volcengine"}
 	got := resolveChannelImageModelTestSize(channel, "doubao-seedream-5-0-lite-260128")
 	if got != "2048x2048" {
 		t.Fatalf("resolveChannelImageModelTestSize() = %q, want 2048x2048", got)

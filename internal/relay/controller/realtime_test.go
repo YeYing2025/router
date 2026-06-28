@@ -63,7 +63,7 @@ func TestMergeRealtimeUpstreamQueryAddsResolvedModel(t *testing.T) {
 	}
 }
 
-func TestMergeRealtimeUpstreamQuerySkipsVolcengineRealtime(t *testing.T) {
+func TestMergeRealtimeUpstreamQuerySkipsCanonicalVolcengineRealtime(t *testing.T) {
 	requestURL, err := url.Parse("/v1/realtime?model=gpt-realtime-2")
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,11 @@ func TestMergeRealtimeUpstreamQuerySkipsVolcengineRealtime(t *testing.T) {
 	got, err := mergeRealtimeUpstreamQuery(
 		"wss://openspeech.bytedance.com/api/v3/realtime/dialogue",
 		requestURL,
-		&meta.Meta{ChannelProtocol: relaychannel.VolcengineRealtime, ActualModelName: "gpt-realtime-2"},
+		&meta.Meta{
+			ChannelProtocol: relaychannel.VolcEngine,
+			RequestURLPath:  adminmodel.ChannelModelEndpointRealtime,
+			ActualModelName: "gpt-realtime-2",
+		},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -169,11 +173,14 @@ func TestRealtimeUpstreamSubprotocolsForZhipuDropsAllClientProtocols(t *testing.
 	}
 }
 
-func TestRealtimeUpstreamSubprotocolsForVolcengineDropsOpenAIBeta(t *testing.T) {
+func TestRealtimeUpstreamSubprotocolsForCanonicalVolcengineRealtimeDropsOpenAIBeta(t *testing.T) {
 	header := http.Header{
 		"Sec-WebSocket-Protocol": []string{"realtime, openai-insecure-api-key.user-token, openai-beta.realtime-v1"},
 	}
-	got := realtimeUpstreamSubprotocols(header, &meta.Meta{ChannelProtocol: relaychannel.VolcengineRealtime})
+	got := realtimeUpstreamSubprotocols(header, &meta.Meta{
+		ChannelProtocol: relaychannel.VolcEngine,
+		RequestURLPath:  adminmodel.ChannelModelEndpointRealtime,
+	})
 	want := []string{"realtime"}
 	if len(got) != len(want) {
 		t.Fatalf("realtimeUpstreamSubprotocols length = %d, want %d: %#v", len(got), len(want), got)
@@ -185,14 +192,15 @@ func TestRealtimeUpstreamSubprotocolsForVolcengineDropsOpenAIBeta(t *testing.T) 
 	}
 }
 
-func TestCloneRealtimeRequestHeadersUsesVolcengineRealtimeHeaders(t *testing.T) {
+func TestCloneRealtimeRequestHeadersUsesCanonicalVolcengineRealtimeHeaders(t *testing.T) {
 	header := http.Header{
 		"Authorization":          []string{"Bearer sk-test"},
 		"OpenAI-Beta":            []string{"realtime=v1"},
 		"Sec-WebSocket-Protocol": []string{"realtime"},
 	}
 	cloned := cloneRealtimeRequestHeaders(header, &meta.Meta{
-		ChannelProtocol: relaychannel.VolcengineRealtime,
+		ChannelProtocol: relaychannel.VolcEngine,
+		RequestURLPath:  adminmodel.ChannelModelEndpointRealtime,
 		APIKey:          "access-456",
 		Config: adminmodel.ChannelConfig{
 			AppID:      "app-123",

@@ -92,6 +92,10 @@ func GetByContext(c *gin.Context) *Meta {
 	if meta.BaseURL == "" {
 		meta.BaseURL = relaychannel.BaseURLByProtocol(relaychannel.ProtocolByType(meta.ChannelProtocol))
 	}
-	meta.APIType = relaychannel.ToAPIType(meta.ChannelProtocol)
+	meta.APIType = relaychannel.ToAPITypeForRequest(
+		meta.ChannelProtocol,
+		meta.UpstreamRequestPath,
+		meta.RequestURLPath,
+	)
 	return &meta
 }

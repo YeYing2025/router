@@ -44,9 +44,15 @@ func TestZhipuModelSyncUsesProviderOfficialModels(t *testing.T) {
 	}
 }
 
-func TestDoubaoModelSyncUsesProviderOfficialModels(t *testing.T) {
+func TestVolcengineModelSyncUsesProviderOfficialModels(t *testing.T) {
+	if !usesProviderOfficialModelsForSync("volcengine") {
+		t.Fatalf("volcengine model sync should use provider official models")
+	}
+}
+
+func TestVolcengineModelSyncSupportsDoubaoAlias(t *testing.T) {
 	if !usesProviderOfficialModelsForSync("doubao") {
-		t.Fatalf("doubao model sync should use provider official models")
+		t.Fatalf("doubao alias should map to volcengine provider official model sync")
 	}
 }
 

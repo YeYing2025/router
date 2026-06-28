@@ -278,7 +278,7 @@ func fetchChannelModelsDetailed(protocol, key, baseURL, providerFilter string) (
 
 func usesProviderOfficialModelsForSync(protocol string) bool {
 	switch relaychannel.NormalizeProtocolName(protocol) {
-	case "doubao", "zhipu":
+	case "volcengine", "zhipu":
 		return true
 	default:
 		return false

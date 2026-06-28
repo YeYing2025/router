@@ -1387,7 +1387,7 @@ func executeChannelImageModelTest(ctx context.Context, channel *model.Channel, m
 
 func resolveChannelImageModelTestSize(channel *model.Channel, actualModelName string) string {
 	if channel != nil &&
-		channel.GetChannelProtocol() == relaychannel.Doubao &&
+		channel.GetChannelProtocol() == relaychannel.VolcEngine &&
 		strings.Contains(strings.ToLower(strings.TrimSpace(actualModelName)), "seedream") {
 		return "2048x2048"
 	}
@@ -1955,7 +1955,11 @@ func executeChannelRealtimeModelTest(ctx context.Context, channel *model.Channel
 		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
 		return execution
 	}
-	if relayMeta.ChannelProtocol != relaychannel.VolcengineRealtime {
+	if !relaychannel.IsVolcengineRealtimeRequest(
+		relayMeta.ChannelProtocol,
+		relayMeta.UpstreamRequestPath,
+		relayMeta.RequestURLPath,
+	) {
 		query := parsedURL.Query()
 		query.Set("model", actualModelName)
 		parsedURL.RawQuery = query.Encode()
@@ -1969,18 +1973,22 @@ func executeChannelRealtimeModelTest(ctx context.Context, channel *model.Channel
 	}
 
 	requestHeader := http.Header{}
-	switch relayMeta.ChannelProtocol {
-	case relaychannel.Azure:
+	switch {
+	case relayMeta.ChannelProtocol == relaychannel.Azure:
 		requestHeader.Set("OpenAI-Beta", "realtime=v1")
 		requestHeader.Set("api-key", strings.TrimSpace(channel.Key))
-	case relaychannel.VolcengineRealtime:
+	case relaychannel.IsVolcengineRealtimeRequest(
+		relayMeta.ChannelProtocol,
+		relayMeta.UpstreamRequestPath,
+		relayMeta.RequestURLPath,
+	):
 		volcenginerealtime.ApplyRealtimeHeaders(
 			requestHeader,
 			relayMeta.Config.AppID,
 			strings.TrimSpace(channel.Key),
 			relayMeta.Config.ResourceID,
 		)
-	case relaychannel.Zhipu:
+	case relayMeta.ChannelProtocol == relaychannel.Zhipu:
 		requestHeader.Set("Authorization", "Bearer "+strings.TrimSpace(channel.Key))
 	default:
 		requestHeader.Set("OpenAI-Beta", "realtime=v1")
@@ -2020,7 +2028,11 @@ func executeChannelRealtimeModelTest(ctx context.Context, channel *model.Channel
 		_ = resp.Body.Close()
 	}
 	subprotocol := strings.TrimSpace(conn.Subprotocol())
-	if relayMeta.ChannelProtocol == relaychannel.VolcengineRealtime {
+	if relaychannel.IsVolcengineRealtimeRequest(
+		relayMeta.ChannelProtocol,
+		relayMeta.UpstreamRequestPath,
+		relayMeta.RequestURLPath,
+	) {
 		execution.Message = "WebSocket 握手成功，Volcengine Realtime 未执行 OpenAI 风格会话测试"
 		outputMessage := execution.Message
 		if subprotocol != "" {

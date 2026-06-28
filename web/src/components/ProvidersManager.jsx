@@ -125,7 +125,6 @@ const normalizeProvider = (provider) => {
       return 'hunyuan';
     case 'volc':
     case 'volcengine':
-    case 'volcengine-realtime':
     case 'doubao':
     case 'ark':
       return 'volcengine';

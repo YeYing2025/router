@@ -18,6 +18,8 @@ func init() {
 	}
 	// Accept the legacy alias and normalize it into openai.
 	protocolNameToType["openai-compatible"] = OpenAI
+	// Keep the historical doubao alias for volcengine channels.
+	protocolNameToType["doubao"] = VolcEngine
 }
 
 func NormalizeProtocolName(raw string) string {
@@ -29,6 +31,9 @@ func NormalizeProtocolName(raw string) string {
 		return ProtocolByType(normalizedID)
 	}
 	if numericID, err := strconv.Atoi(name); err == nil {
+		if numericID == LegacyVolcengineRealtimeProtocolID {
+			return ProtocolByType(VolcEngine)
+		}
 		return ProtocolByType(numericID)
 	}
 	return name

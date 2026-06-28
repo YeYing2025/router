@@ -105,7 +105,11 @@ func mergeRealtimeUpstreamQuery(upstreamURL string, requestURL *url.URL, relayMe
 	if err != nil {
 		return "", err
 	}
-	if relayMeta != nil && relayMeta.ChannelProtocol == relaychannel.VolcengineRealtime {
+	if relayMeta != nil && relaychannel.IsVolcengineRealtimeRequest(
+		relayMeta.ChannelProtocol,
+		relayMeta.UpstreamRequestPath,
+		relayMeta.RequestURLPath,
+	) {
 		return parsed.String(), nil
 	}
 	query := parsed.Query()
@@ -148,20 +152,37 @@ func cloneRealtimeRequestHeaders(header http.Header, relayMeta *meta.Meta) http.
 		switch relayMeta.ChannelProtocol {
 		case relaychannel.Azure:
 			cloned.Set("api-key", relayMeta.APIKey)
-		case relaychannel.VolcengineRealtime:
-			volcenginerealtime.ApplyRealtimeHeaders(
-				cloned,
-				relayMeta.Config.AppID,
-				relayMeta.APIKey,
-				relayMeta.Config.ResourceID,
-			)
 		default:
+			if relaychannel.IsVolcengineRealtimeRequest(
+				relayMeta.ChannelProtocol,
+				relayMeta.UpstreamRequestPath,
+				relayMeta.RequestURLPath,
+			) {
+				volcenginerealtime.ApplyRealtimeHeaders(
+					cloned,
+					relayMeta.Config.AppID,
+					relayMeta.APIKey,
+					relayMeta.Config.ResourceID,
+				)
+				break
+			}
 			if strings.TrimSpace(relayMeta.APIKey) != "" {
 				cloned.Set("Authorization", "Bearer "+relayMeta.APIKey)
 			}
 		}
 	}
 	return cloned
+}
+
+func realtimeUsesVolcengineBehavior(relayMeta *meta.Meta) bool {
+	if relayMeta == nil {
+		return false
+	}
+	return relaychannel.IsVolcengineRealtimeRequest(
+		relayMeta.ChannelProtocol,
+		relayMeta.UpstreamRequestPath,
+		relayMeta.RequestURLPath,
+	)
 }
 
 func realtimeUpstreamSubprotocols(header http.Header, relayMeta *meta.Meta) []string {
@@ -183,7 +204,7 @@ func realtimeUpstreamSubprotocols(header http.Header, relayMeta *meta.Meta) []st
 				if strings.HasPrefix(protocol, realtimeBrowserAPIKeySubprotocolPrefix) {
 					continue
 				}
-				if relayMeta != nil && relayMeta.ChannelProtocol == relaychannel.VolcengineRealtime && protocol == realtimeOpenAIBetaSubprotocol {
+				if realtimeUsesVolcengineBehavior(relayMeta) && protocol == realtimeOpenAIBetaSubprotocol {
 					continue
 				}
 				if _, ok := seen[protocol]; ok {
