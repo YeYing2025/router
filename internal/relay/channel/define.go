@@ -41,7 +41,7 @@ const (
 	Cloudflare
 	DeepL
 	TogetherAI
-	Doubao
+	VolcEngine
 	Novita
 	VertextAI
 	Proxy

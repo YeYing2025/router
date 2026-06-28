@@ -1541,34 +1541,6 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 			},
 		},
 		{
-			Version:     "202606231330_add_volcengine_realtime_protocol",
-			Description: "add volcengine realtime channel protocol catalog item",
-			Up: func(tx *gorm.DB) error {
-				now := helper.GetTimestamp()
-				item := ChannelProtocolCatalog{
-					Name:        "volcengine-realtime",
-					ProtocolID:  49,
-					Label:       "VolcEngine Realtime",
-					Color:       "blue",
-					Description: "Volcengine Speech Realtime",
-					Source:      "default",
-					Enabled:     true,
-					SortOrder:   11,
-					UpdatedAt:   now,
-				}
-				return tx.Where("name = ?", item.Name).Assign(map[string]any{
-					"id":          item.ProtocolID,
-					"label":       item.Label,
-					"color":       item.Color,
-					"description": item.Description,
-					"source":      item.Source,
-					"enabled":     item.Enabled,
-					"sort_order":  item.SortOrder,
-					"updated_at":  item.UpdatedAt,
-				}).FirstOrCreate(&item).Error
-			},
-		},
-		{
 			Version:     "202606241850_procurement_cost_table_schema_repair",
 			Description: "ensure procurement cost unit columns exist for previously migrated databases",
 			Up: func(tx *gorm.DB) error {
@@ -2163,7 +2135,7 @@ func renameDoubaoProtocolToVolcengineWithDB(db *gorm.DB) error {
 	}
 	if err == nil {
 		if legacyCatalog.ProtocolID == 0 {
-			legacyCatalog.ProtocolID = relaychannel.Doubao
+			legacyCatalog.ProtocolID = relaychannel.VolcEngine
 		}
 		if strings.TrimSpace(legacyCatalog.Label) == "" {
 			legacyCatalog.Label = "VolcEngine"
@@ -2183,7 +2155,7 @@ func renameDoubaoProtocolToVolcengineWithDB(db *gorm.DB) error {
 
 	catalogItem := ChannelProtocolCatalog{
 		Name:        "volcengine",
-		ProtocolID:  relaychannel.Doubao,
+		ProtocolID:  relaychannel.VolcEngine,
 		Label:       "VolcEngine",
 		Color:       "blue",
 		Description: "Volcengine Ark",

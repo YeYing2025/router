@@ -1387,7 +1387,7 @@ func executeChannelImageModelTest(ctx context.Context, channel *model.Channel, m
 
 func resolveChannelImageModelTestSize(channel *model.Channel, actualModelName string) string {
 	if channel != nil &&
-		channel.GetChannelProtocol() == relaychannel.Doubao &&
+		channel.GetChannelProtocol() == relaychannel.VolcEngine &&
 		strings.Contains(strings.ToLower(strings.TrimSpace(actualModelName)), "seedream") {
 		return "2048x2048"
 	}

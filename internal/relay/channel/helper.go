@@ -52,7 +52,7 @@ func ToAPIType(channelProtocol int) int {
 
 func IsVolcengineRealtimeRequest(channelProtocol int, requestPaths ...string) bool {
 	switch channelProtocol {
-	case Doubao:
+	case VolcEngine:
 		for _, path := range requestPaths {
 			normalized := strings.TrimSpace(strings.ToLower(path))
 			if strings.HasPrefix(normalized, "/v1/realtime") {

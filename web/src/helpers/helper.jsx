@@ -8,7 +8,6 @@ const CHANNEL_PROTOCOL_DISPLAY_MAP = {
   tencent: {name: 'tencent', text: 'Hunyuan'},
   volcengine: {name: 'volcengine', text: 'VolcEngine'},
   doubao: {name: 'volcengine', text: 'VolcEngine'},
-  'volcengine-realtime': {name: 'volcengine', text: 'VolcEngine'},
 };
 
 let channelProtocolOptions = undefined;

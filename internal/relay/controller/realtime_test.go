@@ -72,7 +72,7 @@ func TestMergeRealtimeUpstreamQuerySkipsCanonicalVolcengineRealtime(t *testing.T
 		"wss://openspeech.bytedance.com/api/v3/realtime/dialogue",
 		requestURL,
 		&meta.Meta{
-			ChannelProtocol: relaychannel.Doubao,
+			ChannelProtocol: relaychannel.VolcEngine,
 			RequestURLPath:  adminmodel.ChannelModelEndpointRealtime,
 			ActualModelName: "gpt-realtime-2",
 		},
@@ -178,7 +178,7 @@ func TestRealtimeUpstreamSubprotocolsForCanonicalVolcengineRealtimeDropsOpenAIBe
 		"Sec-WebSocket-Protocol": []string{"realtime, openai-insecure-api-key.user-token, openai-beta.realtime-v1"},
 	}
 	got := realtimeUpstreamSubprotocols(header, &meta.Meta{
-		ChannelProtocol: relaychannel.Doubao,
+		ChannelProtocol: relaychannel.VolcEngine,
 		RequestURLPath:  adminmodel.ChannelModelEndpointRealtime,
 	})
 	want := []string{"realtime"}
@@ -199,7 +199,7 @@ func TestCloneRealtimeRequestHeadersUsesCanonicalVolcengineRealtimeHeaders(t *te
 		"Sec-WebSocket-Protocol": []string{"realtime"},
 	}
 	cloned := cloneRealtimeRequestHeaders(header, &meta.Meta{
-		ChannelProtocol: relaychannel.Doubao,
+		ChannelProtocol: relaychannel.VolcEngine,
 		RequestURLPath:  adminmodel.ChannelModelEndpointRealtime,
 		APIKey:          "access-456",
 		Config: adminmodel.ChannelConfig{

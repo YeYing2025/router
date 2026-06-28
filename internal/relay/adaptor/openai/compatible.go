@@ -27,7 +27,7 @@ var CompatibleChannels = []int{
 	relaychannel.Moonshot,
 	relaychannel.Baichuan,
 	relaychannel.Minimax,
-	relaychannel.Doubao,
+	relaychannel.VolcEngine,
 	relaychannel.Mistral,
 	relaychannel.Groq,
 	relaychannel.LingYiWanWu,
@@ -65,7 +65,7 @@ func GetCompatibleChannelMeta(channelProtocol int) (string, []string) {
 		return "deepseek", []string{}
 	case relaychannel.TogetherAI:
 		return "together.ai", togetherai.ModelList
-	case relaychannel.Doubao:
+	case relaychannel.VolcEngine:
 		return "doubao", doubao.ModelList
 	case relaychannel.Novita:
 		return "novita", novita.ModelList

@@ -154,7 +154,7 @@ func (channel *Channel) ValidateProtocolConfiguration() error {
 		if baseURLHasVersionSuffix(cfg.GetAPIBaseURL(), "/v1") {
 			return fmt.Errorf("DeepSeek 渠道 config.api_base_url 不能追加 /v1，请使用 https://api.deepseek.com 或 https://api.deepseek.com/beta")
 		}
-	case relaychannel.Doubao:
+	case relaychannel.VolcEngine:
 		if !channel.UsesVolcengineRealtimeEndpoint() {
 			return nil
 		}
@@ -173,10 +173,7 @@ func (channel *Channel) UsesVolcengineRealtimeEndpoint() bool {
 	if channel == nil {
 		return false
 	}
-	if strings.TrimSpace(strings.ToLower(channel.Protocol)) == "volcengine-realtime" {
-		return true
-	}
-	if channel.GetChannelProtocol() != relaychannel.Doubao {
+	if channel.GetChannelProtocol() != relaychannel.VolcEngine {
 		return false
 	}
 	for _, row := range channel.GetChannelModels() {

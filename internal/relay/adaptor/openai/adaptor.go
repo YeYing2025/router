@@ -60,7 +60,7 @@ func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 		return GetFullRequestURL(meta.BaseURL, requestURL, meta.ChannelProtocol), nil
 	case relaychannel.Minimax:
 		return minimax.GetRequestURL(meta)
-	case relaychannel.Doubao:
+	case relaychannel.VolcEngine:
 		return doubao.GetRequestURL(meta)
 	case relaychannel.Novita:
 		return novita.GetRequestURL(meta)
