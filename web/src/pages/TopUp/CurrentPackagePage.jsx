@@ -16,8 +16,8 @@ import {
   useTopUpWorkspace,
 } from './shared.jsx';
 import {
+  formatPackageConcurrencyLimit,
   formatRequestCount,
-  formatRequestQuotaConcurrency,
   getServicePackagePeriodLabel,
   getServicePackageTypeLabel,
   isRequestQuotaPackage,
@@ -344,8 +344,8 @@ const CurrentPackagePage = () => {
         },
         {
           key: 'concurrency',
-          label: t('package_manage.table.extra_entitlement'),
-          value: formatRequestQuotaConcurrency(activeSubscription, t),
+          label: t('package_manage.table.concurrency_limit'),
+          value: formatPackageConcurrencyLimit(activeSubscription, t, t('common.unlimited')),
         },
       ]
       : [
@@ -360,6 +360,11 @@ const CurrentPackagePage = () => {
           value: renderIntegerAmount(
             activeSubscription.package_emergency_quota_limit || 0,
           ),
+        },
+        {
+          key: 'concurrency',
+          label: t('package_manage.table.concurrency_limit'),
+          value: formatPackageConcurrencyLimit(activeSubscription, t, t('common.unlimited')),
         },
       ];
     return [
@@ -402,8 +407,8 @@ const CurrentPackagePage = () => {
         },
         {
           key: 'concurrency',
-          label: t('package_manage.table.extra_entitlement'),
-          value: formatRequestQuotaConcurrency(nextSubscription, t),
+          label: t('package_manage.table.concurrency_limit'),
+          value: formatPackageConcurrencyLimit(nextSubscription, t, t('common.unlimited')),
         },
       ]
       : [
@@ -415,9 +420,12 @@ const CurrentPackagePage = () => {
         {
           key: 'emergency_limit',
           label: t('user.detail.package_emergency_limit'),
-          value: renderIntegerAmount(
-            nextSubscription.package_emergency_quota_limit || 0,
-          ),
+          value: renderIntegerAmount(nextSubscription.package_emergency_quota_limit || 0),
+        },
+        {
+          key: 'concurrency',
+          label: t('package_manage.table.concurrency_limit'),
+          value: formatPackageConcurrencyLimit(nextSubscription, t, t('common.unlimited')),
         },
       ];
     return [

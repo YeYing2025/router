@@ -44,7 +44,7 @@ import {
   SERVICE_PACKAGE_QUOTA_METRIC_YYC,
   SERVICE_PACKAGE_TYPE_REQUEST_QUOTA,
   SERVICE_PACKAGE_TYPE_YYC_QUOTA,
-  formatRequestQuotaConcurrency,
+  formatPackageConcurrencyLimit,
   formatRequestQuotaEntitlement,
   getServicePackagePeriodOptions,
   getServicePackageTypeLabel,
@@ -986,30 +986,11 @@ const PackagesManager = () => {
                   : renderPackageAmountFieldValue(row, 'daily', displayUnit, currencyIndex),
             },
             {
-              title: (
-                <div className='router-table-header-with-control'>
-                  <span>{t('package_manage.table.extra_entitlement')}</span>
-                  <UnitDropdown
-                    variant='header'
-                    compact
-                    options={displayUnitOptions}
-                    value={displayUnit}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                    onChange={(_, { value }) => {
-                      setDisplayUnit((value || '').toString());
-                    }}
-                  />
-                </div>
-              ),
+              title: t('package_manage.table.concurrency_limit'),
               key: 'package_emergency_quota_limit',
               className: 'router-package-emergency-quota-cell',
               width: PACKAGE_LIST_COLUMN_WIDTHS.emergencyQuota,
-              render: (_, row) =>
-                isRequestQuotaPackage(row)
-                  ? formatRequestQuotaConcurrency(row, t)
-                  : renderPackageAmountFieldValue(row, 'emergency', displayUnit, currencyIndex),
+              render: (_, row) => formatPackageConcurrencyLimit(row, t),
             },
             {
               title: t('package_manage.table.duration_days'),

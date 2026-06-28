@@ -1282,7 +1282,7 @@
   },
   {
     "Provider": "baidu",
-    "Name": "Baidu",
+    "Name": "BaiDu",
     "BaseURL": "https://qianfan.baidubce.com/v2",
     "OfficialURL": "https://cloud.baidu.com/product-s/qianfan_modelbuilder",
     "SortOrder": 105,
@@ -2152,7 +2152,7 @@
   },
   {
     "Provider": "hunyuan",
-    "Name": "Tencent Hunyuan",
+    "Name": "Hunyuan",
     "BaseURL": "https://api.hunyuan.cloud.tencent.com/v1",
     "OfficialURL": "https://cloud.tencent.com/document/product/1729/97731",
     "SortOrder": 125,
@@ -2282,7 +2282,7 @@
   },
   {
     "Provider": "volcengine",
-    "Name": "Volcengine Ark",
+    "Name": "VolcEngine",
     "BaseURL": "https://ark.cn-beijing.volces.com/api/v3",
     "OfficialURL": "https://www.volcengine.com/docs/82379/1544106?lang=zh",
     "SortOrder": 126,
@@ -3801,7 +3801,7 @@
   },
   {
     "Provider": "qwen",
-    "Name": "Qwen",
+    "Name": "QianWen",
     "BaseURL": "https://dashscope.aliyuncs.com",
     "OfficialURL": "https://help.aliyun.com/zh/model-studio/models",
     "SortOrder": 135,
@@ -4506,7 +4506,7 @@
   },
   {
     "Provider": "zhipu",
-    "Name": "Zhipu",
+    "Name": "ZhiPu",
     "BaseURL": "https://open.bigmodel.cn",
     "OfficialURL": "https://open.bigmodel.cn/pricing",
     "SortOrder": 155,

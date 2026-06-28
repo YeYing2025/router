@@ -4,7 +4,7 @@ import { API, showError, showInfo, timestamp2string } from '../../helpers';
 import { buildTopUpReturnURL, useTopUpWorkspace } from './shared.jsx';
 import { AppButton, AppModal, AppSection } from '../../router-ui';
 import {
-  formatRequestQuotaConcurrency,
+  formatPackageConcurrencyLimit,
   formatRequestQuotaEntitlement,
   getServicePackageTypeLabel,
   isRequestQuotaPackage,
@@ -196,16 +196,10 @@ const PackagePurchasePage = () => {
                           </div>
                           <div className='router-package-purchase-meta-card'>
                             <div className='router-package-purchase-meta-label'>
-                              {requestQuotaPackage
-                                ? t('package_manage.table.extra_entitlement')
-                                : t('user.detail.package_emergency_limit')}
+                              {t('package_manage.table.concurrency_limit')}
                             </div>
                             <div className='router-package-purchase-meta-value'>
-                              {requestQuotaPackage
-                                ? formatRequestQuotaConcurrency(item, t)
-                                : renderDisplayAmount(
-                                  item?.package_emergency_quota_limit || 0,
-                                )}
+                              {formatPackageConcurrencyLimit(item, t)}
                             </div>
                           </div>
                         </div>

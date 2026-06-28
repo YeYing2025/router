@@ -108,11 +108,15 @@ const normalizeProvider = (provider) => {
       return 'cohere';
     case 'deepseek':
       return 'deepseek';
+    case 'qianwen':
     case 'qwen':
     case 'qwq':
     case 'qvq':
       return 'qwen';
     case 'zhipu':
+    case 'zhipuai':
+    case 'zhipu-ai':
+    case 'zhipu_ai':
     case 'glm':
     case 'bigmodel':
       return 'zhipu';
@@ -129,13 +133,47 @@ const normalizeProvider = (provider) => {
     case 'abab':
       return 'minimax';
     default:
-      if (trimmed === '千问') return 'qwen';
-      if (trimmed === '智谱') return 'zhipu';
+      if (trimmed === '千问' || trimmed === '通义千问') return 'qwen';
+      if (trimmed === '智谱' || trimmed === '智谱AI') return 'zhipu';
       if (trimmed === '腾讯' || trimmed === '混元') return 'hunyuan';
       if (trimmed === '火山' || trimmed === '豆包' || trimmed === '字节')
         return 'volcengine';
       return lower;
   }
+};
+
+const PROVIDER_DISPLAY_ID_MAP = {
+  qwen: 'qianwen',
+  hunyuan: 'hunyuan',
+  baidu: 'baidu',
+  zhipu: 'zhipu',
+};
+
+const PROVIDER_DISPLAY_NAME_MAP = {
+  qwen: 'QianWen',
+  hunyuan: 'Hunyuan',
+  baidu: 'BaiDu',
+  zhipu: 'ZhiPu',
+  volcengine: 'VolcEngine',
+};
+
+const formatProviderDisplayId = (provider) => {
+  const normalized = normalizeProvider(provider);
+  if (!normalized) return '';
+  return PROVIDER_DISPLAY_ID_MAP[normalized] || normalized;
+};
+
+const formatProviderDisplayName = (provider, name) => {
+  const normalized = normalizeProvider(provider);
+  const trimmedName = typeof name === 'string' ? name.trim() : '';
+  if (trimmedName) {
+    if (normalized && PROVIDER_DISPLAY_NAME_MAP[normalized]) {
+      return PROVIDER_DISPLAY_NAME_MAP[normalized];
+    }
+    return trimmedName;
+  }
+  if (!normalized) return '';
+  return PROVIDER_DISPLAY_NAME_MAP[normalized] || normalized;
 };
 
 const buildPriceComponentRowKey = (scope, component) =>
@@ -1310,7 +1348,7 @@ const ProvidersManager = () => {
     }
     const payload = {
       id: provider,
-      name: (row.name || '').trim() || provider,
+      name: (row.name || '').trim() || formatProviderDisplayName(provider, '') || provider,
       base_url:
         (row.base_url || '').trim() ||
         OFFICIAL_PROVIDER_BASE_URLS[provider] ||
@@ -1417,7 +1455,10 @@ const ProvidersManager = () => {
     if (section === 'basic') {
       normalizedRow = {
         ...normalizedRow,
-        name: (detailBasicDraft.name || '').trim() || provider,
+        name:
+          (detailBasicDraft.name || '').trim() ||
+          formatProviderDisplayName(provider, '') ||
+          provider,
         base_url:
           (detailBasicDraft.base_url || '').trim() ||
           OFFICIAL_PROVIDER_BASE_URLS[provider] ||
@@ -1454,7 +1495,10 @@ const ProvidersManager = () => {
     const normalizedRow = {
       ...createRow,
       id: provider,
-      name: (createRow.name || '').trim() || provider,
+      name:
+        (createRow.name || '').trim() ||
+        formatProviderDisplayName(provider, '') ||
+        provider,
       base_url:
         (createRow.base_url || '').trim() ||
         OFFICIAL_PROVIDER_BASE_URLS[provider] ||
@@ -2935,7 +2979,7 @@ const ProvidersManager = () => {
             render: (value) =>
               value ? (
                 <span className='router-monospace-value router-monospace-truncate' title={value}>
-                  {value}
+                  {formatProviderDisplayId(value)}
                 </span>
               ) : (
                 '-'
@@ -2945,7 +2989,7 @@ const ProvidersManager = () => {
             title: t('channel.providers.table.name'),
             key: 'name',
             width: PROVIDER_LIST_COLUMN_WIDTHS.name,
-            render: (_, row) => row.name || row.id || '-',
+            render: (_, row) => formatProviderDisplayName(row.id, row.name) || '-',
           },
           {
             title: t('channel.providers.table.created_at'),
@@ -3035,7 +3079,7 @@ const ProvidersManager = () => {
             },
             {
               key: 'provider-current',
-              label: viewRow.name || viewRow.id || '-',
+              label: formatProviderDisplayName(viewRow.id, viewRow.name) || formatProviderDisplayId(viewRow.id) || '-',
               active: true,
             },
           ]}
@@ -3096,7 +3140,7 @@ const ProvidersManager = () => {
                 >
                   <AppInput
                     className='router-section-input'
-                    value={basicSourceRow.id || ''}
+                    value={formatProviderDisplayId(basicSourceRow.id) || ''}
                     readOnly
                   />
                 </AppField>
@@ -3123,7 +3167,7 @@ const ProvidersManager = () => {
                   >
                     <AppInput
                       className='router-section-input'
-                      value={basicSourceRow.name || ''}
+                      value={formatProviderDisplayName(basicSourceRow.id, basicSourceRow.name) || ''}
                       readOnly
                     />
                   </AppField>
@@ -3350,7 +3394,10 @@ const ProvidersManager = () => {
   );
 
   const renderDeleteModal = () => {
-    const providerName = deletingRow?.name || deletingRow?.id || '-';
+    const providerName =
+      formatProviderDisplayName(deletingRow?.id, deletingRow?.name) ||
+      formatProviderDisplayId(deletingRow?.id) ||
+      '-';
     return (
       <AppModal
         open={!!deletingRow}

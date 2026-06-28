@@ -132,6 +132,73 @@ const resolveModelTestStreamEnabled = (row) => {
 const normalizeChannelIdentifier = (value) =>
   (value || '').toString().trim().toLowerCase();
 
+const VOLCENGINE_STANDARD_PROTOCOL = 'doubao';
+const VOLCENGINE_REALTIME_PROTOCOL = 'volcengine-realtime';
+
+function isVolcengineDisplayProtocol(protocol) {
+  return normalizeChannelProtocol(protocol) === VOLCENGINE_STANDARD_PROTOCOL;
+}
+
+function hasVolcengineRealtimeChannelModel(channelModels, protocol) {
+  return normalizeChannelModels(channelModels, protocol).some((row) => {
+    const endpoints = Array.isArray(row?.endpoints)
+      ? row.endpoints
+      : row?.endpoint
+      ? [row.endpoint]
+      : [];
+    return endpoints.some(
+      (endpoint) =>
+        (endpoint || '').toString().trim().toLowerCase() === '/v1/realtime'
+    );
+  });
+}
+
+function resolveDisplayProtocolFromChannelPayload(payload) {
+  const protocol = normalizeChannelProtocol(payload?.protocol);
+  if (protocol === VOLCENGINE_REALTIME_PROTOCOL) {
+    return VOLCENGINE_STANDARD_PROTOCOL;
+  }
+  if (protocol !== '') {
+    return protocol;
+  }
+  return 'openai';
+}
+
+function resolveVolcengineProtocolModeFromPayload(payload) {
+  const protocol = normalizeChannelProtocol(payload?.protocol);
+  return protocol === VOLCENGINE_REALTIME_PROTOCOL ? 'realtime' : '';
+}
+
+function resolveEffectiveProtocolFromInputs(inputs) {
+  const protocol = normalizeChannelProtocol(inputs?.protocol);
+  if (!isVolcengineDisplayProtocol(protocol)) {
+    return protocol || 'openai';
+  }
+  const hasRealtimeModel = hasVolcengineRealtimeChannelModel(
+    inputs?.channel_models,
+    protocol
+  );
+  if (hasRealtimeModel) {
+    return VOLCENGINE_REALTIME_PROTOCOL;
+  }
+  const hasAnyModel =
+    normalizeChannelModels(inputs?.channel_models, protocol).length > 0;
+  if (
+    !hasAnyModel &&
+    (inputs?.protocol_mode || '').toString().trim().toLowerCase() ===
+      'realtime'
+  ) {
+    return VOLCENGINE_REALTIME_PROTOCOL;
+  }
+  return VOLCENGINE_STANDARD_PROTOCOL;
+}
+
+function isEffectiveVolcengineRealtimeProtocol(inputs) {
+  return (
+    resolveEffectiveProtocolFromInputs(inputs) === VOLCENGINE_REALTIME_PROTOCOL
+  );
+}
+
 const validateChannelIdentifier = (value, t) => {
   const normalized = normalizeChannelIdentifier(value);
   if (normalized === '') {
@@ -147,7 +214,7 @@ const validateChannelIdentifier = (value, t) => {
 };
 
 const validateProtocolSpecificChannelConfig = (inputs, config) => {
-  const protocol = (inputs?.protocol || '').toString().trim().toLowerCase();
+  const protocol = resolveEffectiveProtocolFromInputs(inputs);
   if (protocol !== 'deepseek') {
     return '';
   }
@@ -1806,6 +1873,7 @@ const CHANNEL_ORIGIN_INPUTS = {
   id: '',
   name: '',
   protocol: 'openai',
+  protocol_mode: '',
   key: '',
   key_preview: '',
   base_url: '',
@@ -1850,11 +1918,7 @@ function protocolSelectionHint(t) {
 }
 
 const resolveProtocolFromChannelPayload = (payload) => {
-  const protocol = (payload?.protocol || '').toString().trim().toLowerCase();
-  if (protocol !== '') {
-    return protocol;
-  }
-  return 'openai';
+  return resolveDisplayProtocolFromChannelPayload(payload);
 };
 
 const isRecordNotFoundMessage = (value) =>
@@ -2865,7 +2929,13 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
 
   const handleInputChange = (e, { name, value }) => {
     const nextValue = name === 'id' ? normalizeChannelIdentifier(value) : value;
-    setInputs((inputs) => ({ ...inputs, [name]: nextValue }));
+    setInputs((inputs) => {
+      const nextInputs = { ...inputs, [name]: nextValue };
+      if (name === 'protocol' && normalizeChannelProtocol(nextValue) !== VOLCENGINE_STANDARD_PROTOCOL) {
+        nextInputs.protocol_mode = '';
+      }
+      return nextInputs;
+    });
   };
 
   const handleConfigChange = (e, { name, value }) => {
@@ -2921,8 +2991,11 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       const { includeModelState = true } = options;
       const effectiveKey = buildEffectiveKey();
       let localInputs = { ...baseInputs, key: effectiveKey };
+      const effectiveProtocol = resolveEffectiveProtocolFromInputs(baseInputs);
       localInputs.id = (localInputs.id || '').toString().trim();
       localInputs.name = normalizeChannelIdentifier(localInputs.name);
+      localInputs.protocol = effectiveProtocol;
+      delete localInputs.protocol_mode;
       if (localInputs.key === 'undefined|undefined|undefined') {
         localInputs.key = '';
       }
@@ -2938,7 +3011,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       if (includeModelState) {
         const derivedModelState = buildChannelModelState(
           baseInputs.channel_models,
-          baseInputs.protocol
+          effectiveProtocol
         );
         localInputs.channel_models = derivedModelState.channelModels;
         localInputs.models = derivedModelState.selectedModels.join(',');
@@ -3873,6 +3946,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             id: data.id,
             name: data.name || '',
             protocol: normalizedProtocol,
+            protocol_mode: resolveVolcengineProtocolModeFromPayload(data),
             key: '',
             key_preview: data.key_preview || '',
             base_url: data.base_url || '',
@@ -5360,6 +5434,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   };
 
   const renderProtocolSpecificFields = () => {
+    const isVolcengineRealtime = isEffectiveVolcengineRealtimeProtocol(inputs);
     return (
       <>
         {inputs.protocol === 'azure' && (
@@ -5437,7 +5512,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             title={t('channel.edit.coze_notice')}
           />
         )}
-        {inputs.protocol === 'doubao' && (
+        {inputs.protocol === 'doubao' && !isVolcengineRealtime && (
           <AppAlert
             type='info'
             showIcon
@@ -5457,7 +5532,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
             }
           />
         )}
-        {inputs.protocol === 'volcengine-realtime' && (
+        {isVolcengineRealtime && (
           <>
             <AppAlert
               type='info'

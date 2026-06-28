@@ -1595,6 +1595,20 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return migrateEntitlementConcurrencyWithDB(tx)
 			},
 		},
+		{
+			Version:     "202606281230_rename_volcengine_provider_display_name",
+			Description: "rename volcengine provider display name from Volcengine Ark to Volcengine",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "volcengine")
+			},
+		},
+		{
+			Version:     "202606281330_refresh_provider_display_names",
+			Description: "refresh qwen, hunyuan, baidu, and zhipu provider display names",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "qwen", "hunyuan", "baidu", "zhipu")
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }

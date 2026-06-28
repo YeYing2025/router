@@ -27,6 +27,7 @@ import {
   AppTable,
   AppTableActionButton,
 } from '../router-ui';
+import { formatPackageConcurrencyLimit } from '../helpers/package';
 
 const createEmptyPlan = () => ({
   id: '',
@@ -542,6 +543,12 @@ const TopupPlansManager = () => {
                   },
                 );
               },
+            },
+            {
+              title: t('topup.manage.columns.concurrency_limit'),
+              key: 'concurrency_limit',
+              width: TOPUP_PLAN_LIST_COLUMN_WIDTHS.concurrency,
+              render: (_, row) => formatPackageConcurrencyLimit(row, t),
             },
             {
               title: t('topup.manage.columns.enabled'),

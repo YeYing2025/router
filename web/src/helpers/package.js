@@ -107,3 +107,30 @@ export const formatRequestQuotaConcurrency = (item, t) => {
   }
   return parts.join(' / ');
 };
+
+export const formatPackageConcurrencyLimit = (item, t, emptyLabel = '-') => {
+  const perUser = Number(item?.max_concurrency_per_user || 0);
+  const perPackage = Number(item?.max_concurrency_per_package || 0);
+  const parts = [];
+  if (perUser > 0) {
+    parts.push(`${t('package_manage.form.max_concurrency_per_user')}: ${perUser}`);
+  }
+  if (perPackage > 0) {
+    parts.push(`${t('package_manage.form.max_concurrency_per_package')}: ${perPackage}`);
+  }
+  if (parts.length === 0) {
+    return emptyLabel;
+  }
+  return parts.join(' / ');
+};
+
+export const formatPackageExtraEntitlement = (item, t, emergencyValue = '') => {
+  if (isRequestQuotaPackage(item)) {
+    return formatRequestQuotaConcurrency(item, t);
+  }
+  const normalizedEmergency = `${emergencyValue ?? ''}`.trim();
+  if (normalizedEmergency === '') {
+    return t('common.unlimited');
+  }
+  return `${t('user.detail.package_emergency_limit')}: ${normalizedEmergency}`;
+};

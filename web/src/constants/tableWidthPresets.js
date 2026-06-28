@@ -30,6 +30,7 @@ export const TOPUP_PLAN_LIST_COLUMN_WIDTHS = {
   group: 140,
   payAmount: 120,
   creditedAmount: 120,
+  concurrency: 180,
   enabled: 100,
   publicVisible: 100,
   validityDays: 100,
@@ -43,6 +44,7 @@ export const TOPUP_PLAN_LIST_TABLE_MIN_WIDTH =
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.group +
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.payAmount +
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.creditedAmount +
+  TOPUP_PLAN_LIST_COLUMN_WIDTHS.concurrency +
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.enabled +
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.publicVisible +
   TOPUP_PLAN_LIST_COLUMN_WIDTHS.validityDays +
