@@ -288,7 +288,7 @@
           "/v1/chat/completions",
           "/v1/responses"
         ],
-        "input_price": 0.00005,
+        "input_price": 5e-05,
         "output_price": 0.0004,
         "price_unit": "per_1k_tokens",
         "currency": "USD",
@@ -1679,7 +1679,7 @@
           {
             "component": "context_cache",
             "condition": "mode=standard;input_type=text_image_video",
-            "input_price": 0.00003,
+            "input_price": 3e-05,
             "price_unit": "per_1k_tokens",
             "currency": "USD",
             "source": "migration",
@@ -1730,7 +1730,7 @@
           {
             "component": "context_cache",
             "condition": "mode=batch;input_type=text_image_video",
-            "input_price": 0.00003,
+            "input_price": 3e-05,
             "price_unit": "per_1k_tokens",
             "currency": "USD",
             "source": "migration",
@@ -1861,7 +1861,7 @@
           {
             "component": "context_cache",
             "condition": "mode=standard;input_type=text_image_video",
-            "input_price": 0.00001,
+            "input_price": 1e-05,
             "price_unit": "per_1k_tokens",
             "currency": "USD",
             "source": "migration",
@@ -1871,7 +1871,7 @@
           {
             "component": "context_cache",
             "condition": "mode=standard;input_type=audio",
-            "input_price": 0.00003,
+            "input_price": 3e-05,
             "price_unit": "per_1k_tokens",
             "currency": "USD",
             "source": "migration",
@@ -1891,7 +1891,7 @@
           {
             "component": "text",
             "condition": "mode=batch;input_type=text_image_video",
-            "input_price": 0.00005,
+            "input_price": 5e-05,
             "output_price": 0.0002,
             "price_unit": "per_1k_tokens",
             "currency": "USD",
@@ -1912,7 +1912,7 @@
           {
             "component": "context_cache",
             "condition": "mode=batch;input_type=text_image_video",
-            "input_price": 0.00001,
+            "input_price": 1e-05,
             "price_unit": "per_1k_tokens",
             "currency": "USD",
             "source": "migration",
@@ -1922,7 +1922,7 @@
           {
             "component": "context_cache",
             "condition": "mode=batch;input_type=audio",
-            "input_price": 0.00003,
+            "input_price": 3e-05,
             "price_unit": "per_1k_tokens",
             "currency": "USD",
             "source": "migration",
@@ -3827,10 +3827,11 @@
         "type": "text",
         "tags": [
           "vision",
-          "reasoning"
+          "reasoning",
+          "tool_calling"
         ],
         "status": "active",
-        "description": "Qwen3.7-Plus 是 Qwen 多模态通用模型，支持文本生成、视觉理解、非思考和思考模式。",
+        "description": "Qwen3.7-Plus 是 Qwen 多模态通用模型，支持文本生成、视觉理解、视频理解、Function Calling、内置工具、非思考和思考模式。",
         "supported_endpoints": [
           "/v1/chat/completions",
           "/v1/responses"
@@ -3886,13 +3887,48 @@
             "source_url": "https://help.aliyun.com/zh/model-studio/model-pricing",
             "sort_order": 40
           }
-        ]
+        ],
+        "specification": {
+          "version": 1,
+          "endpoints": {
+            "/v1/chat/completions": {
+              "input_modalities": [
+                "image",
+                "text",
+                "video"
+              ],
+              "output_modalities": [
+                "text"
+              ],
+              "constraints": {
+                "max_pixels": 16000000,
+                "max_video_seconds": 7200,
+                "max_video_size_mb": 2048
+              }
+            },
+            "/v1/responses": {
+              "input_modalities": [
+                "image",
+                "text",
+                "video"
+              ],
+              "output_modalities": [
+                "text"
+              ],
+              "constraints": {
+                "max_pixels": 16000000,
+                "max_video_seconds": 7200,
+                "max_video_size_mb": 2048
+              }
+            }
+          }
+        }
       },
       {
         "model": "qwen3.6-plus",
         "type": "text",
         "status": "active",
-        "description": "Qwen3.6-Plus 是均衡型通用模型，适合多数生产场景。",
+        "description": "Qwen3.6-Plus 是均衡型通用模型，适合多数生产场景，支持图像分析、视频理解和 Function Calling。",
         "supported_endpoints": [
           "/v1/chat/completions",
           "/v1/responses"
@@ -3902,13 +3938,52 @@
         "price_unit": "per_1k_tokens",
         "currency": "CNY",
         "source": "migration",
-        "updated_at": 1700000000
+        "updated_at": 1700000000,
+        "tags": [
+          "vision",
+          "tool_calling"
+        ],
+        "specification": {
+          "version": 1,
+          "endpoints": {
+            "/v1/chat/completions": {
+              "input_modalities": [
+                "image",
+                "text",
+                "video"
+              ],
+              "output_modalities": [
+                "text"
+              ],
+              "constraints": {
+                "max_pixels": 16000000,
+                "max_video_seconds": 7200,
+                "max_video_size_mb": 2048
+              }
+            },
+            "/v1/responses": {
+              "input_modalities": [
+                "image",
+                "text",
+                "video"
+              ],
+              "output_modalities": [
+                "text"
+              ],
+              "constraints": {
+                "max_pixels": 16000000,
+                "max_video_seconds": 7200,
+                "max_video_size_mb": 2048
+              }
+            }
+          }
+        }
       },
       {
         "model": "qwen3.6-flash",
         "type": "text",
         "status": "active",
-        "description": "Qwen3.6-Flash 是低延迟低成本通用模型。",
+        "description": "Qwen3.6-Flash 是低延迟低成本通用模型，支持图像分析、视频理解和 Function Calling。",
         "supported_endpoints": [
           "/v1/chat/completions",
           "/v1/responses"
@@ -3918,13 +3993,52 @@
         "price_unit": "per_1k_tokens",
         "currency": "CNY",
         "source": "migration",
-        "updated_at": 1700000000
+        "updated_at": 1700000000,
+        "tags": [
+          "vision",
+          "tool_calling"
+        ],
+        "specification": {
+          "version": 1,
+          "endpoints": {
+            "/v1/chat/completions": {
+              "input_modalities": [
+                "image",
+                "text",
+                "video"
+              ],
+              "output_modalities": [
+                "text"
+              ],
+              "constraints": {
+                "max_pixels": 16000000,
+                "max_video_seconds": 7200,
+                "max_video_size_mb": 2048
+              }
+            },
+            "/v1/responses": {
+              "input_modalities": [
+                "image",
+                "text",
+                "video"
+              ],
+              "output_modalities": [
+                "text"
+              ],
+              "constraints": {
+                "max_pixels": 16000000,
+                "max_video_seconds": 7200,
+                "max_video_size_mb": 2048
+              }
+            }
+          }
+        }
       },
       {
         "model": "qwen3.5-plus",
         "type": "text",
         "status": "active",
-        "description": "Qwen3.5-Plus 是上一代均衡型通用模型。",
+        "description": "Qwen3.5-Plus 是上一代均衡型通用模型，支持图像分析、视频理解和 Function Calling。",
         "supported_endpoints": [
           "/v1/chat/completions",
           "/v1/responses"
@@ -3934,13 +4048,52 @@
         "price_unit": "per_1k_tokens",
         "currency": "CNY",
         "source": "migration",
-        "updated_at": 1700000000
+        "updated_at": 1700000000,
+        "tags": [
+          "vision",
+          "tool_calling"
+        ],
+        "specification": {
+          "version": 1,
+          "endpoints": {
+            "/v1/chat/completions": {
+              "input_modalities": [
+                "image",
+                "text",
+                "video"
+              ],
+              "output_modalities": [
+                "text"
+              ],
+              "constraints": {
+                "max_pixels": 16000000,
+                "max_video_seconds": 7200,
+                "max_video_size_mb": 2048
+              }
+            },
+            "/v1/responses": {
+              "input_modalities": [
+                "image",
+                "text",
+                "video"
+              ],
+              "output_modalities": [
+                "text"
+              ],
+              "constraints": {
+                "max_pixels": 16000000,
+                "max_video_seconds": 7200,
+                "max_video_size_mb": 2048
+              }
+            }
+          }
+        }
       },
       {
         "model": "qwen3.5-flash",
         "type": "text",
         "status": "active",
-        "description": "Qwen3.5-Flash 是上一代低成本通用模型。",
+        "description": "Qwen3.5-Flash 是上一代低成本通用模型，支持图像分析、视频理解和 Function Calling。",
         "supported_endpoints": [
           "/v1/chat/completions",
           "/v1/responses"
@@ -3950,7 +4103,46 @@
         "price_unit": "per_1k_tokens",
         "currency": "CNY",
         "source": "migration",
-        "updated_at": 1700000000
+        "updated_at": 1700000000,
+        "tags": [
+          "vision",
+          "tool_calling"
+        ],
+        "specification": {
+          "version": 1,
+          "endpoints": {
+            "/v1/chat/completions": {
+              "input_modalities": [
+                "image",
+                "text",
+                "video"
+              ],
+              "output_modalities": [
+                "text"
+              ],
+              "constraints": {
+                "max_pixels": 16000000,
+                "max_video_seconds": 7200,
+                "max_video_size_mb": 2048
+              }
+            },
+            "/v1/responses": {
+              "input_modalities": [
+                "image",
+                "text",
+                "video"
+              ],
+              "output_modalities": [
+                "text"
+              ],
+              "constraints": {
+                "max_pixels": 16000000,
+                "max_video_seconds": 7200,
+                "max_video_size_mb": 2048
+              }
+            }
+          }
+        }
       },
       {
         "model": "qwen3-max",
@@ -4495,7 +4687,7 @@
         "supported_endpoints": [
           "/v1/chat/completions"
         ],
-        "input_price": 0.0000375,
+        "input_price": 3.75e-05,
         "output_price": 0.00015,
         "price_unit": "per_1k_tokens",
         "currency": "USD",
