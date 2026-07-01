@@ -2857,6 +2857,10 @@ body,
     margin-bottom: 0;
 }
 
+.router-package-scope-hint {
+    margin-top: 8px;
+}
+
 .router-form-hint-section {
     margin-top: -6px;
     margin-bottom: 12px;

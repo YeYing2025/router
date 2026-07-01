@@ -1494,6 +1494,7 @@
     },
     "period_type": {
       "daily": "Daily",
+      "weekly": "Weekly",
       "monthly": "Monthly",
       "package_total": "Package Total"
     },
