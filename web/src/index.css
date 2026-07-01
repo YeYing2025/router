@@ -3090,6 +3090,10 @@ body,
     background: #ffffff;
 }
 
+.router-current-package-info-card-wide {
+    grid-column: 1 / -1;
+}
+
 .router-current-package-info-label {
     font-size: 0.85rem;
     color: #6b7280;

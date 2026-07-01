@@ -1650,6 +1650,7 @@
     "messages": {
       "copy_success": "Copied to clipboard!",
       "copy_failed": "Unable to copy to clipboard, please copy manually.",
+      "chat_open_failed": "Unable to open Chat. Check the Chat page link or token value.",
       "operation_success": "Operation completed successfully!"
     }
   },

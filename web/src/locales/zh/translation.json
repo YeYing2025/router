@@ -1650,6 +1650,7 @@
     "messages": {
       "copy_success": "已复制到剪贴板！",
       "copy_failed": "无法复制到剪贴板，请手动复制。",
+      "chat_open_failed": "无法打开 Chat，请检查聊天页面链接或令牌是否完整。",
       "operation_success": "操作成功完成！"
     }
   },
