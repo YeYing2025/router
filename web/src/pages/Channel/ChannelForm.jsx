@@ -23,6 +23,7 @@ import ChannelDetailEndpointsTab from './components/ChannelDetailEndpointsTab';
 import ChannelDetailBillingTab from './components/ChannelDetailBillingTab';
 import ChannelDetailModelsTab from './components/ChannelDetailModelsTab';
 import ChannelDetailOverviewTab from './components/ChannelDetailOverviewTab';
+import ChannelDetailPublishTab from './components/ChannelDetailPublishTab';
 import ChannelDetailTestsTab from './components/ChannelDetailTestsTab';
 import ChannelCircuitBreakerEventsSection from './components/ChannelCircuitBreakerEventsSection';
 import ChannelAppendProviderModal from './components/ChannelAppendProviderModal';
@@ -401,7 +402,14 @@ const normalizeExplicitChannelModelEndpoints = (
   return result;
 };
 
-const DETAIL_TAB_KEYS = ['overview', 'models', 'endpoints', 'tests', 'billing'];
+const DETAIL_TAB_KEYS = [
+  'overview',
+  'models',
+  'endpoints',
+  'tests',
+  'publish',
+  'billing',
+];
 
 const normalizeDetailTab = (value) => {
   const normalized = (value || '').toString().trim().toLowerCase();
@@ -1269,6 +1277,10 @@ const normalizeChannelModelConfigRow = (row, protocol) => {
     price_unit: normalizePriceUnitValue(row.price_unit),
     currency: normalizeCurrencyValue(row.currency),
     price_components: normalizeComplexPriceComponents(row.price_components),
+    publish_status: (row.publish_status || '').toString().trim(),
+    publish_enabled: row.publish_enabled === true,
+    published_at: Number(row.published_at || 0),
+    published_by: (row.published_by || '').toString().trim(),
     sync_status: (row.sync_status || 'unknown').toString().trim(),
     last_synced_at: Number(row.last_synced_at || 0),
     enable_block_reason: (row.enable_block_reason || '').toString().trim(),
@@ -2109,6 +2121,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const [modelTestedSignature, setModelTestedSignature] = useState('');
   const [modelTestTargetModels, setModelTestTargetModels] = useState([]);
   const [detailModelMutating, setDetailModelMutating] = useState(false);
+  const [publishMutatingModel, setPublishMutatingModel] = useState('');
   const [detailBasicEditing, setDetailBasicEditing] = useState(false);
   const [detailEditingModelKey, setDetailEditingModelKey] = useState('');
   const [detailEditingModelSnapshot, setDetailEditingModelSnapshot] =
@@ -2217,6 +2230,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const showDetailEndpointsTab =
     isDetailMode && activeDetailTab === 'endpoints';
   const showDetailTestsTab = isDetailMode && activeDetailTab === 'tests';
+  const showDetailPublishTab = isDetailMode && activeDetailTab === 'publish';
   const showDetailBillingTab = isDetailMode && activeDetailTab === 'billing';
   const detailBasicReadonly = isDetailMode && !detailBasicEditing;
   const detailModelsEditing =
@@ -2245,6 +2259,11 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       disabled: isAnyDetailSectionEditing && activeDetailTab !== 'tests',
     },
     {
+      key: 'publish',
+      label: t('channel.edit.detail_tabs.publish'),
+      disabled: isAnyDetailSectionEditing && activeDetailTab !== 'publish',
+    },
+    {
       key: 'billing',
       label: t('channel.edit.detail_tabs.billing'),
       disabled: isAnyDetailSectionEditing && activeDetailTab !== 'billing',
@@ -2261,6 +2280,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const detailModelsEditLocked =
     isDetailMode && (detailBasicEditing || detailBillingEditing);
   const detailTestingReadonly = isDetailMode && isAnyDetailSectionEditing;
+  const detailPublishReadonly = isDetailMode && isAnyDetailSectionEditing;
   const detailBillingReadonly = isDetailMode && isAnyDetailSectionEditing;
   const inputReadonlyProps = detailBasicReadonly ? { readOnly: true } : {};
   const visibleChannelModels = useMemo(
@@ -3437,6 +3457,57 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       loadChannelModelsFromServer,
       loadChannelTasksFromServer,
       loadChannelTestsFromServer,
+    ]
+  );
+
+  const updateChannelModelPublish = useCallback(
+    async (row, publishEnabled) => {
+      if (!isDetailMode || detailPublishReadonly) {
+        return false;
+      }
+      const targetChannelId = (channelId || '').toString().trim();
+      const modelName = (row?.model || row?.upstream_model || '')
+        .toString()
+        .trim();
+      if (targetChannelId === '' || modelName === '') {
+        return false;
+      }
+      setPublishMutatingModel(modelName);
+      try {
+        const res = await API.put(
+          `/api/v1/admin/channel/${targetChannelId}/models/publish`,
+          {
+            model: modelName,
+            publish_enabled: !!publishEnabled,
+          }
+        );
+        const { success, message } = res.data || {};
+        if (!success) {
+          showError(message || t('channel.edit.publish.update_failed'));
+          return false;
+        }
+        await refreshChannelRuntimeState(targetChannelId);
+        showSuccess(
+          t(
+            publishEnabled
+              ? 'channel.edit.publish.publish_success'
+              : 'channel.edit.publish.unpublish_success'
+          )
+        );
+        return true;
+      } catch (error) {
+        showError(error?.message || t('channel.edit.publish.update_failed'));
+        return false;
+      } finally {
+        setPublishMutatingModel('');
+      }
+    },
+    [
+      channelId,
+      detailPublishReadonly,
+      isDetailMode,
+      refreshChannelRuntimeState,
+      t,
     ]
   );
 
@@ -5284,11 +5355,11 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   }, [fetchChannelTypes]);
 
   useEffect(() => {
-    if (!showStepTwo && !showDetailTestsTab) {
+    if (!showStepTwo && !showDetailTestsTab && !showDetailPublishTab) {
       return;
     }
     loadProviderIndex({ silent: true }).then();
-  }, [loadProviderIndex, showDetailTestsTab, showStepTwo]);
+  }, [loadProviderIndex, showDetailPublishTab, showDetailTestsTab, showStepTwo]);
 
   useEffect(() => {
     if (detailModelPage <= detailModelTotalPages) {
@@ -5874,10 +5945,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                     searchedChannelModels={searchedChannelModels}
                     visibleChannelModels={visibleChannelModels}
                     renderedChannelModels={renderedChannelModels}
-                    getComplexPricingDetailsForModel={
-                      getComplexPricingDetailsForModel
-                    }
-                    openComplexPricingModal={openComplexPricingModal}
                     detailModelsEditLocked={detailModelsEditLocked}
                     providerDataLoading={providerDataLoading}
                     toggleModelSelection={toggleModelSelection}
@@ -5972,6 +6039,20 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 setImageEditTestData={setImageEditTestData}
                 setImageEditTestFileName={setImageEditTestFileName}
                 handleImageEditTestFileChange={handleImageEditTestFileChange}
+              />
+            )}
+            {showDetailPublishTab && inputs.protocol !== 'proxy' && (
+              <ChannelDetailPublishTab
+                t={t}
+                channelModels={visibleChannelModels}
+                getComplexPricingDetailsForModel={
+                  getComplexPricingDetailsForModel
+                }
+                openComplexPricingModal={openComplexPricingModal}
+                normalizeChannelModelType={normalizeChannelModelType}
+                onUpdatePublish={updateChannelModelPublish}
+                publishMutatingModel={publishMutatingModel}
+                publishReadonly={detailPublishReadonly}
               />
             )}
             {showDetailBillingTab && (

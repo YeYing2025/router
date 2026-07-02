@@ -666,7 +666,32 @@
         "models": "选择",
         "endpoints": "配置",
         "tests": "测试",
+        "publish": "发布",
         "billing": "采购"
+      },
+      "publish": {
+        "title": "模型发布",
+        "hint": "发布页是模型进入运行时选路的最终入口。模型需要已选择、端点已启用且最近测试成功后，才能手动发布。",
+        "summary": "已选择 {{count}} 个模型",
+        "empty": "暂无已选择模型，请先到“选择”页启用模型。",
+        "action_publish": "发布",
+        "action_unpublish": "取消发布",
+        "publish_success": "模型已发布",
+        "unpublish_success": "模型已取消发布",
+        "update_failed": "更新发布状态失败",
+        "unpublish_confirm": "确认取消发布该模型吗？取消后该模型不会参与运行时选路。",
+        "table": {
+          "check": "发布检查",
+          "actions": "操作"
+        },
+        "check_status": {
+          "selectable": "请先在选择页启用",
+          "pending_config": "请先配置并启用端点",
+          "pending_test": "请先完成成功测试",
+          "pending_publish": "检查通过，可发布",
+          "published": "已进入运行时选路",
+          "disabled": "模型已停用"
+        }
       },
       "billing": {
         "title": "账务",
@@ -1098,6 +1123,7 @@
           "selectable": "待选择",
           "pending_config": "待配置",
           "pending_test": "待测试",
+          "pending_publish": "待发布",
           "published": "已发布",
           "disabled": "已停用"
         },
@@ -1494,6 +1520,7 @@
     },
     "period_type": {
       "daily": "每日",
+      "weekly": "每周",
       "monthly": "每月",
       "package_total": "套餐总量"
     },
@@ -1650,6 +1677,7 @@
     "messages": {
       "copy_success": "已复制到剪贴板！",
       "copy_failed": "无法复制到剪贴板，请手动复制。",
+      "chat_open_failed": "无法打开 Chat，请检查聊天页面链接或令牌是否完整。",
       "operation_success": "操作成功完成！"
     }
   },
@@ -3391,6 +3419,7 @@
   "auth": {
     "login": {
       "title": "用户登录",
+      "banner_text": "帮助您更好地管理、分发、路由和使用各大模型厂商接口服务",
       "username": "用户名 / 邮箱地址",
       "password": "密码",
       "login": "登录",
@@ -3404,7 +3433,11 @@
       "wallet_button": "使用钱包登录",
       "wallet_action": "钱包登陆",
       "wallet_pending": "请在钱包中确认签名",
+      "wallet_pending_retry": "请在钱包中完成签名，或重新发起登录",
       "wallet_address_placeholder": "选择钱包地址",
+      "wallet_rejected": "用户拒绝了请求",
+      "wallet_failed": "钱包登录失败",
+      "user_fetch_failed": "未获取到用户信息",
       "password_button": "使用账密登录",
       "password_action": "密码登陆",
       "password_disabled": "用户名密码登录未开启",

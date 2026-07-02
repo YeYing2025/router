@@ -352,6 +352,24 @@ func UpdateModels(channelID string, rows []model.ChannelModel) error {
 	return channel.UpdateGroupModelChannels()
 }
 
+func UpdateModelPublish(channelID string, modelName string, publishEnabled bool, operator string) error {
+	normalizedChannelID := strings.TrimSpace(channelID)
+	if normalizedChannelID == "" {
+		return errors.New("渠道 ID 不能为空")
+	}
+	if err := model.SetChannelModelPublishEnabledWithDB(model.DB, normalizedChannelID, modelName, publishEnabled, operator); err != nil {
+		return err
+	}
+	channel := &model.Channel{}
+	if err := model.DB.First(channel, "id = ?", normalizedChannelID).Error; err != nil {
+		return err
+	}
+	if err := model.HydrateChannelWithModels(model.DB, channel); err != nil {
+		return err
+	}
+	return channel.UpdateGroupModelChannels()
+}
+
 func previewChannelModelSelection(existingRows []model.ChannelModel, selected []string) []model.ChannelModel {
 	selectedSet := make(map[string]struct{}, len(selected))
 	for _, modelID := range model.NormalizeChannelModelIDsPreserveOrder(selected) {

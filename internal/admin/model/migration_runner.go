@@ -1629,6 +1629,33 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return rebuildGroupModelChannelsForPublishedChannelModelsWithDB(tx)
 			},
 		},
+		{
+			Version:     "202607011130_refresh_qwen_vision_model_specifications",
+			Description: "refresh qwen official vision model tags and input specifications",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "qwen")
+			},
+		},
+		{
+			Version:     "202607021030_refresh_provider_vision_model_specifications",
+			Description: "refresh official vision model tags and input specifications for supported providers",
+			Up: func(tx *gorm.DB) error {
+				return upsertProviderMigrationProvidersWithDB(tx, "openai", "anthropic", "zhipu", "volcengine")
+			},
+		},
+		{
+			Version:     "202607021130_channel_model_explicit_publish",
+			Description: "add explicit channel model publish fields and backfill currently routable models",
+			Up: func(tx *gorm.DB) error {
+				if err := tx.AutoMigrate(&ChannelModel{}); err != nil {
+					return err
+				}
+				if err := backfillExplicitPublishedChannelModelsWithDB(tx); err != nil {
+					return err
+				}
+				return rebuildGroupModelChannelsForPublishedChannelModelsWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
 }
@@ -1647,6 +1674,42 @@ func rebuildGroupModelChannelsForPublishedChannelModelsWithDB(db *gorm.DB) error
 	for _, channelID := range normalizeTrimmedValuesPreserveOrder(channelIDs) {
 		if err := refreshGroupModelChannelsForChannelWithDB(db, channelID, false); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func backfillExplicitPublishedChannelModelsWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	channelIDs := make([]string, 0)
+	if err := db.Model(&Channel{}).
+		Select("id").
+		Order("id asc").
+		Pluck("id", &channelIDs).Error; err != nil {
+		return err
+	}
+	now := helper.GetTimestamp()
+	for _, channelID := range normalizeTrimmedValuesPreserveOrder(channelIDs) {
+		rows, err := listChannelModelRowsByChannelIDWithDB(db, channelID)
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			if row.PublishEnabled || strings.TrimSpace(row.PublishStatus) != ChannelModelPublishStatusPendingPublish {
+				continue
+			}
+			if err := db.Model(&ChannelModel{}).
+				Where("channel_id = ? AND model = ?", strings.TrimSpace(row.ChannelId), strings.TrimSpace(row.Model)).
+				Updates(map[string]any{
+					"publish_enabled": true,
+					"published_at":    now,
+					"published_by":    "migration",
+					"updated_at":      now,
+				}).Error; err != nil {
+				return err
+			}
 		}
 	}
 	return nil

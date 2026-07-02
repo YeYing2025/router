@@ -38,6 +38,11 @@ type updateChannelModelsRequest struct {
 	ChannelModels []model.ChannelModel `json:"channel_models"`
 }
 
+type updateChannelModelPublishRequest struct {
+	Model          string `json:"model"`
+	PublishEnabled bool   `json:"publish_enabled"`
+}
+
 const (
 	defaultChannelModelPageSize = 10
 	maxChannelModelPageSize     = 100
@@ -264,6 +269,41 @@ func UpdateChannelModels(c *gin.Context) {
 		"message": "",
 		"data": gin.H{
 			"channel_id": channelID,
+		},
+	})
+}
+
+func UpdateChannelModelPublish(c *gin.Context) {
+	channelID := strings.TrimSpace(c.Param("id"))
+	if channelID == "" {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "渠道 ID 无效"})
+		return
+	}
+	req := updateChannelModelPublishRequest{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logChannelAdminWarn(c, "update_model_publish", stringField("channel_id", channelID), stringField("reason", err.Error()))
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+	modelName := strings.TrimSpace(req.Model)
+	if modelName == "" {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "模型不能为空"})
+		return
+	}
+	operator := channelAdminOperator(c)
+	if err := channelsvc.UpdateModelPublish(channelID, modelName, req.PublishEnabled, operator); err != nil {
+		logChannelAdminWarn(c, "update_model_publish", stringField("channel_id", channelID), stringField("model", modelName), stringField("publish_enabled", strconv.FormatBool(req.PublishEnabled)), stringField("reason", err.Error()))
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+	logChannelAdminInfo(c, "update_model_publish", stringField("channel_id", channelID), stringField("model", modelName), stringField("publish_enabled", strconv.FormatBool(req.PublishEnabled)))
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data": gin.H{
+			"channel_id":      channelID,
+			"model":           modelName,
+			"publish_enabled": req.PublishEnabled,
 		},
 	})
 }

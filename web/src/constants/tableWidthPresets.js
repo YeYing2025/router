@@ -3,10 +3,7 @@ export const CHANNEL_DETAIL_MODEL_COLUMN_WIDTHS = {
   name: 180,
   type: 72,
   alias: 200,
-  priceUnit: 108,
-  price: 128,
   status: 92,
-  publishStatus: 96,
   upstreamReturn: 132,
   actions: 176,
 };
@@ -137,7 +134,7 @@ export const TOKEN_LIST_COLUMN_WIDTHS = {
   createdTime: 148,
   updatedTime: 148,
   expiredTime: 148,
-  actions: 56,
+  actions: 92,
 };
 
 export const TOKEN_LIST_TABLE_MIN_WIDTH =

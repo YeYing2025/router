@@ -84,12 +84,13 @@ func TestReplaceSingleGroupModelWithDB_PreservesDisabledState(t *testing.T) {
 		t.Fatalf("create group channel: %v", err)
 	}
 	if err := db.Create(&ChannelModel{
-		ChannelId:     channel.Id,
-		Model:         "gpt-5.1",
-		UpstreamModel: "gpt-5.1",
-		Provider:      "openai",
-		Type:          ProviderModelTypeText,
-		Selected:      true,
+		ChannelId:      channel.Id,
+		Model:          "gpt-5.1",
+		UpstreamModel:  "gpt-5.1",
+		Provider:       "openai",
+		Type:           ProviderModelTypeText,
+		Selected:       true,
+		PublishEnabled: true,
 	}).Error; err != nil {
 		t.Fatalf("create channel model: %v", err)
 	}
@@ -208,9 +209,18 @@ func TestBuildGroupChannelModelOptionsOnlyIncludesPublishedModels(t *testing.T) 
 	}
 	if err := db.Create(&[]ChannelModel{
 		{
+			ChannelId:      channel.Id,
+			Model:          "published-model",
+			UpstreamModel:  "published-model",
+			Provider:       "openai",
+			Type:           ProviderModelTypeText,
+			Selected:       true,
+			PublishEnabled: true,
+		},
+		{
 			ChannelId:     channel.Id,
-			Model:         "published-model",
-			UpstreamModel: "published-model",
+			Model:         "pending-publish-model",
+			UpstreamModel: "pending-publish-model",
 			Provider:      "openai",
 			Type:          ProviderModelTypeText,
 			Selected:      true,
@@ -243,6 +253,12 @@ func TestBuildGroupChannelModelOptionsOnlyIncludesPublishedModels(t *testing.T) 
 		},
 		{
 			ChannelId: channel.Id,
+			Model:     "pending-publish-model",
+			Endpoint:  ChannelModelEndpointResponses,
+			Enabled:   true,
+		},
+		{
+			ChannelId: channel.Id,
 			Model:     "pending-test-model",
 			Endpoint:  ChannelModelEndpointResponses,
 			Enabled:   true,
@@ -250,12 +266,21 @@ func TestBuildGroupChannelModelOptionsOnlyIncludesPublishedModels(t *testing.T) 
 	}).Error; err != nil {
 		t.Fatalf("create channel endpoints: %v", err)
 	}
-	if err := db.Create(&ChannelModelEndpointTestResult{
-		ChannelId:      channel.Id,
-		Model:          "published-model",
-		Endpoint:       ChannelModelEndpointResponses,
-		LastTestStatus: ChannelModelEndpointTestStatusSuccess,
-		LastSupported:  true,
+	if err := db.Create(&[]ChannelModelEndpointTestResult{
+		{
+			ChannelId:      channel.Id,
+			Model:          "published-model",
+			Endpoint:       ChannelModelEndpointResponses,
+			LastTestStatus: ChannelModelEndpointTestStatusSuccess,
+			LastSupported:  true,
+		},
+		{
+			ChannelId:      channel.Id,
+			Model:          "pending-publish-model",
+			Endpoint:       ChannelModelEndpointResponses,
+			LastTestStatus: ChannelModelEndpointTestStatusSuccess,
+			LastSupported:  true,
+		},
 	}).Error; err != nil {
 		t.Fatalf("create endpoint test result: %v", err)
 	}
@@ -281,6 +306,9 @@ func TestBuildGroupChannelModelOptionsOnlyIncludesPublishedModels(t *testing.T) 
 	}
 	if statusByModel["published-model"] != ChannelModelPublishStatusPublished {
 		t.Fatalf("published status = %q, want published", statusByModel["published-model"])
+	}
+	if statusByModel["pending-publish-model"] != ChannelModelPublishStatusPendingPublish {
+		t.Fatalf("pending publish status = %q, want pending_publish", statusByModel["pending-publish-model"])
 	}
 	if statusByModel["pending-config-model"] != ChannelModelPublishStatusPendingConfig {
 		t.Fatalf("pending config status = %q, want pending_config", statusByModel["pending-config-model"])
