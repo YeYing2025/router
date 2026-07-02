@@ -345,6 +345,106 @@ func TestReplaceChannelModelsWithDBClearsRuntimeDisableMetadataWhenModelRestored
 	}
 }
 
+func TestReplaceChannelModelsWithDBPreservesPublishStateForUnchangedSelectedModel(t *testing.T) {
+	db := openChannelModelTestDB(t)
+	if err := db.AutoMigrate(
+		&Channel{},
+		&ChannelModel{},
+		&ChannelModelEndpoint{},
+		&ChannelModelEndpointTestResult{},
+		&ChannelModelPriceComponent{},
+		&ProviderModel{},
+	); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+	if err := db.Create(&Channel{Id: "channel-1", Name: "channel-1", Protocol: "openai"}).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+	if err := db.Create(&ChannelModel{
+		ChannelId:      "channel-1",
+		Model:          "gpt-5.4",
+		UpstreamModel:  "gpt-5.4",
+		Provider:       "openai",
+		Type:           ProviderModelTypeText,
+		Selected:       true,
+		PublishEnabled: true,
+		PublishedAt:    123,
+		PublishedBy:    "migration",
+	}).Error; err != nil {
+		t.Fatalf("create channel model: %v", err)
+	}
+
+	if err := ReplaceChannelModelsWithDB(db, "channel-1", []ChannelModel{
+		{
+			Model:         "gpt-5.4",
+			UpstreamModel: "gpt-5.4",
+			Provider:      "openai",
+			Type:          ProviderModelTypeText,
+			Selected:      true,
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceChannelModelsWithDB: %v", err)
+	}
+
+	stored := ChannelModel{}
+	if err := db.Where("channel_id = ? AND model = ?", "channel-1", "gpt-5.4").Take(&stored).Error; err != nil {
+		t.Fatalf("load channel model: %v", err)
+	}
+	if !stored.PublishEnabled || stored.PublishedAt != 123 || stored.PublishedBy != "migration" {
+		t.Fatalf("publish fields = enabled:%v at:%d by:%q, want preserved", stored.PublishEnabled, stored.PublishedAt, stored.PublishedBy)
+	}
+}
+
+func TestReplaceChannelModelsWithDBClearsPublishStateWhenRoutingConfigChanges(t *testing.T) {
+	db := openChannelModelTestDB(t)
+	if err := db.AutoMigrate(
+		&Channel{},
+		&ChannelModel{},
+		&ChannelModelEndpoint{},
+		&ChannelModelEndpointTestResult{},
+		&ChannelModelPriceComponent{},
+		&ProviderModel{},
+	); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+	if err := db.Create(&Channel{Id: "channel-1", Name: "channel-1", Protocol: "openai"}).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+	if err := db.Create(&ChannelModel{
+		ChannelId:      "channel-1",
+		Model:          "gpt-5.4",
+		UpstreamModel:  "gpt-5.4",
+		Provider:       "openai",
+		Type:           ProviderModelTypeText,
+		Selected:       true,
+		PublishEnabled: true,
+		PublishedAt:    123,
+		PublishedBy:    "migration",
+	}).Error; err != nil {
+		t.Fatalf("create channel model: %v", err)
+	}
+
+	if err := ReplaceChannelModelsWithDB(db, "channel-1", []ChannelModel{
+		{
+			Model:         "gpt-5.4",
+			UpstreamModel: "gpt-5.4-preview",
+			Provider:      "openai",
+			Type:          ProviderModelTypeText,
+			Selected:      true,
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceChannelModelsWithDB: %v", err)
+	}
+
+	stored := ChannelModel{}
+	if err := db.Where("channel_id = ? AND model = ?", "channel-1", "gpt-5.4").Take(&stored).Error; err != nil {
+		t.Fatalf("load channel model: %v", err)
+	}
+	if stored.PublishEnabled || stored.PublishedAt != 0 || stored.PublishedBy != "" {
+		t.Fatalf("publish fields = enabled:%v at:%d by:%q, want cleared", stored.PublishEnabled, stored.PublishedAt, stored.PublishedBy)
+	}
+}
+
 func TestValidateChannelModelDisableTransitionsWithDBBlocksWhenEnabledEndpointsExist(t *testing.T) {
 	db := openChannelModelTestDB(t)
 	if err := db.AutoMigrate(&ChannelModelEndpoint{}); err != nil {

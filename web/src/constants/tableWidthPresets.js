@@ -3,10 +3,7 @@ export const CHANNEL_DETAIL_MODEL_COLUMN_WIDTHS = {
   name: 180,
   type: 72,
   alias: 200,
-  priceUnit: 108,
-  price: 128,
   status: 92,
-  publishStatus: 96,
   upstreamReturn: 132,
   actions: 176,
 };

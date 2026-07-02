@@ -666,7 +666,32 @@
         "models": "选择",
         "endpoints": "配置",
         "tests": "测试",
+        "publish": "发布",
         "billing": "采购"
+      },
+      "publish": {
+        "title": "模型发布",
+        "hint": "发布页是模型进入运行时选路的最终入口。模型需要已选择、端点已启用且最近测试成功后，才能手动发布。",
+        "summary": "已选择 {{count}} 个模型",
+        "empty": "暂无已选择模型，请先到“选择”页启用模型。",
+        "action_publish": "发布",
+        "action_unpublish": "取消发布",
+        "publish_success": "模型已发布",
+        "unpublish_success": "模型已取消发布",
+        "update_failed": "更新发布状态失败",
+        "unpublish_confirm": "确认取消发布该模型吗？取消后该模型不会参与运行时选路。",
+        "table": {
+          "check": "发布检查",
+          "actions": "操作"
+        },
+        "check_status": {
+          "selectable": "请先在选择页启用",
+          "pending_config": "请先配置并启用端点",
+          "pending_test": "请先完成成功测试",
+          "pending_publish": "检查通过，可发布",
+          "published": "已进入运行时选路",
+          "disabled": "模型已停用"
+        }
       },
       "billing": {
         "title": "账务",
@@ -1098,6 +1123,7 @@
           "selectable": "待选择",
           "pending_config": "待配置",
           "pending_test": "待测试",
+          "pending_publish": "待发布",
           "published": "已发布",
           "disabled": "已停用"
         },

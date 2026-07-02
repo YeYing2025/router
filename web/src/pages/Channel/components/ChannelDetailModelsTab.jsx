@@ -41,8 +41,6 @@ const ChannelDetailModelsTab = ({
   searchedChannelModels,
   visibleChannelModels,
   renderedChannelModels,
-  getComplexPricingDetailsForModel,
-  openComplexPricingModal,
   detailModelsEditLocked,
   providerDataLoading,
   toggleModelSelection,
@@ -82,71 +80,6 @@ const ChannelDetailModelsTab = ({
       return t('channel.edit.model_selector.auto_paused');
     }
     return t('channel.edit.model_selector.inactive');
-  };
-
-  const normalizePublishStatus = (row) => {
-    const explicitStatus = (row?.publish_status || '').toString().trim();
-    if (explicitStatus) {
-      return explicitStatus;
-    }
-    if (row?.inactive) {
-      return 'disabled';
-    }
-    if (!row?.selected) {
-      return 'selectable';
-    }
-    return 'pending_config';
-  };
-
-  const publishStatusColor = (status) => {
-    switch (status) {
-      case 'published':
-        return 'green';
-      case 'pending_test':
-        return 'orange';
-      case 'pending_config':
-        return 'yellow';
-      case 'selectable':
-        return 'blue';
-      case 'disabled':
-        return 'grey';
-      default:
-        return 'grey';
-    }
-  };
-
-  const renderMergedPrice = (row) => {
-    const complexPricingDetails = getComplexPricingDetailsForModel(row);
-    const hasComplexPricing = complexPricingDetails.some((detail) =>
-      (detail.price_components || []).some(
-        (component) =>
-          Number(component.input_price || 0) > 0 ||
-          Number(component.output_price || 0) > 0,
-      ),
-    );
-    if (hasComplexPricing) {
-      return (
-        <AppButton
-          type='button'
-          className='router-inline-button'
-          onClick={() => openComplexPricingModal(row)}
-        >
-          {t('channel.edit.model_selector.pricing_detail_button')}
-        </AppButton>
-      );
-    }
-    const hasInputPrice =
-      row.input_price !== null && row.input_price !== undefined && row.input_price !== '';
-    const hasOutputPrice =
-      row.output_price !== null && row.output_price !== undefined && row.output_price !== '';
-    if (!hasInputPrice && !hasOutputPrice) {
-      return <span className='router-nowrap'>-</span>;
-    }
-    return (
-      <span className='router-nowrap'>
-        {hasInputPrice ? row.input_price : '-'}｜{hasOutputPrice ? row.output_price : '-'}
-      </span>
-    );
   };
 
   const tableRowSelection = {
@@ -355,21 +288,6 @@ const ChannelDetailModelsTab = ({
               ),
             },
             {
-              title: t('channel.edit.model_selector.table.price_unit'),
-              dataIndex: 'price_unit',
-              key: 'price_unit',
-              className: 'router-table-col-price-unit',
-              width: columnWidths.priceUnit,
-              ellipsis: true,
-              render: (value) => <span className='router-nowrap'>{value}</span>,
-            },
-            {
-              title: t('channel.edit.model_selector.table.price'),
-              key: 'price',
-              width: columnWidths.price,
-              render: (_, row) => renderMergedPrice(row),
-            },
-            {
               title: t('channel.edit.model_selector.table.upstream_status'),
               key: 'status',
               className: 'router-table-col-status-compact',
@@ -385,20 +303,6 @@ const ChannelDetailModelsTab = ({
                 return (
                   <AppTag color={color} className='router-tag'>
                     {t(`channel.edit.model_selector.upstream_return_status.${statusKey}`)}
-                  </AppTag>
-                );
-              },
-            },
-            {
-              title: t('channel.edit.model_selector.table.publish_status'),
-              key: 'publish_status',
-              className: 'router-table-col-status-compact',
-              width: columnWidths.publishStatus,
-              render: (_, row) => {
-                const status = normalizePublishStatus(row);
-                return (
-                  <AppTag color={publishStatusColor(status)} className='router-tag'>
-                    {t(`channel.edit.model_selector.publish_status.${status}`)}
                   </AppTag>
                 );
               },

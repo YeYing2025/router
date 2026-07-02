@@ -13,11 +13,12 @@ import (
 const (
 	ChannelModelsTableName = "channel_models"
 
-	ChannelModelPublishStatusSelectable    = "selectable"
-	ChannelModelPublishStatusPendingConfig = "pending_config"
-	ChannelModelPublishStatusPendingTest   = "pending_test"
-	ChannelModelPublishStatusPublished     = "published"
-	ChannelModelPublishStatusDisabled      = "disabled"
+	ChannelModelPublishStatusSelectable     = "selectable"
+	ChannelModelPublishStatusPendingConfig  = "pending_config"
+	ChannelModelPublishStatusPendingTest    = "pending_test"
+	ChannelModelPublishStatusPendingPublish = "pending_publish"
+	ChannelModelPublishStatusPublished      = "published"
+	ChannelModelPublishStatusDisabled       = "disabled"
 )
 
 type ChannelModel struct {
@@ -29,6 +30,9 @@ type ChannelModel struct {
 	Endpoint        string                              `json:"endpoint" gorm:"type:varchar(255);default:''"`
 	Endpoints       []string                            `json:"endpoints,omitempty" gorm:"-"`
 	PublishStatus   string                              `json:"publish_status,omitempty" gorm:"-"`
+	PublishEnabled  bool                                `json:"publish_enabled" gorm:"not null;default:false;index"`
+	PublishedAt     int64                               `json:"published_at,omitempty" gorm:"bigint;index"`
+	PublishedBy     string                              `json:"published_by,omitempty" gorm:"type:varchar(128);default:''"`
 	Inactive        bool                                `json:"inactive,omitempty" gorm:"not null;default:false;index"`
 	Selected        bool                                `json:"selected" gorm:"default:false;index"`
 	InputPrice      *float64                            `json:"input_price,omitempty" gorm:"type:double precision"`
@@ -571,6 +575,77 @@ func ReplaceChannelModelsWithDB(db *gorm.DB, channelID string, rows []ChannelMod
 	return SyncChannelModelEndpointsWithDB(db, normalizedChannelID, storedRows)
 }
 
+func SetChannelModelPublishEnabledWithDB(db *gorm.DB, channelID string, modelName string, publishEnabled bool, operator string) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	normalizedChannelID := strings.TrimSpace(channelID)
+	normalizedModelName := strings.TrimSpace(modelName)
+	if normalizedChannelID == "" {
+		return fmt.Errorf("渠道 ID 不能为空")
+	}
+	if normalizedModelName == "" {
+		return fmt.Errorf("模型不能为空")
+	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := lockChannelRowForUpdateWithDB(tx, normalizedChannelID); err != nil {
+			return err
+		}
+		row := ChannelModel{}
+		if err := tx.
+			Where("channel_id = ? AND model = ?", normalizedChannelID, normalizedModelName).
+			First(&row).Error; err != nil {
+			return err
+		}
+		normalizeChannelModelRow(&row)
+		if publishEnabled {
+			stateByChannelID, err := loadChannelModelEndpointStateByChannelIDsWithDB(tx, []string{normalizedChannelID})
+			if err != nil {
+				return err
+			}
+			supportByChannelID, err := loadChannelModelEndpointTestSupportByChannelIDsWithDB(tx, []string{normalizedChannelID})
+			if err != nil {
+				return err
+			}
+			state := stateByChannelID[normalizedChannelID][normalizedModelName]
+			support := supportByChannelID[normalizedChannelID][normalizedModelName]
+			if status := ResolveChannelModelPublishStatus(row, state, support); status != ChannelModelPublishStatusPendingPublish && status != ChannelModelPublishStatusPublished {
+				return fmt.Errorf("%s", channelModelPublishBlockedMessage(status))
+			}
+		}
+		now := helper.GetTimestamp()
+		updates := map[string]any{
+			"publish_enabled": publishEnabled,
+			"updated_at":      now,
+		}
+		if publishEnabled {
+			updates["published_at"] = now
+			updates["published_by"] = strings.TrimSpace(operator)
+		} else {
+			updates["published_at"] = int64(0)
+			updates["published_by"] = ""
+		}
+		return tx.Model(&ChannelModel{}).
+			Where("channel_id = ? AND model = ?", normalizedChannelID, normalizedModelName).
+			Updates(updates).Error
+	})
+}
+
+func channelModelPublishBlockedMessage(status string) string {
+	switch status {
+	case ChannelModelPublishStatusDisabled:
+		return "模型已停用，不能发布"
+	case ChannelModelPublishStatusSelectable:
+		return "模型未启用，不能发布"
+	case ChannelModelPublishStatusPendingConfig:
+		return "模型发布前需要先配置并启用端点"
+	case ChannelModelPublishStatusPendingTest:
+		return "模型发布前需要先完成成功测试"
+	default:
+		return "模型当前状态不能发布"
+	}
+}
+
 func DisableChannelModelCapability(channelID string, modelName string) (bool, error) {
 	return DisableChannelModelCapabilityWithReason(channelID, modelName, "", "")
 }
@@ -936,6 +1011,7 @@ func normalizeChannelModelRow(row *ChannelModel) {
 	row.Model = strings.TrimSpace(row.Model)
 	row.UpstreamModel = strings.TrimSpace(row.UpstreamModel)
 	row.Provider = strings.TrimSpace(strings.ToLower(row.Provider))
+	row.PublishedBy = strings.TrimSpace(row.PublishedBy)
 	row.DisabledReason = strings.TrimSpace(row.DisabledReason)
 	row.DisabledBy = strings.TrimSpace(row.DisabledBy)
 	if row.Model == "" && row.UpstreamModel != "" {
@@ -1042,6 +1118,20 @@ func replaceChannelModelRowsWithDB(db *gorm.DB, channelID string, rows []Channel
 	if err != nil {
 		return err
 	}
+	existingRows := make([]ChannelModel, 0)
+	if err := db.
+		Where("channel_id = ?", normalizedChannelID).
+		Find(&existingRows).Error; err != nil {
+		return err
+	}
+	existingByModel := make(map[string]ChannelModel, len(existingRows))
+	for _, existingRow := range existingRows {
+		modelName := strings.TrimSpace(existingRow.Model)
+		if modelName == "" {
+			continue
+		}
+		existingByModel[modelName] = existingRow
+	}
 	now := helper.GetTimestamp()
 	dbRows := make([]ChannelModel, 0, len(normalizedRows))
 	componentRows := make([]ChannelModelPriceComponent, 0)
@@ -1051,13 +1141,27 @@ func replaceChannelModelRowsWithDB(db *gorm.DB, channelID string, rows []Channel
 		row.UpdatedAt = now
 		normalizeChannelModelRow(&row)
 		completeChannelModelRowDefaults(&row, channelProtocol)
+		if strings.TrimSpace(row.Provider) == "" {
+			row.Provider = ResolveProviderFromModelMap(providerByModel, row.UpstreamModel, row.Model)
+		}
 		if row.Selected && !row.Inactive {
 			row.DisabledReason = ""
 			row.DisabledAt = 0
 			row.DisabledBy = ""
+			if existingRow, ok := existingByModel[row.Model]; ok && !shouldValidateManualChannelModelChange(existingRow, row) {
+				row.PublishEnabled = existingRow.PublishEnabled
+				row.PublishedAt = existingRow.PublishedAt
+				row.PublishedBy = strings.TrimSpace(existingRow.PublishedBy)
+			} else {
+				row.PublishEnabled = false
+				row.PublishedAt = 0
+				row.PublishedBy = ""
+			}
 		}
-		if strings.TrimSpace(row.Provider) == "" {
-			row.Provider = ResolveProviderFromModelMap(providerByModel, row.UpstreamModel, row.Model)
+		if row.Inactive || !row.Selected {
+			row.PublishEnabled = false
+			row.PublishedAt = 0
+			row.PublishedBy = ""
 		}
 		for componentIdx, component := range NormalizeProviderModelPriceComponents(row.PriceComponents) {
 			componentUpdatedAt := component.UpdatedAt
@@ -1473,6 +1577,7 @@ func ResolveChannelModelPublishStatus(row ChannelModel, state channelModelEndpoi
 		return ChannelModelPublishStatusSelectable
 	}
 	hasEnabledEndpoint := false
+	hasSupportedEndpoint := false
 	for endpoint, enabled := range state.Enabled {
 		normalizedEndpoint := NormalizeRequestedChannelModelEndpoint(endpoint)
 		if normalizedEndpoint == "" || !enabled {
@@ -1480,17 +1585,23 @@ func ResolveChannelModelPublishStatus(row ChannelModel, state channelModelEndpoi
 		}
 		hasEnabledEndpoint = true
 		if endpointSupport[normalizedEndpoint] {
-			return ChannelModelPublishStatusPublished
+			hasSupportedEndpoint = true
 		}
 	}
 	if !hasEnabledEndpoint {
 		return ChannelModelPublishStatusPendingConfig
 	}
-	return ChannelModelPublishStatusPendingTest
+	if !hasSupportedEndpoint {
+		return ChannelModelPublishStatusPendingTest
+	}
+	if !row.PublishEnabled {
+		return ChannelModelPublishStatusPendingPublish
+	}
+	return ChannelModelPublishStatusPublished
 }
 
 func IsChannelModelPublished(row ChannelModel) bool {
-	return strings.TrimSpace(row.PublishStatus) == ChannelModelPublishStatusPublished
+	return row.PublishEnabled && strings.TrimSpace(row.PublishStatus) == ChannelModelPublishStatusPublished
 }
 
 func normalizeExplicitChannelModelType(raw string) string {

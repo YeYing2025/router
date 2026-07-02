@@ -666,7 +666,32 @@
         "models": "Selection",
         "endpoints": "Configuration",
         "tests": "Tests",
+        "publish": "Publish",
         "billing": "Procurement"
+      },
+      "publish": {
+        "title": "Model Publishing",
+        "hint": "The Publish tab is the final entry point for runtime routing. A model must be selected, have an enabled endpoint, and pass its latest test before it can be manually published.",
+        "summary": "{{count}} selected models",
+        "empty": "No selected models yet. Enable models in the Selection tab first.",
+        "action_publish": "Publish",
+        "action_unpublish": "Unpublish",
+        "publish_success": "Model published",
+        "unpublish_success": "Model unpublished",
+        "update_failed": "Failed to update publish status",
+        "unpublish_confirm": "Unpublish this model? It will stop participating in runtime routing.",
+        "table": {
+          "check": "Publish Check",
+          "actions": "Actions"
+        },
+        "check_status": {
+          "selectable": "Enable it in Selection first",
+          "pending_config": "Configure and enable an endpoint first",
+          "pending_test": "Run a successful test first",
+          "pending_publish": "Checks passed, ready to publish",
+          "published": "Included in runtime routing",
+          "disabled": "Model is disabled"
+        }
       },
       "billing": {
         "title": "Billing",
@@ -1098,6 +1123,7 @@
           "selectable": "Pending Selection",
           "pending_config": "Needs Config",
           "pending_test": "Needs Test",
+          "pending_publish": "Ready to Publish",
           "published": "Published",
           "disabled": "Disabled"
         },

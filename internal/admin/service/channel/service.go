@@ -45,6 +45,10 @@ func UpdateModels(id string, rows []model.ChannelModel) error {
 	return channelrepo.UpdateModels(id, rows)
 }
 
+func UpdateModelPublish(id string, modelName string, publishEnabled bool, operator string) error {
+	return channelrepo.UpdateModelPublish(id, modelName, publishEnabled, operator)
+}
+
 func UpdateTestModelByID(id string, testModel string) error {
 	return channelrepo.UpdateTestModelByID(id, testModel)
 }
