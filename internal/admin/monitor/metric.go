@@ -138,11 +138,18 @@ func MetricDisableChannelAndScheduleRecover(channelId string, successRate float6
 		return
 	}
 	MetricDisableChannel(channelId, successRate)
-	recoverAfter := helper.GetTimestamp() + int64(config.MetricAutoRecoverAfterSeconds)
+	recoverAfter := helper.GetTimestamp() + int64(metricAutoRecoverAfterSeconds())
 	if err := model.RecordChannelCircuitBreakerOpen(normalizedChannelID, "low_success_rate", successRate, recoverAfter); err != nil {
 		logger.SysError("failed to record metric circuit breaker state: " + err.Error())
 	}
 	scheduleMetricChannelRecoverAt(normalizedChannelID, recoverAfter)
+}
+
+func metricAutoRecoverAfterSeconds() int {
+	if config.MetricAutoRecoverAfterSeconds > 0 {
+		return config.MetricAutoRecoverAfterSeconds
+	}
+	return 300
 }
 
 func scheduleMetricChannelRecoverAt(channelId string, recoverAfter int64) {
@@ -150,11 +157,8 @@ func scheduleMetricChannelRecoverAt(channelId string, recoverAfter int64) {
 	if normalizedChannelID == "" {
 		return
 	}
-	if !config.AutomaticEnableChannelEnabled {
-		return
-	}
-	if config.MetricAutoRecoverAfterSeconds <= 0 {
-		return
+	if recoverAfter <= 0 {
+		recoverAfter = helper.GetTimestamp() + int64(metricAutoRecoverAfterSeconds())
 	}
 	if _, loaded := metricRecoverTimers.LoadOrStore(normalizedChannelID, struct{}{}); loaded {
 		return
@@ -170,9 +174,6 @@ func scheduleMetricChannelRecoverAt(channelId string, recoverAfter int64) {
 }
 
 func resumeMetricChannelRecoveries() {
-	if !config.AutomaticEnableChannelEnabled {
-		return
-	}
 	rows, err := model.ListOpenChannelCircuitBreakerStates()
 	if err != nil {
 		logger.SysError("failed to list metric circuit breaker states: " + err.Error())

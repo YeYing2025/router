@@ -92,7 +92,7 @@ func Relay(c *gin.Context) {
 	appendFallbackFailureAttempt(c, 1, bizErr)
 	go processChannelRelayError(ctx, userId, group, channelId, channelName, originalModel, requestPath, *bizErr)
 	traceID := c.GetString(helper.TraceIDKey)
-	retryAllRemainingCandidates := config.RetryTimes > 0
+	retryAllRemainingCandidates := config.RetryTimes > 0 || monitor.IsHardChannelFailure(&bizErr.Error, bizErr.StatusCode)
 	retryCount := 0
 	retryable := shouldRetry(c, bizErr)
 	if !retryable {
@@ -409,6 +409,9 @@ func isUpstreamQuotaRelayError(err *model.ErrorWithStatusCode) bool {
 		strings.Contains(lowerMessage, "余额不足") ||
 		strings.Contains(lowerMessage, "资源包") ||
 		strings.Contains(lowerMessage, "欠费") ||
+		strings.Contains(lowerMessage, "用户账户已于") ||
+		strings.Contains(lowerMessage, "账户已于") ||
+		strings.Contains(lowerMessage, "自动停用") ||
 		strings.Contains(lowerMessage, "quota") ||
 		strings.Contains(lowerMessage, "credit") ||
 		strings.Contains(lowerMessage, "balance") ||
@@ -508,13 +511,13 @@ func processChannelRelayError(ctx context.Context, userId string, groupID string
 	if shouldAutoPauseChannelModelEndpointAfterRepeatedFailures(ctx, channelId, channelName, requestModel, requestPath, err) {
 		return
 	}
-	if monitor.ShouldDisableChannel(&err.Error, err.StatusCode) {
-		if monitor.IsInsufficientBalanceError(&err.Error, err.StatusCode) {
-			if disableErr := monitor.DisableChannelForInsufficientBalance(channelId, channelName, 0); disableErr != nil {
-				monitor.Emit(channelId, false)
-			}
-			return
+	if monitor.IsInsufficientBalanceError(&err.Error, err.StatusCode) {
+		if disableErr := monitor.DisableChannelForInsufficientBalance(channelId, channelName, 0); disableErr != nil {
+			monitor.Emit(channelId, false)
 		}
+		return
+	}
+	if monitor.ShouldDisableChannel(&err.Error, err.StatusCode) {
 		monitor.DisableChannel(channelId, channelName, err.Message)
 	} else {
 		monitor.Emit(channelId, false)

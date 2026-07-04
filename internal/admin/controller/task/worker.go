@@ -19,6 +19,8 @@ const (
 	asyncTaskPollInterval                   = 1200 * time.Millisecond
 	runtimeCapabilityRecoveryProbeInterval  = 10 * time.Minute
 	runtimeCapabilityRecoveryProbeBatchSize = 100
+	channelRecoveryProbeInterval            = 10 * time.Minute
+	channelRecoveryProbeBatchSize           = 100
 )
 
 var startAsyncTaskWorkersOnce sync.Once
@@ -69,6 +71,7 @@ func StartAsyncTaskWorkers() {
 			go asyncTaskWorkerLoop(idx + 1)
 		}
 		go runtimeCapabilityRecoveryProbeLoop()
+		go channelRecoveryProbeLoop()
 	})
 }
 
@@ -84,6 +87,21 @@ func runtimeCapabilityRecoveryProbeLoop() {
 			logger.Info(context.Background(), fmt.Sprintf("[async-task] runtime_capability_recovery_probe_enqueued count=%d", created))
 		}
 		timer.Reset(runtimeCapabilityRecoveryProbeInterval)
+	}
+}
+
+func channelRecoveryProbeLoop() {
+	timer := time.NewTimer(30 * time.Second)
+	defer timer.Stop()
+	for {
+		<-timer.C
+		created, err := channel.EnqueueInsufficientBalanceChannelRecoveryTests(channelRecoveryProbeBatchSize)
+		if err != nil {
+			logger.Warn(context.Background(), fmt.Sprintf("[async-task] channel_recovery_probe_failed error=%q", err.Error()))
+		} else if created > 0 {
+			logger.Info(context.Background(), fmt.Sprintf("[async-task] channel_recovery_probe_enqueued count=%d", created))
+		}
+		timer.Reset(channelRecoveryProbeInterval)
 	}
 }
 

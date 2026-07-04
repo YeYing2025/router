@@ -18,7 +18,9 @@ var deprecatedRewardOptionKeys = map[string]struct{}{
 }
 
 var deprecatedOptionKeys = map[string]struct{}{
-	"DefaultUserGroup": {},
+	"DefaultUserGroup":               {},
+	"AutomaticDisableChannelEnabled": {},
+	"AutomaticEnableChannelEnabled":  {},
 }
 
 type Option struct {
@@ -40,8 +42,6 @@ func InitOptionMap() {
 	config.OptionMap["PasswordLoginEnabled"] = strconv.FormatBool(config.PasswordLoginEnabled)
 	config.OptionMap["PasswordRegisterEnabled"] = strconv.FormatBool(config.PasswordRegisterEnabled)
 	config.OptionMap["RegisterEnabled"] = strconv.FormatBool(config.RegisterEnabled)
-	config.OptionMap["AutomaticDisableChannelEnabled"] = strconv.FormatBool(config.AutomaticDisableChannelEnabled)
-	config.OptionMap["AutomaticEnableChannelEnabled"] = strconv.FormatBool(config.AutomaticEnableChannelEnabled)
 	config.OptionMap["LogConsumeEnabled"] = strconv.FormatBool(config.LogConsumeEnabled)
 	config.OptionMap["FXAutoSyncEnabled"] = strconv.FormatBool(config.FXAutoSyncEnabled)
 	config.OptionMap["FXAutoSyncIntervalSeconds"] = strconv.Itoa(config.FXAutoSyncIntervalSeconds)
@@ -170,10 +170,6 @@ func UpdateOptionMap(key string, value string) (err error) {
 			config.PasswordLoginEnabled = boolValue
 		case "RegisterEnabled":
 			config.RegisterEnabled = boolValue
-		case "AutomaticDisableChannelEnabled":
-			config.AutomaticDisableChannelEnabled = boolValue
-		case "AutomaticEnableChannelEnabled":
-			config.AutomaticEnableChannelEnabled = boolValue
 		case "LogConsumeEnabled":
 			config.LogConsumeEnabled = boolValue
 		case "FXAutoSyncEnabled":

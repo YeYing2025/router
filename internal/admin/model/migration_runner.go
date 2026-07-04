@@ -1664,8 +1664,25 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return migrateChannelEndpointPolicyTemplatesWithDB(tx)
 			},
 		},
+		{
+			Version:     "202607041000_drop_automatic_channel_toggle_options",
+			Description: "remove deprecated automatic channel toggle options from system settings",
+			Up: func(tx *gorm.DB) error {
+				return removeAutomaticChannelToggleOptionsWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
+}
+
+func removeAutomaticChannelToggleOptionsWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	return db.Exec(
+		"DELETE FROM system_settings WHERE key IN ?",
+		[]string{"AutomaticDisableChannelEnabled", "AutomaticEnableChannelEnabled"},
+	).Error
 }
 
 func migrateChannelEndpointPolicyTemplatesWithDB(db *gorm.DB) error {

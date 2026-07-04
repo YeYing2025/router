@@ -72,26 +72,6 @@ func isUsableBillingEntitlement(item model.ChannelBillingSnapshotItem, now int64
 	return item.RemainingAmount > 0
 }
 
-func isBillingRecoveryEntitlement(item model.ChannelBillingSnapshotItem) bool {
-	resourceType := strings.TrimSpace(strings.ToLower(item.ResourceType))
-	quotaType := strings.TrimSpace(strings.ToLower(item.QuotaType))
-	return resourceType == model.ChannelBillingResourceTypePlan ||
-		isPackageBillingQuotaType(quotaType) ||
-		quotaType == "total"
-}
-
-func hasUsableBillingRecoveryEntitlement(items []model.ChannelBillingSnapshotItem, now int64) bool {
-	for _, item := range model.NormalizeChannelBillingSnapshotItems(items) {
-		if !isBillingRecoveryEntitlement(item) {
-			continue
-		}
-		if isUsableBillingEntitlement(item, now) {
-			return true
-		}
-	}
-	return false
-}
-
 func shouldDisableChannelForBillingEntitlements(collected collectedChannelBillingSnapshot, items []model.ChannelBillingSnapshotItem, now int64) bool {
 	normalized := model.NormalizeChannelBillingSnapshotItems(items)
 	hasPackageEntitlement := false
@@ -120,23 +100,6 @@ func shouldDisableChannelForBillingEntitlements(collected collectedChannelBillin
 		}
 	}
 	return false
-}
-
-func shouldScheduleInsufficientBalanceRecoveryTest(channel *model.Channel, state model.ChannelCircuitBreakerState, items []model.ChannelBillingSnapshotItem, now int64) bool {
-	if channel == nil || channel.Status != model.ChannelStatusAutoDisabled {
-		return false
-	}
-	if !model.IsInsufficientBalanceCircuitBreakerState(state) {
-		return false
-	}
-	return hasUsableBillingRecoveryEntitlement(items, now)
-}
-
-func isInsufficientBalanceAutoDisabledChannel(channel *model.Channel, state model.ChannelCircuitBreakerState) bool {
-	if channel == nil || channel.Status != model.ChannelStatusAutoDisabled {
-		return false
-	}
-	return model.IsInsufficientBalanceCircuitBreakerState(state)
 }
 
 func collectOpenAIBillingSnapshot(channel *model.Channel, profile model.ChannelBillingProfile, messageText string) (collectedChannelBillingSnapshot, error) {
@@ -865,26 +828,5 @@ func refreshAndPersistChannelBillingEntitlements(channel *model.Channel, profile
 		}
 		return collected.PrimaryAmount, nil
 	}
-	if err := maybeEnqueueInsufficientBalanceRecoveryTestAfterBillingRefresh(channel, items, now); err != nil {
-		return collected.PrimaryAmount, err
-	}
 	return collected.PrimaryAmount, nil
-}
-
-func maybeEnqueueInsufficientBalanceRecoveryTestAfterBillingRefresh(channel *model.Channel, items []model.ChannelBillingSnapshotItem, now int64) error {
-	if channel == nil || channel.Status != model.ChannelStatusAutoDisabled {
-		return nil
-	}
-	state, err := model.GetChannelCircuitBreakerState(channel.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil
-		}
-		return err
-	}
-	if !shouldScheduleInsufficientBalanceRecoveryTest(channel, state, items, now) {
-		return nil
-	}
-	_, err = enqueueInsufficientBalanceRecoveryTest(channel, "")
-	return err
 }

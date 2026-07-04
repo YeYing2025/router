@@ -6,55 +6,33 @@ import (
 	"github.com/yeying-community/router/internal/admin/model"
 )
 
-func TestShouldAutoRefreshChannelBillingIncludesInsufficientBalanceAutoDisabled(t *testing.T) {
+func TestShouldAutoRefreshChannelBillingSkipsInsufficientBalanceAutoDisabled(t *testing.T) {
 	channel := &model.Channel{Id: "channel-1", Status: model.ChannelStatusAutoDisabled}
-	states := map[string]model.ChannelCircuitBreakerState{
-		"channel-1": {
-			ChannelId: "channel-1",
-			State:     model.ChannelCircuitBreakerStateCanceled,
-			Reason:    model.ChannelCircuitBreakerReasonInsufficientBalance,
-		},
-	}
 
-	if !shouldAutoRefreshChannelBilling(channel, states) {
-		t.Fatalf("insufficient-balance auto-disabled channel should be auto-refreshed")
+	if shouldAutoRefreshChannelBilling(channel) {
+		t.Fatalf("insufficient-balance auto-disabled channel should not be auto-refreshed")
 	}
 }
 
 func TestShouldAutoRefreshChannelBillingIncludesEnabled(t *testing.T) {
 	channel := &model.Channel{Id: "channel-1", Status: model.ChannelStatusEnabled}
 
-	if !shouldAutoRefreshChannelBilling(channel, nil) {
+	if !shouldAutoRefreshChannelBilling(channel) {
 		t.Fatalf("enabled channel should be auto-refreshed")
 	}
 }
 
 func TestShouldAutoRefreshChannelBillingSkipsManualDisabled(t *testing.T) {
 	channel := &model.Channel{Id: "channel-1", Status: model.ChannelStatusManuallyDisabled}
-	states := map[string]model.ChannelCircuitBreakerState{
-		"channel-1": {
-			ChannelId: "channel-1",
-			State:     model.ChannelCircuitBreakerStateCanceled,
-			Reason:    model.ChannelCircuitBreakerReasonInsufficientBalance,
-		},
-	}
 
-	if shouldAutoRefreshChannelBilling(channel, states) {
+	if shouldAutoRefreshChannelBilling(channel) {
 		t.Fatalf("manually disabled channel should not be auto-refreshed")
 	}
 }
 
 func TestShouldAutoRefreshChannelBillingSkipsOtherAutoDisabled(t *testing.T) {
 	channel := &model.Channel{Id: "channel-1", Status: model.ChannelStatusAutoDisabled}
-	states := map[string]model.ChannelCircuitBreakerState{
-		"channel-1": {
-			ChannelId: "channel-1",
-			State:     model.ChannelCircuitBreakerStateCanceled,
-			Reason:    "permission denied",
-		},
-	}
-
-	if shouldAutoRefreshChannelBilling(channel, states) {
+	if shouldAutoRefreshChannelBilling(channel) {
 		t.Fatalf("non-insufficient-balance auto-disabled channel should not be auto-refreshed")
 	}
 }
