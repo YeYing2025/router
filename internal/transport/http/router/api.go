@@ -300,6 +300,7 @@ func SetApiRouter(engine *gin.Engine) {
 			adminChannelRoute.POST("/:id/billing/open-activate-page", channel.OpenChannelBillingActivatePage)
 			adminChannelRoute.PUT("/:id/endpoints", channel.UpdateChannelEndpoint)
 			adminChannelRoute.PUT("/:id/policies", channel.UpdateChannelEndpointPolicy)
+			adminChannelRoute.DELETE("/:id/policies/:policy_id", channel.DeleteChannelEndpointPolicy)
 			adminChannelRoute.POST("/:id/tests", channel.TestChannelModels)
 			adminChannelRoute.POST("/", channel.AddChannel)
 			adminChannelRoute.PUT("/", channel.UpdateChannel)

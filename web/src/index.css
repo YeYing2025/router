@@ -4074,6 +4074,65 @@ body,
     white-space: nowrap;
 }
 
+.router-endpoint-policy-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.router-endpoint-policy-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    min-width: 0;
+    height: 24px;
+    padding: 0 4px 0 8px;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.router-endpoint-policy-chip-disabled {
+    border-color: #e5e7eb;
+    background: #f8fafc;
+    color: #64748b;
+}
+
+.router-endpoint-policy-chip-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.router-endpoint-policy-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: 4px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.router-endpoint-policy-chip-remove:hover:not(:disabled) {
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.router-endpoint-policy-chip-remove:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
 .router-endpoint-state-summary {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));

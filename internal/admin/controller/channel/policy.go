@@ -139,3 +139,35 @@ func UpdateChannelEndpointPolicy(c *gin.Context) {
 		"data":    saved,
 	})
 }
+
+func DeleteChannelEndpointPolicy(c *gin.Context) {
+	channelID := strings.TrimSpace(c.Param("id"))
+	policyID := strings.TrimSpace(c.Param("policy_id"))
+	if channelID == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "渠道 ID 无效",
+		})
+		return
+	}
+	if policyID == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "策略 ID 无效",
+		})
+		return
+	}
+	if err := model.DeleteChannelModelEndpointPolicyWithDB(model.DB, channelID, policyID); err != nil {
+		logChannelAdminWarn(c, "delete_endpoint_policy", stringField("channel_id", channelID), stringField("policy_id", policyID), stringField("reason", err.Error()))
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	logChannelAdminInfo(c, "delete_endpoint_policy", stringField("channel_id", channelID), stringField("policy_id", policyID))
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+	})
+}

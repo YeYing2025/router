@@ -237,6 +237,39 @@ func ListChannelModelEndpointPoliciesByChannelIDWithDB(dbHandle *gorm.DB, channe
 	return result, nil
 }
 
+func DeleteChannelModelEndpointPolicyWithDB(dbHandle *gorm.DB, channelID string, policyID string) error {
+	if dbHandle == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	normalizedChannelID := strings.TrimSpace(channelID)
+	normalizedPolicyID := strings.TrimSpace(policyID)
+	if normalizedChannelID == "" {
+		return fmt.Errorf("channel_id 不能为空")
+	}
+	if normalizedPolicyID == "" {
+		return fmt.Errorf("policy_id 不能为空")
+	}
+	if err := dbHandle.Transaction(func(tx *gorm.DB) error {
+		if err := lockChannelRowForUpdateWithDB(tx, normalizedChannelID); err != nil {
+			return err
+		}
+		result := tx.Where("id = ? AND channel_id = ?", normalizedPolicyID, normalizedChannelID).Delete(&ChannelModelEndpointPolicy{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	if config.MemoryCacheEnabled {
+		InitChannelCache()
+	}
+	return nil
+}
+
 func UpsertChannelModelEndpointPolicyWithDB(dbHandle *gorm.DB, row ChannelModelEndpointPolicy) (ChannelModelEndpointPolicy, error) {
 	if dbHandle == nil {
 		return ChannelModelEndpointPolicy{}, fmt.Errorf("database handle is nil")

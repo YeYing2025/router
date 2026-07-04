@@ -2,9 +2,11 @@ import React, { useMemo } from 'react';
 import {
   AppAlert,
   AppDetailSection,
+  AppIcon,
   AppSwitch,
   AppTable,
   AppTableActionButton,
+  AppTooltip,
 } from '../../../router-ui';
 
 const formatTimestamp = (value) => {
@@ -25,7 +27,7 @@ const resolvePolicyTemplateLabel = (t, templateKey) => {
     case 'CUSTOM_REQUEST_POLICY':
       return t('channel.edit.endpoint_policies.templates.custom_request_policy');
     default:
-      return normalized;
+      return normalized || '-';
   }
 };
 
@@ -41,9 +43,11 @@ const ChannelDetailEndpointsTab = ({
   endpointMutatingKey,
   updateChannelEndpointCapability,
   channelEndpointPoliciesLoading,
-  channelEndpointPolicies,
+  channelEndpointPolicies = [],
   channelEndpointPoliciesError,
   endpointPolicyReadonly,
+  endpointPolicyDeletingKey,
+  removeEndpointPolicy = () => {},
   openEndpointPolicyEditor,
 }) => {
   const buildDisableInfo = (row) => {
@@ -74,32 +78,6 @@ const ChannelDetailEndpointsTab = ({
     });
     return result;
   }, [buildChannelEndpointKey, channelEndpointPolicies]);
-
-  const buildPolicySummary = (row, policyRows) => {
-    const rows = Array.isArray(policyRows) ? policyRows : [];
-    const baseURL = (row?.base_url || '').toString().trim();
-    const templateLabels = [];
-    rows.forEach((policyRow) => {
-      const label = resolvePolicyTemplateLabel(t, policyRow?.template_key);
-      if (label && !templateLabels.includes(label)) {
-        templateLabels.push(label);
-      }
-    });
-    if (templateLabels.length === 0 && baseURL) {
-      templateLabels.push(
-        t('channel.edit.endpoint_policies.templates.override_base_url'),
-      );
-    }
-    if (templateLabels.length === 0) {
-      return t('channel.edit.endpoint_policies.status.not_configured');
-    }
-    const enabledCount = rows.filter((policyRow) => policyRow?.enabled).length;
-    const statusText =
-      enabledCount > 0
-        ? t('channel.edit.endpoint_policies.status.enabled')
-        : t('channel.edit.endpoint_policies.status.disabled');
-    return `${templateLabels.join(' / ')} · ${statusText}`;
-  };
 
   return (
     <AppDetailSection
@@ -204,14 +182,60 @@ const ChannelDetailEndpointsTab = ({
                     </span>
                   );
                 }
-                const policySummary = buildPolicySummary(row, policyRows);
+                if (policyRows.length === 0) {
+                  return (
+                    <span className='router-muted-text'>
+                      {t('channel.edit.endpoint_policies.status.not_configured')}
+                    </span>
+                  );
+                }
                 return (
-                  <span
-                    className='router-endpoint-policy-summary'
-                    title={policySummary}
-                  >
-                    {policySummary}
-                  </span>
+                  <div className='router-endpoint-policy-chip-list'>
+                    {policyRows.map((policyRow) => {
+                      const policyID = (policyRow.id || '').toString().trim();
+                      const deleting = endpointPolicyDeletingKey === policyID;
+                      const label = resolvePolicyTemplateLabel(
+                        t,
+                        policyRow.template_key,
+                      );
+                      return (
+                        <span
+                          key={policyID || `${endpointKey}-${policyRow.template_key}`}
+                          className={[
+                            'router-endpoint-policy-chip',
+                            policyRow.enabled
+                              ? ''
+                              : 'router-endpoint-policy-chip-disabled',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          title={label}
+                        >
+                          <span className='router-endpoint-policy-chip-label'>
+                            {label}
+                          </span>
+                          <AppTooltip title={t('channel.edit.endpoint_policies.remove_action')}>
+                            <button
+                              type='button'
+                              className='router-endpoint-policy-chip-remove'
+                              disabled={
+                                endpointPolicyReadonly ||
+                                deleting ||
+                                policyID === ''
+                              }
+                              onClick={() => removeEndpointPolicy(policyRow)}
+                            >
+                              {deleting ? (
+                                <AppIcon name='spinner' />
+                              ) : (
+                                <AppIcon name='close' />
+                              )}
+                            </button>
+                          </AppTooltip>
+                        </span>
+                      );
+                    })}
+                  </div>
                 );
               },
             },
@@ -219,10 +243,11 @@ const ChannelDetailEndpointsTab = ({
               title: t('channel.edit.endpoint_policies.table.actions'),
               key: 'actions',
               width: columnWidths[4],
+              align: 'center',
               render: (_, row) => (
                 <AppTableActionButton
-                  icon='setting'
-                  title={t('channel.edit.endpoint_policies.action')}
+                  icon='plus'
+                  title={t('channel.edit.endpoint_policies.add_action')}
                   disabled={endpointPolicyReadonly}
                   onClick={() => openEndpointPolicyEditor(row)}
                 />

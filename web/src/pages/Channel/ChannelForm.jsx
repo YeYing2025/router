@@ -94,7 +94,7 @@ const resolveEffectiveAPIBaseURL = (inputs, config) =>
 
 const CHANNEL_IDENTIFIER_PATTERN = /^[a-z0-9-]+$/;
 const CHANNEL_IDENTIFIER_MAX_LENGTH = 64;
-const CHANNEL_ENDPOINT_COLUMN_WIDTHS = ['22%', '18%', '10%', '38%', '12%'];
+const CHANNEL_ENDPOINT_COLUMN_WIDTHS = ['28%', '18%', '10%', '34%', '10%'];
 const CHANNEL_MODEL_TEST_GROUP_COLUMN_WIDTHS = [
   '4%',
   '15%',
@@ -1608,6 +1608,21 @@ const fetchChannelEndpointPolicies = async (channelId) => {
   return normalizeChannelEndpointPolicyRows(data?.items);
 };
 
+const deleteChannelEndpointPolicy = async (channelId, policyId) => {
+  const normalizedChannelId = (channelId || '').toString().trim();
+  const normalizedPolicyId = (policyId || '').toString().trim();
+  if (normalizedChannelId === '' || normalizedPolicyId === '') {
+    throw new Error('delete channel endpoint policy failed');
+  }
+  const res = await API.delete(
+    `/api/v1/admin/channel/${normalizedChannelId}/policies/${normalizedPolicyId}`
+  );
+  const { success, message } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'delete channel endpoint policy failed');
+  }
+};
+
 const fetchActiveChannelTasks = async (channelId) => {
   const normalizedChannelId = (channelId || '').toString().trim();
   if (normalizedChannelId === '') {
@@ -2089,6 +2104,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const [channelEndpointPoliciesLoading, setChannelEndpointPoliciesLoading] =
     useState(false);
   const [channelEndpointPoliciesError, setChannelEndpointPoliciesError] =
+    useState('');
+  const [endpointPolicyDeletingKey, setEndpointPolicyDeletingKey] =
     useState('');
   const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
   const [policyEditorSaving, setPolicyEditorSaving] = useState(false);
@@ -2966,17 +2983,9 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     () =>
       t('channel.edit.endpoint_capabilities.summary', {
         total: endpointCapabilityStats.total,
-        configured: channelEndpointPolicies.length,
         capability_enabled: endpointCapabilityStats.enabled,
-        policy_enabled: channelEndpointPolicies.filter((row) => row.enabled)
-          .length,
       }),
-    [
-      channelEndpointPolicies,
-      endpointCapabilityStats.enabled,
-      endpointCapabilityStats.total,
-      t,
-    ]
+    [endpointCapabilityStats.enabled, endpointCapabilityStats.total, t]
   );
   const endpointCapabilityReadonly =
     !isDetailMode ||
@@ -4777,43 +4786,25 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       const endpointPolicies = channelEndpointPolicies.filter(
         (item) => item.model === modelName && item.endpoint === endpoint
       );
-      const accessPolicy =
-        endpointPolicies.find(
-          (item) =>
-            (item.template_key || '').toString().trim() ===
-            ENDPOINT_POLICY_TEMPLATE_OVERRIDE_BASE_URL
-        ) || null;
-      const existingPolicy = accessPolicy || endpointPolicies[0] || null;
       const legacyBaseURL = normalizeBaseURL(row?.base_url || '');
-      const baseDraft = existingPolicy
-        ? {
-            ...existingPolicy,
-            channel_id: targetChannelId,
-            capabilities: prettyJSONString(existingPolicy.capabilities),
-            request_policy: prettyJSONString(existingPolicy.request_policy),
-            response_policy: prettyJSONString(existingPolicy.response_policy),
-          }
-        : buildEmptyEndpointPolicyDraft(targetChannelId, modelName, endpoint);
-      const templateKey =
-        (baseDraft.template_key || '').toString().trim() ||
-        (legacyBaseURL ? ENDPOINT_POLICY_TEMPLATE_OVERRIDE_BASE_URL : '');
+      const baseDraft = buildEmptyEndpointPolicyDraft(
+        targetChannelId,
+        modelName,
+        endpoint
+      );
       setPolicyDraft({
         ...baseDraft,
-        template_key: templateKey,
+        template_key: '',
         original_template_key: (baseDraft.template_key || '').toString().trim(),
         endpoint_enabled: row?.enabled === true,
         endpoint_legacy_base_url: legacyBaseURL,
         endpoint_policy_rows: endpointPolicies,
-        access_base_url:
-          templateKey === ENDPOINT_POLICY_TEMPLATE_OVERRIDE_BASE_URL
-            ? parseEndpointAccessPolicyBaseURL(baseDraft.request_policy) ||
-              legacyBaseURL
-            : '',
+        access_base_url: legacyBaseURL,
         endpoint_enable_block_reason: (row?.enable_block_reason || '')
           .toString()
           .trim(),
       });
-      setSelectedPolicyTemplate(templateKey);
+      setSelectedPolicyTemplate('');
       setPolicyEditorOpen(true);
     },
     [channelEndpointPolicies, channelId]
@@ -4980,6 +4971,52 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     policyEditorSaving,
     t,
   ]);
+
+  const removeEndpointPolicy = useCallback(
+    async (policyRow) => {
+      if (endpointPolicyReadonly) {
+        return;
+      }
+      const targetChannelId = (policyRow?.channel_id || channelId || '')
+        .toString()
+        .trim();
+      const policyID = (policyRow?.id || '').toString().trim();
+      if (targetChannelId === '' || policyID === '') {
+        showError(t('channel.edit.endpoint_policies.invalid'));
+        return;
+      }
+      setEndpointPolicyDeletingKey(policyID);
+      try {
+        await deleteChannelEndpointPolicy(targetChannelId, policyID);
+        const nextPolicies = await loadChannelEndpointPoliciesFromServer(
+          targetChannelId
+        );
+        const nextEndpoints = await loadChannelEndpointsFromServer(
+          targetChannelId
+        );
+        setChannelEndpointPolicies(
+          normalizeChannelEndpointPolicyRows(nextPolicies)
+        );
+        setChannelEndpointPoliciesError('');
+        setChannelEndpoints(normalizeChannelEndpointRows(nextEndpoints));
+        setChannelEndpointsError('');
+        showSuccess(t('channel.edit.endpoint_policies.remove_success'));
+      } catch (error) {
+        showError(
+          error?.message || t('channel.edit.endpoint_policies.remove_failed')
+        );
+      } finally {
+        setEndpointPolicyDeletingKey('');
+      }
+    },
+    [
+      channelId,
+      endpointPolicyReadonly,
+      loadChannelEndpointsFromServer,
+      loadChannelEndpointPoliciesFromServer,
+      t,
+    ]
+  );
 
   const toggleModelSelection = useCallback(
     async (upstreamModel, checked) => {
@@ -6159,6 +6196,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                     channelEndpointPolicies={channelEndpointPolicies}
                     channelEndpointPoliciesError={channelEndpointPoliciesError}
                     endpointPolicyReadonly={endpointPolicyReadonly}
+                    endpointPolicyDeletingKey={endpointPolicyDeletingKey}
+                    removeEndpointPolicy={removeEndpointPolicy}
                     openEndpointPolicyEditor={openEndpointPolicyEditor}
                   />
                 )}
