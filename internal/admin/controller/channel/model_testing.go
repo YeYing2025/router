@@ -30,6 +30,7 @@ import (
 	openaiadaptor "github.com/yeying-community/router/internal/relay/adaptor/openai"
 	volcenginerealtime "github.com/yeying-community/router/internal/relay/adaptor/volcengine/realtime"
 	relaychannel "github.com/yeying-community/router/internal/relay/channel"
+	relaycontroller "github.com/yeying-community/router/internal/relay/controller"
 	"github.com/yeying-community/router/internal/relay/meta"
 	relaymodel "github.com/yeying-community/router/internal/relay/model"
 	"github.com/yeying-community/router/internal/transport/http/middleware"
@@ -800,15 +801,24 @@ func executeChannelTextModelTest(ctx context.Context, channel *model.Channel, pa
 		return execution
 	}
 	adaptor.Init(relayMeta)
-	request.Model = resolveChannelUpstreamModelName(channel, request.Model)
+	originModelName := strings.TrimSpace(request.Model)
+	actualModelName := resolveChannelUpstreamModelName(channel, originModelName)
+	request.Model = actualModelName
 	if request.Model == "" {
 		execution.Err = fmt.Errorf("未找到可用于测试的模型")
 		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": execution.Err.Error()})
 		return execution
 	}
-	relayMeta.OriginModelName = request.Model
-	relayMeta.ActualModelName = request.Model
+	relayMeta.OriginModelName = originModelName
+	relayMeta.ActualModelName = actualModelName
 	relayMeta.IsStream = request.Stream
+	relayMeta.EndpointPolicies = model.CacheGetChannelModelEndpointPolicies(relayMeta.ChannelId, path, relayMeta.OriginModelName, relayMeta.ActualModelName)
+	relayMeta.EndpointPolicy = model.CacheGetChannelModelEndpointPolicy(relayMeta.ChannelId, path, relayMeta.OriginModelName, relayMeta.ActualModelName)
+	if err := relaycontroller.ApplyEndpointAccessPolicies(c, relayMeta); err != nil {
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
+	}
 	execution.IsStream = request.Stream
 	if request.Stream {
 		c.Request.Header.Set("Accept", "text/event-stream")
@@ -831,7 +841,13 @@ func executeChannelTextModelTest(ctx context.Context, channel *model.Channel, pa
 		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
 		return execution
 	}
-	baseURL := channel.ResolveAPIBaseURLForModel(path, request.Model)
+	requestBody, err = relaycontroller.ApplyEndpointRequestPolicy(c, relayMeta, requestBody)
+	if err != nil {
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
+	}
+	baseURL := channel.ResolveAPIBaseURLForModel(path, originModelName, actualModelName)
 	requestURL := resolveChannelEndpointURL(baseURL, path)
 	if resolvedRequestURL, urlErr := adaptor.GetRequestURL(relayMeta); urlErr == nil && strings.TrimSpace(resolvedRequestURL) != "" {
 		requestURL = resolvedRequestURL
@@ -944,8 +960,21 @@ func executeChannelTextModelTestRawBody(ctx context.Context, channel *model.Chan
 	relayMeta.OriginModelName = strings.TrimSpace(requestedModel)
 	relayMeta.ActualModelName = strings.TrimSpace(actualModel)
 	relayMeta.IsStream = stream
+	relayMeta.EndpointPolicies = model.CacheGetChannelModelEndpointPolicies(relayMeta.ChannelId, path, relayMeta.OriginModelName, relayMeta.ActualModelName)
+	relayMeta.EndpointPolicy = model.CacheGetChannelModelEndpointPolicy(relayMeta.ChannelId, path, relayMeta.OriginModelName, relayMeta.ActualModelName)
+	if err := relaycontroller.ApplyEndpointAccessPolicies(c, relayMeta); err != nil {
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
+	}
 	if stream {
 		c.Request.Header.Set("Accept", "text/event-stream")
+	}
+	updatedBody, err = relaycontroller.ApplyEndpointRequestPolicy(c, relayMeta, updatedBody)
+	if err != nil {
+		execution.Err = err
+		execution.OutputPayload = marshalJSONForLog(map[string]any{"error": err.Error()})
+		return execution
 	}
 	baseURL := channel.ResolveAPIBaseURLForModel(path, requestedModel, actualModel)
 	requestURL := resolveChannelEndpointURL(baseURL, path)

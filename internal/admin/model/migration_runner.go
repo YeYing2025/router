@@ -11,6 +11,7 @@ import (
 	"github.com/yeying-community/router/common/random"
 	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -1656,8 +1657,93 @@ func runMainVersionedMigrations(db *gorm.DB) error {
 				return rebuildGroupModelChannelsForPublishedChannelModelsWithDB(tx)
 			},
 		},
+		{
+			Version:     "202607031030_channel_endpoint_policy_templates",
+			Description: "allow multiple endpoint policies by template and backfill endpoint base URLs as access policies",
+			Up: func(tx *gorm.DB) error {
+				return migrateChannelEndpointPolicyTemplatesWithDB(tx)
+			},
+		},
 	}
 	return runVersionedMigrations(db, migrationScopeMain, migrations)
+}
+
+func migrateChannelEndpointPolicyTemplatesWithDB(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	if err := db.AutoMigrate(&ChannelModelEndpointPolicy{}); err != nil {
+		return err
+	}
+	if err := db.Model(&ChannelModelEndpointPolicy{}).
+		Where("COALESCE(TRIM(template_key), '') = ''").
+		Update("template_key", ChannelEndpointPolicyTemplateCustomRequestPolicy).Error; err != nil {
+		return err
+	}
+	if err := db.Exec("DROP INDEX IF EXISTS uniq_channel_model_endpoint_policy").Error; err != nil {
+		return err
+	}
+	if err := db.Exec(`
+		CREATE UNIQUE INDEX IF NOT EXISTS uniq_channel_model_endpoint_policy
+		ON channel_model_endpoint_policies (channel_id, model, endpoint, template_key)
+	`).Error; err != nil {
+		return err
+	}
+	endpointRows := make([]ChannelModelEndpoint, 0)
+	if err := db.Where("COALESCE(TRIM(base_url), '') <> ''").Find(&endpointRows).Error; err != nil {
+		return err
+	}
+	for _, row := range endpointRows {
+		baseURL := normalizeConfiguredBaseURL(row.BaseURL)
+		if baseURL == "" {
+			continue
+		}
+		requestPolicy, err := json.Marshal(ChannelModelEndpointAccessPolicy{BaseURL: baseURL})
+		if err != nil {
+			return err
+		}
+		channelID := strings.TrimSpace(row.ChannelId)
+		modelName := strings.TrimSpace(row.Model)
+		endpoint := NormalizeRequestedChannelModelEndpoint(row.Endpoint)
+		if channelID == "" || modelName == "" || endpoint == "" {
+			continue
+		}
+		policyRow := ChannelModelEndpointPolicy{
+			ID:            strings.ReplaceAll(random.GetUUID(), "-", ""),
+			ChannelId:     channelID,
+			Model:         modelName,
+			Endpoint:      endpoint,
+			Enabled:       true,
+			TemplateKey:   ChannelEndpointPolicyTemplateOverrideEndpointBaseURL,
+			RequestPolicy: string(requestPolicy),
+			Reason:        "migrated from endpoint base_url",
+			Source:        "migration",
+			UpdatedAt:     helper.GetTimestamp(),
+		}
+		if err := db.Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "channel_id"},
+				{Name: "model"},
+				{Name: "endpoint"},
+				{Name: "template_key"},
+			},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"enabled",
+				"request_policy",
+				"reason",
+				"source",
+				"updated_at",
+			}),
+		}).Create(&policyRow).Error; err != nil {
+			return err
+		}
+	}
+	if err := db.Model(&ChannelModelEndpoint{}).
+		Where("COALESCE(TRIM(base_url), '') <> ''").
+		Update("base_url", "").Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func rebuildGroupModelChannelsForPublishedChannelModelsWithDB(db *gorm.DB) error {

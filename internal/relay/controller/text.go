@@ -82,7 +82,11 @@ func RelayTextHelper(c *gin.Context) *model.ErrorWithStatusCode {
 	}
 	meta.UpstreamMode = upstreamMode
 	meta.UpstreamRequestPath = upstreamPath
+	meta.EndpointPolicies = adminmodel.CacheGetChannelModelEndpointPolicies(meta.ChannelId, upstreamPath, meta.OriginModelName, textRequest.Model)
 	meta.EndpointPolicy = adminmodel.CacheGetChannelModelEndpointPolicy(meta.ChannelId, upstreamPath, meta.OriginModelName, textRequest.Model)
+	if err := ApplyEndpointAccessPolicies(c, meta); err != nil {
+		return openai.ErrorWrapper(err, "endpoint_policy_failed", http.StatusInternalServerError)
+	}
 	if config.DebugEnabled {
 		logger.Debugf(
 			ctx,

@@ -983,11 +983,20 @@
           "base_url": "访问地址",
           "base_url_placeholder": "留空时使用模型访问地址",
           "enabled": "启用",
+          "access_policy": "访问/请求策略",
           "latest_test": "最近测试",
           "test_status": "测试状态",
           "runtime_status": "状态详情",
           "enable_block_reason": "不能启用原因",
           "updated_at": "更新时间"
+        },
+        "access_mode": {
+          "inherited": "继承模型访问地址",
+          "custom": "独立访问地址"
+        },
+        "editor": {
+          "base_url": "独立访问地址",
+          "base_url_placeholder": "留空时继承模型访问地址"
         }
       },
       "circuit_breaker": {
@@ -1021,11 +1030,17 @@
         "invalid": "端点策略参数不完整",
         "create": "新建策略",
         "edit": "编辑策略",
-        "action": "端点策略",
+        "action": "配置",
         "status": {
           "enabled": "已启用",
           "disabled": "已停用",
+          "custom": "自定义策略",
           "not_configured": "未配置"
+        },
+        "templates": {
+          "override_base_url": "替换端点访问地址",
+          "image_url_to_base64": "图片 URL 转 Base64",
+          "custom_request_policy": "自定义请求策略"
         },
         "table": {
           "model": "模型",
@@ -1037,13 +1052,18 @@
           "actions": "操作"
         },
         "editor": {
-          "title": "编辑端点策略",
-          "hint": "这里仅编辑端点策略。JSON 文本会按后端规则校验：`capabilities` 描述能力，`request_policy` 描述请求侧动作，`response_policy` 暂为预留字段。",
+          "title": "配置端点",
+          "hint": "这里配置端点启用状态和端点策略。访问地址替换、请求改写等能力都通过策略模板添加；JSON 文本会按后端规则校验。",
           "image_url_to_base64_hint": "IMAGE_URL_TO_BASE64 只会抓取 Router 可访问的图片地址。默认拒绝 localhost、127.0.0.1 和其它私网地址；如确需抓取本地分享地址，请在配置中显式加入 `relay.user_content_request_private_host_allowlist`。",
           "template": "策略模板",
-          "template_placeholder": "选择常用模板快速填充",
+          "template_placeholder": "选择策略模板",
           "template_key": "策略标识",
-          "template_key_placeholder": "未选择模板时留空，手工策略将显示为 MANUAL",
+          "template_key_placeholder": "选择模板后自动生成",
+          "template_required": "请选择策略模板",
+          "status": "策略启用",
+          "access_base_url": "端点访问地址",
+          "access_base_url_placeholder": "例如：https://example.com/v1",
+          "base_url_required": "端点访问地址不能为空",
           "capabilities": "能力声明 JSON",
           "request_policy": "请求策略 JSON",
           "response_policy": "响应策略 JSON"

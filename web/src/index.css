@@ -2580,6 +2580,18 @@ body,
     word-break: break-word;
 }
 
+.router-provider-model-price-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.25;
+}
+
+.router-provider-model-price-cell .router-muted {
+    font-size: 12px;
+    white-space: nowrap;
+}
+
 .router-ui-table.router-list-table .ant-table-thead > tr > th.router-topup-reconcile-message-cell,
 .router-ui-table.router-list-table .ant-table-tbody > tr > td.router-topup-reconcile-message-cell {
     width: 180px !important;
@@ -4051,6 +4063,15 @@ body,
 .router-ui-table.router-channel-create-review-table .ant-table-tbody > tr > td .router-cell-truncate {
     display: block;
     min-width: 0;
+}
+
+.router-endpoint-policy-summary {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: #475569;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .router-endpoint-state-summary {

@@ -14,7 +14,7 @@ func newChannelManualValidationTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&ProviderModel{}, &ChannelModelSyncResult{}, &ChannelModelEndpointTestResult{}); err != nil {
+	if err := db.AutoMigrate(&Channel{}, &ProviderModel{}, &ChannelModelSyncResult{}, &ChannelModelEndpointTestResult{}); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
 	return db
@@ -121,8 +121,15 @@ func TestValidateManualChannelModelChangesRequiresSuccessfulTestBeforeRuntimeRes
 	}
 }
 
-func TestValidateManualChannelEndpointEnableRequiresExactModelTestResult(t *testing.T) {
+func TestValidateManualChannelEndpointEnableDoesNotRequireTestResult(t *testing.T) {
 	db := newChannelManualValidationTestDB(t)
+	if err := db.Create(&Channel{
+		Id:       "channel-1",
+		Name:     "channel-1",
+		Protocol: "openai",
+	}).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
 	if err := db.Create(&ProviderModel{
 		Provider:           "qwen",
 		Model:              "qwen3.7-max",
@@ -131,49 +138,6 @@ func TestValidateManualChannelEndpointEnableRequiresExactModelTestResult(t *test
 		SupportedEndpoints: "/v1/chat/completions",
 	}).Error; err != nil {
 		t.Fatalf("create provider model: %v", err)
-	}
-	if err := db.Create(&ChannelModelEndpointTestResult{
-		ChannelId:      "channel-1",
-		Model:          "other-model",
-		Endpoint:       "/v1/chat/completions",
-		UpstreamModel:  "qwen3.7-max",
-		LastTestStatus: ChannelModelEndpointTestStatusSuccess,
-		LastSupported:  true,
-	}).Error; err != nil {
-		t.Fatalf("create endpoint test result: %v", err)
-	}
-
-	err := ValidateManualChannelEndpointEnableWithDB(db, "channel-1", ChannelModel{
-		Model:         "qwen3.7-max",
-		UpstreamModel: "qwen3.7-max",
-		Provider:      "qwen",
-		Type:          ProviderModelTypeText,
-		Selected:      true,
-	}, "/v1/chat/completions")
-	if err == nil || !strings.Contains(err.Error(), "缺少最近一次成功测试结果") {
-		t.Fatalf("ValidateManualChannelEndpointEnableWithDB error=%v, want missing exact test result", err)
-	}
-}
-
-func TestValidateManualChannelEndpointEnableAcceptsExactModelTestResult(t *testing.T) {
-	db := newChannelManualValidationTestDB(t)
-	if err := db.Create(&ProviderModel{
-		Provider:           "qwen",
-		Model:              "qwen3.7-max",
-		Tags:               ProviderModelTypeText,
-		Status:             ProviderModelStatusActive,
-		SupportedEndpoints: "/v1/chat/completions",
-	}).Error; err != nil {
-		t.Fatalf("create provider model: %v", err)
-	}
-	if err := db.Create(&ChannelModelEndpointTestResult{
-		ChannelId:      "channel-1",
-		Model:          "qwen3.7-max",
-		Endpoint:       "/v1/chat/completions",
-		LastTestStatus: ChannelModelEndpointTestStatusSuccess,
-		LastSupported:  true,
-	}).Error; err != nil {
-		t.Fatalf("create endpoint test result: %v", err)
 	}
 
 	err := ValidateManualChannelEndpointEnableWithDB(db, "channel-1", ChannelModel{
@@ -184,6 +148,37 @@ func TestValidateManualChannelEndpointEnableAcceptsExactModelTestResult(t *testi
 		Selected:      true,
 	}, "/v1/chat/completions")
 	if err != nil {
-		t.Fatalf("ValidateManualChannelEndpointEnableWithDB error=%v, want nil", err)
+		t.Fatalf("ValidateManualChannelEndpointEnableWithDB error=%v, want nil without test result", err)
+	}
+}
+
+func TestValidateManualChannelEndpointEnableBlocksUnsupportedRouterRoute(t *testing.T) {
+	db := newChannelManualValidationTestDB(t)
+	if err := db.Create(&Channel{
+		Id:       "channel-1",
+		Name:     "channel-1",
+		Protocol: "openai",
+	}).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+	if err := db.Create(&ProviderModel{
+		Provider:           "qwen",
+		Model:              "qwen3.7-max",
+		Tags:               ProviderModelTypeText,
+		Status:             ProviderModelStatusActive,
+		SupportedEndpoints: "/v1/messages",
+	}).Error; err != nil {
+		t.Fatalf("create provider model: %v", err)
+	}
+
+	err := ValidateManualChannelEndpointEnableWithDB(db, "channel-1", ChannelModel{
+		Model:         "qwen3.7-max",
+		UpstreamModel: "qwen3.7-max",
+		Provider:      "qwen",
+		Type:          ProviderModelTypeText,
+		Selected:      true,
+	}, "/v1/messages")
+	if err == nil || !strings.Contains(err.Error(), "Router 当前不支持") {
+		t.Fatalf("ValidateManualChannelEndpointEnableWithDB error=%v, want unsupported router route", err)
 	}
 }

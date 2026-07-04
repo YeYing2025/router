@@ -983,11 +983,20 @@
           "base_url": "Access Address",
           "base_url_placeholder": "Leave empty to use API Base URL",
           "enabled": "Enabled",
+          "access_policy": "Access / Request Policy",
           "latest_test": "Latest Test",
           "test_status": "Test Status",
           "runtime_status": "Status Detail",
           "enable_block_reason": "Blocked Reason",
           "updated_at": "Updated At"
+        },
+        "access_mode": {
+          "inherited": "Inherited API Base URL",
+          "custom": "Dedicated Access Address"
+        },
+        "editor": {
+          "base_url": "Dedicated Access Address",
+          "base_url_placeholder": "Leave empty to inherit the model API base URL"
         }
       },
       "circuit_breaker": {
@@ -1021,11 +1030,17 @@
         "invalid": "Incomplete endpoint policy payload",
         "create": "Create Policy",
         "edit": "Edit Policy",
-        "action": "Endpoint Policy",
+        "action": "Configure",
         "status": {
           "enabled": "Enabled",
           "disabled": "Disabled",
+          "custom": "Custom Policy",
           "not_configured": "Not Configured"
+        },
+        "templates": {
+          "override_base_url": "Override Endpoint Access URL",
+          "image_url_to_base64": "Image URL to Base64",
+          "custom_request_policy": "Custom Request Policy"
         },
         "table": {
           "model": "Model",
@@ -1037,13 +1052,18 @@
           "actions": "Actions"
         },
         "editor": {
-          "title": "Edit Endpoint Policy",
-          "hint": "Only endpoint policy is edited here. JSON text is validated by backend rules: `capabilities` describes support, `request_policy` describes request-side actions, and `response_policy` is reserved for now.",
+          "title": "Configure Endpoint",
+          "hint": "Configure endpoint enablement and endpoint policies here. Access URL overrides and request transformations are added through policy templates; JSON text is validated by backend rules.",
           "image_url_to_base64_hint": "IMAGE_URL_TO_BASE64 only fetches image URLs that Router is allowed to access. By default, localhost, 127.0.0.1, and other private-network addresses are rejected. If you really need local share URLs, explicitly add them to `relay.user_content_request_private_host_allowlist`.",
           "template": "Policy Template",
-          "template_placeholder": "Choose a common template for quick fill",
+          "template_placeholder": "Choose a policy template",
           "template_key": "Policy Key",
-          "template_key_placeholder": "Leave empty without a template; custom policies are shown as MANUAL",
+          "template_key_placeholder": "Generated from the selected template",
+          "template_required": "Choose a policy template",
+          "status": "Policy Enabled",
+          "access_base_url": "Endpoint Access URL",
+          "access_base_url_placeholder": "Example: https://example.com/v1",
+          "base_url_required": "Endpoint access URL is required",
           "capabilities": "Capabilities JSON",
           "request_policy": "Request Policy JSON",
           "response_policy": "Response Policy JSON"

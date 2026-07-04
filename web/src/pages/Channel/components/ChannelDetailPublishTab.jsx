@@ -77,13 +77,12 @@ const ChannelDetailPublishTab = ({
     [channelModels],
   );
 
-  const renderPrice = (row) => {
+  const renderPrice = (row, field) => {
     const complexPricingDetails = getComplexPricingDetailsForModel(row);
     const hasComplexPricing = complexPricingDetails.some((detail) =>
       (detail.price_components || []).some(
         (component) =>
-          Number(component.input_price || 0) > 0 ||
-          Number(component.output_price || 0) > 0,
+          Number(component[field] || 0) > 0,
       ),
     );
     if (hasComplexPricing) {
@@ -97,22 +96,15 @@ const ChannelDetailPublishTab = ({
         </AppButton>
       );
     }
-    const hasInputPrice =
-      row.input_price !== null &&
-      row.input_price !== undefined &&
-      row.input_price !== '';
-    const hasOutputPrice =
-      row.output_price !== null &&
-      row.output_price !== undefined &&
-      row.output_price !== '';
-    if (!hasInputPrice && !hasOutputPrice) {
+    const price = row?.[field];
+    const hasPrice =
+      price !== null &&
+      price !== undefined &&
+      price !== '';
+    if (!hasPrice) {
       return <span className='router-nowrap'>-</span>;
     }
-    return (
-      <span className='router-nowrap'>
-        {hasInputPrice ? row.input_price : '-'}｜{hasOutputPrice ? row.output_price : '-'}
-      </span>
-    );
+    return <span className='router-nowrap'>{price}</span>;
   };
 
   const renderPublishCheck = (row) => {
@@ -230,18 +222,16 @@ const ChannelDetailPublishTab = ({
               },
             },
             {
-              title: t('channel.edit.model_selector.table.price_unit'),
-              dataIndex: 'price_unit',
-              key: 'price_unit',
-              width: 108,
-              ellipsis: true,
-              render: (value) => <span className='router-nowrap'>{value || '-'}</span>,
+              title: t('channel.edit.model_selector.table.input_price'),
+              key: 'input_price',
+              width: 112,
+              render: (_, row) => renderPrice(row, 'input_price'),
             },
             {
-              title: t('channel.edit.model_selector.table.price'),
-              key: 'price',
-              width: 128,
-              render: (_, row) => renderPrice(row),
+              title: t('channel.edit.model_selector.table.output_price'),
+              key: 'output_price',
+              width: 112,
+              render: (_, row) => renderPrice(row, 'output_price'),
             },
             {
               title: t('channel.edit.publish.table.check'),

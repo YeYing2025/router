@@ -740,6 +740,49 @@ const formatProviderPriceCellValue = (value) => {
   return Number.isFinite(normalized) && normalized > 0 ? normalized : '-';
 };
 
+const formatProviderPriceMeta = (detail, t) => {
+  if (isComponentBasedPricing(detail)) {
+    return '';
+  }
+  const parts = [];
+  const currency = (detail?.currency || '').toString().trim().toUpperCase();
+  const priceUnit = (detail?.price_unit || '').toString().trim();
+  if (currency) {
+    parts.push(currency);
+  }
+  if (priceUnit) {
+    parts.push(summarizeModelPriceUnit(detail, t));
+  }
+  return parts.join(' / ');
+};
+
+const renderProviderPriceCell = (detail, field, t, openPricingDetail) => {
+  const hasDetail =
+    field === 'input_price'
+      ? hasComplexInputPricing(detail)
+      : hasComplexOutputPricing(detail);
+  if (hasDetail) {
+    return (
+      <AppButton
+        type='button'
+        basic
+        className='router-inline-button'
+        onClick={() => openPricingDetail(detail)}
+      >
+        {t('channel.providers.model_detail_table.detail')}
+      </AppButton>
+    );
+  }
+  const priceText = formatProviderPriceCellValue(detail?.[field]);
+  const metaText = formatProviderPriceMeta(detail, t);
+  return (
+    <div className='router-provider-model-price-cell'>
+      <span className='router-monospace-value'>{priceText}</span>
+      {metaText ? <span className='router-muted'>{metaText}</span> : null}
+    </div>
+  );
+};
+
 const isComponentBasedPricing = (detail) =>
   Array.isArray(detail?.price_components) && detail.price_components.length > 0;
 
@@ -2270,48 +2313,18 @@ const ProvidersManager = () => {
               ),
             },
             {
-              title: t('channel.providers.model_detail_table.price_compact'),
-              key: 'price_compact',
-              width: 156,
-              render: (_, { detail }) => {
-                const showInputDetail = hasComplexInputPricing(detail);
-                const showOutputDetail = hasComplexOutputPricing(detail);
-                const inputPriceText = formatProviderPriceCellValue(
-                  detail.input_price,
-                );
-                const outputPriceText = formatProviderPriceCellValue(
-                  detail.output_price,
-                );
-                const compactPriceText =
-                  inputPriceText === '-' && outputPriceText === '-'
-                    ? '-'
-                    : `${inputPriceText}｜${outputPriceText}`;
-                return showInputDetail || showOutputDetail ? (
-                  <AppButton
-                    type='button'
-                    basic
-                    className='router-inline-button'
-                    onClick={() => openPricingDetail(detail)}
-                  >
-                    {t('channel.providers.model_detail_table.detail')}
-                  </AppButton>
-                ) : (
-                  compactPriceText
-                );
-              },
+              title: t('channel.providers.model_detail_table.input_price'),
+              key: 'input_price',
+              width: 124,
+              render: (_, { detail }) =>
+                renderProviderPriceCell(detail, 'input_price', t, openPricingDetail),
             },
             {
-              title: t('channel.providers.model_detail_table.price_unit'),
-              key: 'price_unit',
-              width: 110,
-              render: (_, { detail }) => summarizeModelPriceUnit(detail, t),
-            },
-            {
-              title: t('channel.providers.model_detail_table.currency'),
-              dataIndex: ['detail', 'currency'],
-              key: 'currency',
-              width: 64,
-              render: (value) => value || 'USD',
+              title: t('channel.providers.model_detail_table.output_price'),
+              key: 'output_price',
+              width: 124,
+              render: (_, { detail }) =>
+                renderProviderPriceCell(detail, 'output_price', t, openPricingDetail),
             },
             {
               title: t('channel.providers.model_detail_table.actions'),

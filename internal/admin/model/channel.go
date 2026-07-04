@@ -272,6 +272,9 @@ func (channel *Channel) ResolveAPIBaseURLForModel(requestPath string, modelCandi
 	if channel == nil {
 		return ""
 	}
+	if policyBaseURL := CacheGetChannelModelEndpointAccessPolicyBaseURL(strings.TrimSpace(channel.Id), requestPath, modelCandidates...); policyBaseURL != "" {
+		return policyBaseURL
+	}
 	if endpointBaseURL := CacheGetChannelModelEndpointBaseURL(strings.TrimSpace(channel.Id), requestPath, modelCandidates...); endpointBaseURL != "" {
 		return endpointBaseURL
 	}
