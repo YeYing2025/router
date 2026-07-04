@@ -3083,8 +3083,6 @@
         "max_response_time_placeholder": "In seconds, channels exceeding this time during testing will be automatically disabled",
         "quota_reminder": "Balance Reminder Threshold",
         "quota_reminder_placeholder": "Users will receive email reminders when balance falls below this value",
-        "auto_disable": "Automatically Disable Channel on Failure",
-        "auto_enable": "Automatically Enable Channel on Success",
         "buttons": {
           "save": "Save Monitor Settings"
         }

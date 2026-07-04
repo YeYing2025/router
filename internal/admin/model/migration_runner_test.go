@@ -273,6 +273,44 @@ func TestRemoveDefaultUserGroupAndLegacyBalanceSourcesWithDB(t *testing.T) {
 	}
 }
 
+func TestRemoveAutomaticChannelToggleOptionsWithDB(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=private"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	if err := db.AutoMigrate(&Option{}); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+	if err := db.Create(&Option{Key: "AutomaticDisableChannelEnabled", Value: "true"}).Error; err != nil {
+		t.Fatalf("create deprecated option: %v", err)
+	}
+	if err := db.Create(&Option{Key: "AutomaticEnableChannelEnabled", Value: "true"}).Error; err != nil {
+		t.Fatalf("create deprecated option: %v", err)
+	}
+	if err := db.Create(&Option{Key: "ChannelDisableThreshold", Value: "5"}).Error; err != nil {
+		t.Fatalf("create retained option: %v", err)
+	}
+
+	if err := removeAutomaticChannelToggleOptionsWithDB(db); err != nil {
+		t.Fatalf("remove deprecated options: %v", err)
+	}
+
+	var removedCount int64
+	if err := db.Model(&Option{}).Where("key IN ?", []string{"AutomaticDisableChannelEnabled", "AutomaticEnableChannelEnabled"}).Count(&removedCount).Error; err != nil {
+		t.Fatalf("count removed options: %v", err)
+	}
+	if removedCount != 0 {
+		t.Fatalf("deprecated automatic channel option count=%d, want 0", removedCount)
+	}
+	var retainedCount int64
+	if err := db.Model(&Option{}).Where("key = ?", "ChannelDisableThreshold").Count(&retainedCount).Error; err != nil {
+		t.Fatalf("count retained option: %v", err)
+	}
+	if retainedCount != 1 {
+		t.Fatalf("ChannelDisableThreshold option count=%d, want 1", retainedCount)
+	}
+}
+
 func TestSelectWalletAddressDuplicateKeeperPrefersEnabledOldest(t *testing.T) {
 	got := selectWalletAddressDuplicateKeeper([]walletAddressCleanupCandidate{
 		{ID: "disabled-oldest", WalletAddress: "0x2222222222222222222222222222222222222222", Status: UserStatusDisabled, CreatedAt: 1},

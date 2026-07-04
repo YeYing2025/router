@@ -73,8 +73,6 @@ const OperationSetting = ({ section = '' }) => {
     [BALANCE_OPTION_KEYS.inviterRewardPlan]: '',
     [BALANCE_OPTION_KEYS.balanceReminderThreshold]: 0,
     [BALANCE_OPTION_KEYS.preConsumedAmount]: 0,
-    AutomaticDisableChannelEnabled: '',
-    AutomaticEnableChannelEnabled: '',
     ChannelDisableThreshold: 0,
     LogConsumeEnabled: '',
     RetryTimes: 0,
@@ -621,34 +619,6 @@ const OperationSetting = ({ section = '' }) => {
                     placeholder={t(
                       'setting.operation.monitor.quota_reminder_placeholder'
                     )}
-                  />
-                </AppField>
-              </AppFormRow>
-              <AppFormRow>
-                <AppField label={t('setting.operation.monitor.auto_disable')}>
-                  <AppSwitch
-                    checked={inputs.AutomaticDisableChannelEnabled === 'true'}
-                    onChange={() =>
-                      handleInputChange(null, {
-                        name: 'AutomaticDisableChannelEnabled',
-                        value: inputs.AutomaticDisableChannelEnabled === 'true'
-                          ? 'false'
-                          : 'true',
-                      })
-                    }
-                  />
-                </AppField>
-                <AppField label={t('setting.operation.monitor.auto_enable')}>
-                  <AppSwitch
-                    checked={inputs.AutomaticEnableChannelEnabled === 'true'}
-                    onChange={() =>
-                      handleInputChange(null, {
-                        name: 'AutomaticEnableChannelEnabled',
-                        value: inputs.AutomaticEnableChannelEnabled === 'true'
-                          ? 'false'
-                          : 'true',
-                      })
-                    }
                   />
                 </AppField>
               </AppFormRow>

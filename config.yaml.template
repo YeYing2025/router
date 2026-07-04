@@ -228,7 +228,7 @@ metrics:
   success_chan_size: 1024
   # 失败事件缓冲通道大小。
   fail_chan_size: 128
-  # 低成功率自动禁用后的恢复等待时间（秒）；需同时开启 AutomaticEnableChannelEnabled。
+  # 低成功率自动禁用后的恢复等待时间（秒）；设置为 0 或负数时使用默认 300 秒。
   auto_recover_after_seconds: 300
 
 bootstrap:

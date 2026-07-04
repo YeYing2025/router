@@ -65,12 +65,11 @@ func runChannelBillingAutoRefreshOnce() {
 	submittedCount := 0
 	reusedCount := 0
 	failedCount := 0
-	circuitStateByChannelID := loadChannelCircuitBreakerStateMap(channels)
 	for _, channel := range channels {
 		if channel == nil || strings.TrimSpace(channel.Id) == "" {
 			continue
 		}
-		if !shouldAutoRefreshChannelBilling(channel, circuitStateByChannelID) {
+		if !shouldAutoRefreshChannelBilling(channel) {
 			continue
 		}
 		task, reused, err := model.CreateOrReuseAsyncTaskWithDB(model.DB, model.AsyncTask{
@@ -116,44 +115,9 @@ func normalizedChannelBillingAutoRefreshIntervalSeconds() int {
 	return interval
 }
 
-func loadChannelCircuitBreakerStateMap(channels []*model.Channel) map[string]model.ChannelCircuitBreakerState {
-	result := map[string]model.ChannelCircuitBreakerState{}
-	channelIDs := make([]string, 0, len(channels))
-	for _, channel := range channels {
-		if channel == nil || channel.Status != model.ChannelStatusAutoDisabled {
-			continue
-		}
-		if channelID := strings.TrimSpace(channel.Id); channelID != "" {
-			channelIDs = append(channelIDs, channelID)
-		}
-	}
-	if len(channelIDs) == 0 {
-		return result
-	}
-	rows, err := model.ListChannelCircuitBreakerStatesByChannelIDsWithDB(model.DB, channelIDs)
-	if err != nil {
-		logger.SysWarnf("[billing.channel] list circuit breaker states failed: %s", err.Error())
-		return result
-	}
-	for _, row := range rows {
-		if channelID := strings.TrimSpace(row.ChannelId); channelID != "" {
-			result[channelID] = row
-		}
-	}
-	return result
-}
-
-func shouldAutoRefreshChannelBilling(channel *model.Channel, circuitStateByChannelID map[string]model.ChannelCircuitBreakerState) bool {
+func shouldAutoRefreshChannelBilling(channel *model.Channel) bool {
 	if channel == nil {
 		return false
 	}
-	switch channel.Status {
-	case model.ChannelStatusEnabled:
-		return true
-	case model.ChannelStatusAutoDisabled:
-		state := circuitStateByChannelID[strings.TrimSpace(channel.Id)]
-		return model.IsInsufficientBalanceCircuitBreakerState(state)
-	default:
-		return false
-	}
+	return channel.Status == model.ChannelStatusEnabled
 }

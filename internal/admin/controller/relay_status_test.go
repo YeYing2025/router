@@ -208,6 +208,26 @@ func TestNormalizeFinalRelayErrorForZhipuInsufficientBalanceCode(t *testing.T) {
 	}
 }
 
+func TestNormalizeFinalRelayErrorForUpstreamAccountExpired(t *testing.T) {
+	err := &relaymodel.ErrorWithStatusCode{
+		StatusCode: http.StatusUnauthorized,
+		Error: relaymodel.Error{
+			Message: "用户账户已于 2026-07-03 到期，并已自动停用。",
+			Type:    "one_api_error",
+			Code:    "upstream_account_disabled",
+		},
+	}
+
+	normalizeFinalRelayError(err)
+
+	if err.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("unexpected status code: got %d want %d", err.StatusCode, http.StatusServiceUnavailable)
+	}
+	if err.Message != "当前分组可用上游额度不足，请稍后再试" {
+		t.Fatalf("unexpected message: got %q", err.Message)
+	}
+}
+
 func TestNormalizeFinalRelayErrorKeepsGroupDailyQuotaExceeded(t *testing.T) {
 	err := &relaymodel.ErrorWithStatusCode{
 		StatusCode: http.StatusForbidden,
