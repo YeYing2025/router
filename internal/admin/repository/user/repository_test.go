@@ -45,3 +45,52 @@ func TestWalletAddressQueriesAreCaseInsensitive(t *testing.T) {
 		t.Fatalf("found user=%s, want wallet-user", found.Id)
 	}
 }
+
+func TestSearchUsersMatchesWalletAddressFuzzyCaseInsensitive(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=private"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&model.User{}); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+	previousDB := model.DB
+	model.DB = db
+	t.Cleanup(func() {
+		model.DB = previousDB
+	})
+
+	storedAddress := "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+	if err := db.Create(&model.User{
+		Id:            "wallet-user",
+		Username:      "wallet_user",
+		Password:      "password",
+		WalletAddress: &storedAddress,
+		Status:        model.UserStatusEnabled,
+		AccessToken:   "wallet-search-token",
+		AffCode:       "wallet-user",
+	}).Error; err != nil {
+		t.Fatalf("create wallet user: %v", err)
+	}
+	if err := db.Create(&model.User{
+		Id:          "deleted-user",
+		Username:    "deleted_user",
+		Password:    "password",
+		Status:      model.UserStatusDeleted,
+		AccessToken: "deleted-search-token",
+		AffCode:     "deleted-user",
+	}).Error; err != nil {
+		t.Fatalf("create deleted user: %v", err)
+	}
+
+	users, err := Search("CDEFabcdef")
+	if err != nil {
+		t.Fatalf("search users: %v", err)
+	}
+	if len(users) != 1 {
+		t.Fatalf("len(users)=%d, want 1", len(users))
+	}
+	if users[0].Id != "wallet-user" {
+		t.Fatalf("matched user=%s, want wallet-user", users[0].Id)
+	}
+}

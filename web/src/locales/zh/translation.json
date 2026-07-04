@@ -1527,7 +1527,7 @@
       "visibility_scope_all": "全部用户可见",
       "visibility_scope_partial_users": "部分用户可见",
       "visible_users": "可见用户",
-      "visible_users_placeholder": "搜索并选择用户",
+      "visible_users_placeholder": "搜索用户名/钱包地址并选择用户",
       "sale_price": "售价",
       "sale_currency": "售价币种",
       "daily_quota_limit": "每日额度",

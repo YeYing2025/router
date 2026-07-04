@@ -94,6 +94,7 @@ const toUserOption = (item) => {
   const id = (item?.id || '').toString().trim();
   const username = (item?.username || '').toString().trim();
   const displayName = (item?.display_name || '').toString().trim();
+  const walletAddress = (item?.wallet_address || '').toString().trim();
   const normalizedUsername = username.toLowerCase();
   const normalizedDisplayName = displayName.toLowerCase();
   const primaryName = displayName || username;
@@ -107,7 +108,10 @@ const toUserOption = (item) => {
   return {
     key: id,
     value: id,
-    text: [primaryName, secondaryName].filter(Boolean).join(' / ') || id,
+    text:
+      [primaryName, secondaryName, walletAddress].filter(Boolean).join(' / ') ||
+      id,
+    wallet_address: walletAddress,
   };
 };
 
