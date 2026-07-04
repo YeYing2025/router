@@ -2408,10 +2408,37 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     return index;
   }, [modelTestResults]);
   const modelTestRows = useMemo(() => {
-    return visibleChannelModels.filter(
-      (row) => row.inactive !== true && row.selected === true
-    );
-  }, [visibleChannelModels]);
+    const modelByName = new Map();
+    visibleChannelModels
+      .filter((row) => row.inactive !== true && row.selected === true)
+      .forEach((row) => {
+        const modelName = (row.model || '').toString().trim();
+        if (modelName !== '') {
+          modelByName.set(modelName, row);
+        }
+      });
+    return channelEndpoints
+      .filter((endpointRow) => endpointRow.enabled === true)
+      .map((endpointRow) => {
+        const modelName = (endpointRow.model || '').toString().trim();
+        const endpoint = (endpointRow.endpoint || '').toString().trim();
+        const modelRow = modelByName.get(modelName);
+        if (!modelRow || endpoint === '') {
+          return null;
+        }
+        return {
+          ...modelRow,
+          endpoint,
+          test_key: buildChannelEndpointKey(modelName, endpoint),
+          endpoint_base_url: endpointRow.base_url || '',
+          endpoint_updated_at: endpointRow.updated_at || 0,
+          endpoint_last_test_status: endpointRow.last_test_status || '',
+          endpoint_last_tested_at: endpointRow.last_tested_at || 0,
+          endpoint_last_test_error: endpointRow.last_test_error || '',
+        };
+      })
+      .filter(Boolean);
+  }, [channelEndpoints, visibleChannelModels]);
   const modelTestingTargetSet = useMemo(
     () => new Set(modelTestingTargets),
     [modelTestingTargets]
@@ -2428,9 +2455,10 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
         if (!item.model) {
           return;
         }
-        const existing = index.get(item.model);
+        const key = buildChannelEndpointKey(item.model, item.endpoint);
+        const existing = index.get(key);
         if (!existing || existing.status === 'pending') {
-          index.set(item.model, item);
+          index.set(key, item);
         }
       });
     return index;
@@ -2446,17 +2474,15 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   );
   const selectedModelTestHasActiveTasks = useMemo(
     () =>
-      modelTestTargetModels.some((modelName) =>
-        activeChannelTasksByModel.has(modelName)
+      modelTestTargetModels.some((targetKey) =>
+        activeChannelTasksByModel.has(targetKey)
       ),
     [activeChannelTasksByModel, modelTestTargetModels]
   );
   useEffect(() => {
-    const visibleModelSet = new Set(modelTestRows.map((row) => row.model));
+    const visibleModelSet = new Set(modelTestRows.map((row) => row.test_key));
     setModelTestTargetModels((previous) => {
-      const next = previous.filter((modelName) =>
-        visibleModelSet.has(modelName)
-      );
+      const next = previous.filter((targetKey) => visibleModelSet.has(targetKey));
       if (next.length === previous.length) {
         return previous;
       }
@@ -2666,34 +2692,16 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       resolvePreferredProviderForModel,
     ]
   );
-  const getEndpointOptionsForModel = useCallback(
+  const getEffectiveModelEndpoint = useCallback(
     (row) => {
-      const providerEndpoints = getProviderCandidateEndpointsForModel(row);
-      if (providerEndpoints.length === 0) {
-        const explicitCurrent = normalizeExplicitChannelModelEndpoint(
+      const configuredEndpoint = (row?.endpoint || '').toString().trim();
+      if (configuredEndpoint !== '') {
+        return normalizeExplicitChannelModelEndpoint(
           row?.type,
-          row?.endpoint,
-          inputs.protocol
-        );
-        if (explicitCurrent === '') {
-          return [];
-        }
-        return buildEndpointOptionsFromValues(
-          row?.type,
-          [explicitCurrent],
+          configuredEndpoint,
           inputs.protocol
         );
       }
-      return buildEndpointOptionsFromValues(
-        row?.type,
-        providerEndpoints,
-        inputs.protocol
-      );
-    },
-    [getProviderCandidateEndpointsForModel, inputs.protocol]
-  );
-  const getEffectiveModelEndpoint = useCallback(
-    (row) => {
       const normalizedCurrent = normalizeExplicitChannelModelEndpoint(
         row?.type,
         row?.endpoint,
@@ -2710,79 +2718,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     },
     [getProviderCandidateEndpointsForModel, inputs.protocol]
   );
-  const modelTestGroups = useMemo(() => {
-    const groups = new Map();
-    modelTestRows.forEach((row) => {
-      const provider = resolvePreferredProviderForModel(row);
-      if (provider === '') {
-        return;
-      }
-      const type = normalizeChannelModelType(row.type);
-      const key = `${provider}::${type}`;
-      if (!groups.has(key)) {
-        groups.set(key, {
-          key,
-          provider,
-          type,
-          rows: [],
-        });
-      }
-      groups.get(key).rows.push(row);
-    });
-    return Array.from(groups.values())
-      .map((group) => {
-        let commonEndpoints = null;
-        const labelByValue = new Map();
-        group.rows.forEach((row) => {
-          const options = getEndpointOptionsForModel(row);
-          const rowEndpointSet = new Set(options.map((option) => option.value));
-          options.forEach((option) => {
-            if (!labelByValue.has(option.value)) {
-              labelByValue.set(option.value, option.text || option.value);
-            }
-          });
-          if (commonEndpoints === null) {
-            commonEndpoints = rowEndpointSet;
-            return;
-          }
-          commonEndpoints = new Set(
-            Array.from(commonEndpoints).filter((endpoint) =>
-              rowEndpointSet.has(endpoint)
-            )
-          );
-        });
-        const endpointOptions = Array.from(commonEndpoints || [])
-          .sort((a, b) => a.localeCompare(b))
-          .map((endpoint) => ({
-            key: endpoint,
-            value: endpoint,
-            text: labelByValue.get(endpoint) || endpoint,
-          }));
-        const endpointSet = new Set(
-          group.rows.map((row) => getEffectiveModelEndpoint(row))
-        );
-        return {
-          ...group,
-          endpointOptions,
-          endpointValue:
-            endpointSet.size === 1 ? Array.from(endpointSet)[0] || '' : '',
-        };
-      })
-      .sort((left, right) => {
-        const providerOrder = (left.provider || '').localeCompare(
-          right.provider || ''
-        );
-        if (providerOrder !== 0) {
-          return providerOrder;
-        }
-        return (left.type || '').localeCompare(right.type || '');
-      });
-  }, [
-    getEffectiveModelEndpoint,
-    getEndpointOptionsForModel,
-    modelTestRows,
-    resolvePreferredProviderForModel,
-  ]);
   const openComplexPricingModal = useCallback(
     (row) => {
       const details = getComplexPricingDetailsForModel(row);
@@ -4456,7 +4391,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   }, [appendProviderForm, closeAppendProviderModal, loadProviderIndex, t]);
 
   const handleRunModelTests = useCallback(
-    async ({ targetModels = [], scope = 'batch' } = {}) => {
+    async ({ targetModels = [], targetConfigs = [], scope = 'batch' } = {}) => {
       if (!isDetailMode) {
         return;
       }
@@ -4466,12 +4401,28 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       if (inputs.protocol === 'proxy') {
         return;
       }
-      const normalizedTargets = normalizeModelIDs(
-        Array.isArray(targetModels) && targetModels.length > 0
-          ? targetModels
-          : modelTestTargetModels
-      );
-      if (normalizedTargets.length === 0) {
+      const explicitConfigs = Array.isArray(targetConfigs) ? targetConfigs : [];
+      const selectedTargetKeys =
+        explicitConfigs.length > 0
+          ? explicitConfigs
+              .map((item) => buildChannelEndpointKey(item?.model, item?.endpoint))
+              .filter((item) => item !== '::')
+          : normalizeModelIDs(
+              Array.isArray(targetModels) && targetModels.length > 0
+                ? targetModels
+                : modelTestTargetModels
+            );
+      const targetKeySet = new Set(selectedTargetKeys);
+      const selectedRows =
+        explicitConfigs.length > 0
+          ? explicitConfigs
+              .map((item) => {
+                const key = buildChannelEndpointKey(item?.model, item?.endpoint);
+                return modelTestRows.find((row) => row.test_key === key) || null;
+              })
+              .filter(Boolean)
+          : modelTestRows.filter((row) => targetKeySet.has(row.test_key));
+      if (selectedRows.length === 0) {
         showInfo(t('channel.edit.messages.models_required'));
         return;
       }
@@ -4479,9 +4430,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       if (targetChannelId === '') {
         return;
       }
-      const targetConfigs = visibleChannelModels
-        .filter((row) => normalizedTargets.includes(row.model))
-        .map((row) => {
+      const nextTargetConfigs = selectedRows.map((row) => {
           const endpoint = getEffectiveModelEndpoint(row);
           const targetConfig = {
             model: row.model,
@@ -4495,16 +4444,19 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
           }
           return targetConfig;
         });
+      const normalizedTargets = normalizeModelIDs(
+        selectedRows.map((row) => row.model)
+      );
       setModelTesting(true);
       setModelTestingScope(scope === 'single' ? 'single' : 'batch');
-      setModelTestingTargets(normalizedTargets);
+      setModelTestingTargets(selectedRows.map((row) => row.test_key));
       try {
         const res = await API.post(
           `/api/v1/admin/channel/${targetChannelId}/tests`,
           {
             test_model: inputs.test_model || '',
             target_models: normalizedTargets,
-            target_configs: targetConfigs,
+            target_configs: nextTargetConfigs,
             audio_language: audioTestLanguage,
             image_edit_url: imageEditTestURL,
             image_edit_data: imageEditTestData,
@@ -4550,7 +4502,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       detailTestingReadonly,
       isDetailMode,
       t,
-      visibleChannelModels,
+      modelTestRows,
       audioTestLanguage,
       responsesTestMode,
       imageEditTestURL,
@@ -4559,12 +4511,12 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   );
 
   const toggleModelTestTarget = useCallback(
-    (modelName, checked) => {
+    (targetKey, checked) => {
       if (detailTestingReadonly) {
         return;
       }
       setModelTestTargetModels((prev) => {
-        const normalized = (modelName || '').toString().trim();
+        const normalized = (targetKey || '').toString().trim();
         if (normalized === '') {
           return prev;
         }
@@ -4577,114 +4529,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     [detailTestingReadonly]
   );
 
-  const toggleModelTestGroupTargets = useCallback(
-    (rows, checked) => {
-      if (detailTestingReadonly) {
-        return;
-      }
-      const modelIDs = normalizeModelIDs(
-        (Array.isArray(rows) ? rows : []).map((row) => row.model)
-      );
-      if (modelIDs.length === 0) {
-        return;
-      }
-      setModelTestTargetModels((prev) => {
-        if (checked) {
-          return normalizeModelIDs([...prev, ...modelIDs]);
-        }
-        const removeSet = new Set(modelIDs);
-        return prev.filter((item) => !removeSet.has(item));
-      });
-    },
-    [detailTestingReadonly]
-  );
-
-  const updateModelTestEndpoint = useCallback(
-    async (modelName, endpoint) => {
-      if (detailTestingReadonly) {
-        return;
-      }
-      const nextConfigs = visibleChannelModels.map((row) => {
-        if (row.model !== modelName) {
-          return row;
-        }
-        const nextEndpoint = normalizeChannelModelEndpoint(
-          row.type,
-          endpoint,
-          inputs.protocol
-        );
-        return {
-          ...row,
-          endpoint: nextEndpoint,
-          endpoints: normalizeChannelModelEndpoints(
-            row.type,
-            row.endpoints,
-            nextEndpoint,
-            inputs.protocol
-          ),
-        };
-      });
-      if (isDetailMode) {
-        await persistDetailChannelModels(nextConfigs);
-        return;
-      }
-      setInputs((prev) =>
-        buildNextInputsWithChannelModels(prev, nextConfigs, prev.protocol)
-      );
-    },
-    [
-      detailTestingReadonly,
-      isDetailMode,
-      persistDetailChannelModels,
-      visibleChannelModels,
-    ]
-  );
-  const updateAllModelTestEndpoints = useCallback(
-    async (endpoint, targetModels) => {
-      if (detailTestingReadonly) {
-        return;
-      }
-      const targetEndpoint = (endpoint || '').toString().trim();
-      const targetSet = new Set(normalizeModelIDs(targetModels));
-      if (targetEndpoint === '' || targetSet.size === 0) {
-        return;
-      }
-      const nextConfigs = visibleChannelModels.map((row) => {
-        if (!targetSet.has(row.model)) {
-          return row;
-        }
-        const nextEndpoint = normalizeChannelModelEndpoint(
-          row.type,
-          targetEndpoint,
-          inputs.protocol
-        );
-        return {
-          ...row,
-          endpoint: nextEndpoint,
-          endpoints: normalizeChannelModelEndpoints(
-            row.type,
-            row.endpoints,
-            nextEndpoint,
-            inputs.protocol
-          ),
-        };
-      });
-      if (isDetailMode) {
-        await persistDetailChannelModels(nextConfigs);
-        return;
-      }
-      setInputs((prev) =>
-        buildNextInputsWithChannelModels(prev, nextConfigs, prev.protocol)
-      );
-    },
-    [
-      detailTestingReadonly,
-      inputs.protocol,
-      isDetailMode,
-      persistDetailChannelModels,
-      visibleChannelModels,
-    ]
-  );
   const updateAllModelTestStreams = useCallback(
     async (isStream, modelNames = []) => {
       if (detailTestingReadonly) {
@@ -5360,7 +5204,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       setChannelEndpointsLoading(false);
       return undefined;
     }
-    if (!showDetailEndpointsTab) {
+    if (!showDetailEndpointsTab && !showDetailTestsTab) {
       return undefined;
     }
     let disposed = false;
@@ -5396,6 +5240,7 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     isDetailMode,
     loadChannelEndpointsFromServer,
     showDetailEndpointsTab,
+    showDetailTestsTab,
     t,
   ]);
 
@@ -6241,8 +6086,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                 modelTestResultsByKey={modelTestResultsByKey}
                 buildModelTestResultKey={buildModelTestResultKey}
                 activeChannelTasksByModel={activeChannelTasksByModel}
-                getEndpointOptionsForModel={getEndpointOptionsForModel}
-                updateModelTestEndpoint={updateModelTestEndpoint}
                 modelTesting={modelTesting}
                 modelTestingScope={modelTestingScope}
                 modelTestingTargetSet={modelTestingTargetSet}
@@ -6254,7 +6097,6 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                   selectedModelTestHasActiveTasks
                 }
                 timestamp2string={timestamp2string}
-                updateAllModelTestEndpoints={updateAllModelTestEndpoints}
                 updateAllModelTestStreams={updateAllModelTestStreams}
                 resolvePreferredProviderForModel={
                   resolvePreferredProviderForModel

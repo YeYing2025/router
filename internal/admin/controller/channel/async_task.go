@@ -35,6 +35,12 @@ type channelRefreshBillingTaskPayload struct {
 	ChannelID string `json:"channel_id"`
 }
 
+type channelModelTestTaskTarget struct {
+	Row               model.ChannelModel
+	Stream            *bool
+	ResponsesTestMode string
+}
+
 func buildChannelModelTestTaskDedupeKey(channelID string, modelID string, endpoint string, streamOverride *bool, audioLanguage string, imageEditURL string, imageEditData string, responsesTestMode string) string {
 	normalizedModelID := strings.TrimSpace(modelID)
 	normalizedEndpoint := model.NormalizeRequestedChannelModelEndpoint(endpoint)
@@ -106,6 +112,67 @@ func buildChannelModelTestTaskPayload(modelID string, channelID string, endpoint
 	})
 }
 
+func resolveChannelModelTestTaskTargets(channelRow *model.Channel, testMode string, requestedTestModel string, requestedModels []string, requestedConfigs []channelModelTestTargetItem) []channelModelTestTaskTarget {
+	if len(requestedConfigs) == 0 {
+		targetRows := resolveChannelTestTargetModels(channelRow, testMode, requestedTestModel, requestedModels)
+		result := make([]channelModelTestTaskTarget, 0, len(targetRows))
+		for _, row := range targetRows {
+			result = append(result, channelModelTestTaskTarget{Row: row})
+		}
+		return result
+	}
+
+	targetRows := resolveChannelTestTargetModels(channelRow, channelModelTestModeBatch, "", nil)
+	if len(targetRows) == 0 {
+		return nil
+	}
+	rowByModel := make(map[string]model.ChannelModel, len(targetRows)*2)
+	for _, row := range targetRows {
+		if modelID := strings.TrimSpace(row.Model); modelID != "" {
+			rowByModel[modelID] = row
+		}
+		if upstreamModel := strings.TrimSpace(row.UpstreamModel); upstreamModel != "" {
+			rowByModel[upstreamModel] = row
+		}
+	}
+
+	result := make([]channelModelTestTaskTarget, 0, len(requestedConfigs))
+	seen := make(map[string]struct{}, len(requestedConfigs))
+	for _, item := range requestedConfigs {
+		modelID := strings.TrimSpace(item.Model)
+		endpoint := model.NormalizeRequestedChannelModelEndpoint(item.Endpoint)
+		if modelID == "" || endpoint == "" {
+			continue
+		}
+		row, ok := rowByModel[modelID]
+		if !ok {
+			continue
+		}
+		row.Endpoint = endpoint
+		hasDeclaredEndpoint := false
+		for _, candidate := range row.Endpoints {
+			if model.NormalizeRequestedChannelModelEndpoint(candidate) == endpoint {
+				hasDeclaredEndpoint = true
+				break
+			}
+		}
+		if !hasDeclaredEndpoint {
+			row.Endpoints = append(row.Endpoints, endpoint)
+		}
+		key := fmt.Sprintf("%s::%s", strings.TrimSpace(row.Model), endpoint)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, channelModelTestTaskTarget{
+			Row:               row,
+			Stream:            item.IsStream,
+			ResponsesTestMode: normalizeResponsesTestMode(item.ResponsesTestMode),
+		})
+	}
+	return result
+}
+
 func CreateChannelModelTestTasks(channelID string, createdBy string, requestedTestModel string, requestedModels []string, requestedConfigs []channelModelTestTargetItem, traceID string, requestedAudioLanguage string, requestedImageEditURL string, requestedImageEditData string) ([]model.AsyncTask, int, int, error) {
 	normalizedChannelID := strings.TrimSpace(channelID)
 	if normalizedChannelID == "" {
@@ -120,31 +187,16 @@ func CreateChannelModelTestTasks(channelID string, createdBy string, requestedTe
 	if len(requestedModels) == 1 || strings.TrimSpace(requestedTestModel) != "" {
 		testMode = channelModelTestModeSingle
 	}
-	targetRows := resolveChannelTestTargetModels(channelRow, testMode, requestedTestModel, requestedModels)
-	if len(targetRows) == 0 {
+	targets := resolveChannelModelTestTaskTargets(channelRow, testMode, requestedTestModel, requestedModels, requestedConfigs)
+	if len(targets) == 0 {
 		return nil, 0, 0, fmt.Errorf("未找到可用于测试的模型")
 	}
-	tasks := make([]model.AsyncTask, 0, len(targetRows))
+	tasks := make([]model.AsyncTask, 0, len(targets))
 	createdCount := 0
 	reusedCount := 0
-	endpointOverrides := make(map[string]string, len(requestedConfigs))
-	streamOverrides := make(map[string]*bool, len(requestedConfigs))
-	responsesTestModeOverrides := make(map[string]string, len(requestedConfigs))
-	for _, item := range requestedConfigs {
-		modelID := strings.TrimSpace(item.Model)
-		if modelID == "" {
-			continue
-		}
-		endpointOverrides[modelID] = strings.TrimSpace(item.Endpoint)
-		streamOverrides[modelID] = item.IsStream
-		responsesTestModeOverrides[modelID] = normalizeResponsesTestMode(item.ResponsesTestMode)
-	}
-	for _, row := range targetRows {
-		endpoint := endpointOverrides[strings.TrimSpace(row.Model)]
-		if endpoint != "" {
-			row.Endpoint = endpoint
-		}
-		stream := streamOverrides[strings.TrimSpace(row.Model)]
+	for _, target := range targets {
+		row := target.Row
+		stream := target.Stream
 		normalizedEndpoint, endpointErr := resolveChannelModelTestEndpointForRow(row)
 		if endpointErr != nil {
 			return nil, createdCount, reusedCount, endpointErr
@@ -157,7 +209,7 @@ func CreateChannelModelTestTasks(channelID string, createdBy string, requestedTe
 		}
 		responsesTestMode := ""
 		if normalizedEndpoint == model.ChannelModelEndpointResponses {
-			responsesTestMode = responsesTestModeOverrides[strings.TrimSpace(row.Model)]
+			responsesTestMode = target.ResponsesTestMode
 		}
 		imageEditURL := ""
 		imageEditData := ""
