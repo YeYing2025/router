@@ -175,7 +175,7 @@ var group2model2channels map[string]map[string][]*Channel
 var group2model2channel2upstream map[string]map[string]map[string]string
 var channel2model2endpointEnabled map[string]map[string]map[string]bool
 var channel2model2endpointBaseURL map[string]map[string]map[string]string
-var channel2model2endpointPolicy map[string]map[string]map[string]ChannelModelEndpointPolicy
+var channel2model2endpointPolicy map[string]map[string]map[string][]ChannelModelEndpointPolicy
 var channelSyncLock sync.RWMutex
 
 func InitChannelCache() {
@@ -403,7 +403,7 @@ func CacheGetChannelModelEndpointBaseURL(channelID string, requestPath string, m
 	return ""
 }
 
-func CacheGetChannelModelEndpointPolicy(channelID string, endpoint string, modelCandidates ...string) *ChannelModelEndpointPolicy {
+func CacheGetChannelModelEndpointPolicies(channelID string, endpoint string, modelCandidates ...string) []ChannelModelEndpointPolicy {
 	normalizedChannelID := strings.TrimSpace(channelID)
 	normalizedEndpoint := NormalizeRequestedChannelModelEndpoint(endpoint)
 	normalizedCandidates := normalizeTrimmedValuesPreserveOrder(modelCandidates)
@@ -418,33 +418,64 @@ func CacheGetChannelModelEndpointPolicy(channelID string, endpoint string, model
 			if !ok {
 				continue
 			}
-			row, ok := endpointMap[normalizedEndpoint]
-			if !ok {
+			rows, ok := endpointMap[normalizedEndpoint]
+			if !ok || len(rows) == 0 {
 				continue
 			}
-			cloned := row
+			cloned := make([]ChannelModelEndpointPolicy, len(rows))
+			copy(cloned, rows)
 			channelSyncLock.RUnlock()
-			return &cloned
+			return cloned
 		}
 		channelSyncLock.RUnlock()
 	}
 	rows, err := listChannelModelEndpointPoliciesByCandidatesWithDB(DB, normalizedChannelID, normalizedEndpoint, normalizedCandidates)
 	if err != nil {
-		logger.SysError("load channel model endpoint policy failed: " + err.Error())
+		logger.SysError("load channel model endpoint policies failed: " + err.Error())
 		return nil
 	}
+	result := make([]ChannelModelEndpointPolicy, 0, len(rows))
 	for _, row := range rows {
 		if !row.Enabled {
 			continue
 		}
-		cloned := row
-		return &cloned
+		result = append(result, row)
 	}
-	return nil
+	return result
 }
 
-func buildChannelModelEndpointPolicyCache(rows []ChannelModelEndpointPolicy) map[string]map[string]map[string]ChannelModelEndpointPolicy {
-	result := make(map[string]map[string]map[string]ChannelModelEndpointPolicy)
+func CacheGetChannelModelEndpointPolicy(channelID string, endpoint string, modelCandidates ...string) *ChannelModelEndpointPolicy {
+	rows := CacheGetChannelModelEndpointPolicies(channelID, endpoint, modelCandidates...)
+	if len(rows) == 0 {
+		return nil
+	}
+	cloned := rows[0]
+	return &cloned
+}
+
+func CacheGetChannelModelEndpointAccessPolicyBaseURL(channelID string, endpoint string, modelCandidates ...string) string {
+	return ResolveChannelModelEndpointAccessPolicyBaseURL(CacheGetChannelModelEndpointPolicies(channelID, endpoint, modelCandidates...))
+}
+
+func ResolveChannelModelEndpointAccessPolicyBaseURL(rows []ChannelModelEndpointPolicy) string {
+	for _, row := range rows {
+		if !row.Enabled || NormalizeChannelEndpointPolicyTemplateKey(row.TemplateKey) != ChannelEndpointPolicyTemplateOverrideEndpointBaseURL {
+			continue
+		}
+		accessPolicy, err := row.ParseAccessPolicy()
+		if err != nil {
+			logger.SysError("parse channel model endpoint access policy failed: " + err.Error())
+			continue
+		}
+		if baseURL := normalizeConfiguredBaseURL(accessPolicy.BaseURL); baseURL != "" {
+			return baseURL
+		}
+	}
+	return ""
+}
+
+func buildChannelModelEndpointPolicyCache(rows []ChannelModelEndpointPolicy) map[string]map[string]map[string][]ChannelModelEndpointPolicy {
+	result := make(map[string]map[string]map[string][]ChannelModelEndpointPolicy)
 	for _, row := range rows {
 		normalized := row
 		NormalizeChannelModelEndpointPolicyRow(&normalized)
@@ -452,12 +483,12 @@ func buildChannelModelEndpointPolicyCache(rows []ChannelModelEndpointPolicy) map
 			continue
 		}
 		if _, ok := result[normalized.ChannelId]; !ok {
-			result[normalized.ChannelId] = make(map[string]map[string]ChannelModelEndpointPolicy)
+			result[normalized.ChannelId] = make(map[string]map[string][]ChannelModelEndpointPolicy)
 		}
 		if _, ok := result[normalized.ChannelId][normalized.Model]; !ok {
-			result[normalized.ChannelId][normalized.Model] = make(map[string]ChannelModelEndpointPolicy)
+			result[normalized.ChannelId][normalized.Model] = make(map[string][]ChannelModelEndpointPolicy)
 		}
-		result[normalized.ChannelId][normalized.Model][normalized.Endpoint] = normalized
+		result[normalized.ChannelId][normalized.Model][normalized.Endpoint] = append(result[normalized.ChannelId][normalized.Model][normalized.Endpoint], normalized)
 	}
 	return result
 }

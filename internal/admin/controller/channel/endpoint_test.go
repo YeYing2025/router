@@ -111,43 +111,12 @@ func seedEndpointControllerChannel(t *testing.T, db *gorm.DB) {
 	}
 }
 
-func TestUpdateChannelEndpointRequiresExactModelTestResult(t *testing.T) {
+func TestUpdateChannelEndpointAllowsEnableWithoutTestResult(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := newChannelEndpointControllerTestDB(t)
 	seedEndpointControllerChannel(t, db)
-	if err := db.Create(&model.ChannelModelEndpointTestResult{
-		ChannelId:      "channel-1",
-		Model:          "other-model",
-		Endpoint:       model.ChannelModelEndpointChat,
-		UpstreamModel:  "qwen3.7-max",
-		LastTestStatus: model.ChannelModelEndpointTestStatusSuccess,
-		LastSupported:  true,
-	}).Error; err != nil {
-		t.Fatalf("create loose endpoint test result: %v", err)
-	}
 
 	resp := callUpdateChannelEndpointForTest(t, "channel-1", map[string]any{
-		"model":    "qwen3.7-max",
-		"endpoint": model.ChannelModelEndpointChat,
-		"enabled":  true,
-	})
-	if resp["success"] == true {
-		t.Fatalf("UpdateChannelEndpoint success=true, want false")
-	}
-	if !strings.Contains(resp["message"].(string), "缺少最近一次成功测试结果") {
-		t.Fatalf("UpdateChannelEndpoint message=%v, want exact test result error", resp["message"])
-	}
-
-	if err := db.Create(&model.ChannelModelEndpointTestResult{
-		ChannelId:      "channel-1",
-		Model:          "qwen3.7-max",
-		Endpoint:       model.ChannelModelEndpointChat,
-		LastTestStatus: model.ChannelModelEndpointTestStatusSuccess,
-		LastSupported:  true,
-	}).Error; err != nil {
-		t.Fatalf("create exact endpoint test result: %v", err)
-	}
-	resp = callUpdateChannelEndpointForTest(t, "channel-1", map[string]any{
 		"model":    "qwen3.7-max",
 		"endpoint": model.ChannelModelEndpointChat,
 		"enabled":  true,
@@ -186,8 +155,8 @@ func TestGetChannelEndpointsDoesNotShowLooseUpstreamModelSuccess(t *testing.T) {
 		t.Fatalf("last_test_status=%q, want empty because exact model has no result", status)
 	}
 	reason, _ := item["enable_block_reason"].(string)
-	if !strings.Contains(reason, "缺少最近一次成功测试结果") {
-		t.Fatalf("enable_block_reason=%q, want exact test result block reason", reason)
+	if strings.TrimSpace(reason) != "" {
+		t.Fatalf("enable_block_reason=%q, want empty because endpoint enable no longer requires test result", reason)
 	}
 }
 

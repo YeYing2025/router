@@ -15,16 +15,18 @@ import (
 const (
 	ChannelModelEndpointPoliciesTableName = "channel_model_endpoint_policies"
 
-	ChannelEndpointPolicyActionImageURLToBase64 = "image_url_to_base64"
+	ChannelEndpointPolicyTemplateCustomRequestPolicy     = "CUSTOM_REQUEST_POLICY"
+	ChannelEndpointPolicyTemplateOverrideEndpointBaseURL = "OVERRIDE_ENDPOINT_BASE_URL"
+	ChannelEndpointPolicyActionImageURLToBase64          = "image_url_to_base64"
 )
 
 type ChannelModelEndpointPolicy struct {
 	ID             string `json:"id" gorm:"primaryKey;type:varchar(64)"`
-	ChannelId      string `json:"channel_id" gorm:"type:varchar(64);uniqueIndex:uniq_channel_model_endpoint_policy,priority:1"`
-	Model          string `json:"model" gorm:"type:varchar(255);uniqueIndex:uniq_channel_model_endpoint_policy,priority:2"`
-	Endpoint       string `json:"endpoint" gorm:"type:varchar(255);uniqueIndex:uniq_channel_model_endpoint_policy,priority:3"`
+	ChannelId      string `json:"channel_id" gorm:"type:varchar(64);index"`
+	Model          string `json:"model" gorm:"type:varchar(255);index"`
+	Endpoint       string `json:"endpoint" gorm:"type:varchar(255);index"`
 	Enabled        bool   `json:"enabled" gorm:"not null;index"`
-	TemplateKey    string `json:"template_key,omitempty" gorm:"type:varchar(128);default:''"`
+	TemplateKey    string `json:"template_key,omitempty" gorm:"type:varchar(128);default:'';index"`
 	Capabilities   string `json:"capabilities,omitempty" gorm:"type:text;default:''"`
 	RequestPolicy  string `json:"request_policy,omitempty" gorm:"type:text;default:''"`
 	ResponsePolicy string `json:"response_policy,omitempty" gorm:"type:text;default:''"`
@@ -51,6 +53,10 @@ type ChannelModelEndpointCapabilities struct {
 
 type ChannelModelEndpointRequestPolicy struct {
 	Actions []ChannelModelEndpointPolicyAction `json:"actions,omitempty"`
+}
+
+type ChannelModelEndpointAccessPolicy struct {
+	BaseURL string `json:"base_url,omitempty"`
 }
 
 type ChannelModelEndpointPolicyAction struct {
@@ -107,6 +113,8 @@ func NormalizeChannelEndpointPolicyTemplateKey(raw string) string {
 	switch normalized {
 	case "ANTHROPIC_IMAGE_URL_TO_BASE64":
 		return "IMAGE_URL_TO_BASE64"
+	case "MANUAL", "CUSTOM", "CUSTOM_POLICY":
+		return ChannelEndpointPolicyTemplateCustomRequestPolicy
 	}
 	return normalized
 }
@@ -127,6 +135,18 @@ func (row ChannelModelEndpointPolicy) ParseRequestPolicy() (ChannelModelEndpoint
 			policy.Actions[i].Limits.AllowedContentTypes = normalizeTrimmedValuesPreserveOrder(policy.Actions[i].Limits.AllowedContentTypes)
 		}
 	}
+	return policy, nil
+}
+
+func (row ChannelModelEndpointPolicy) ParseAccessPolicy() (ChannelModelEndpointAccessPolicy, error) {
+	policy := ChannelModelEndpointAccessPolicy{}
+	if strings.TrimSpace(row.RequestPolicy) == "" {
+		return policy, nil
+	}
+	if err := json.Unmarshal([]byte(row.RequestPolicy), &policy); err != nil {
+		return policy, fmt.Errorf("parse access policy: %w", err)
+	}
+	policy.BaseURL = normalizeConfiguredBaseURL(policy.BaseURL)
 	return policy, nil
 }
 
@@ -161,7 +181,7 @@ func listChannelModelEndpointPoliciesByChannelIDWithDB(dbHandle *gorm.DB, channe
 	rows := make([]ChannelModelEndpointPolicy, 0)
 	if err := dbHandle.
 		Where("channel_id = ?", normalizedChannelID).
-		Order("model asc, endpoint asc").
+		Order("model asc, endpoint asc, template_key asc").
 		Find(&rows).Error; err != nil {
 		return nil, err
 	}
@@ -184,7 +204,7 @@ func listChannelModelEndpointPoliciesByCandidatesWithDB(dbHandle *gorm.DB, chann
 	rows := make([]ChannelModelEndpointPolicy, 0)
 	if err := dbHandle.
 		Where("channel_id = ? AND endpoint = ? AND model IN ?", normalizedChannelID, normalizedEndpoint, normalizedCandidates).
-		Order("model asc").
+		Order("model asc, template_key asc").
 		Find(&rows).Error; err != nil {
 		return nil, err
 	}
@@ -217,6 +237,39 @@ func ListChannelModelEndpointPoliciesByChannelIDWithDB(dbHandle *gorm.DB, channe
 	return result, nil
 }
 
+func DeleteChannelModelEndpointPolicyWithDB(dbHandle *gorm.DB, channelID string, policyID string) error {
+	if dbHandle == nil {
+		return fmt.Errorf("database handle is nil")
+	}
+	normalizedChannelID := strings.TrimSpace(channelID)
+	normalizedPolicyID := strings.TrimSpace(policyID)
+	if normalizedChannelID == "" {
+		return fmt.Errorf("channel_id 不能为空")
+	}
+	if normalizedPolicyID == "" {
+		return fmt.Errorf("policy_id 不能为空")
+	}
+	if err := dbHandle.Transaction(func(tx *gorm.DB) error {
+		if err := lockChannelRowForUpdateWithDB(tx, normalizedChannelID); err != nil {
+			return err
+		}
+		result := tx.Where("id = ? AND channel_id = ?", normalizedPolicyID, normalizedChannelID).Delete(&ChannelModelEndpointPolicy{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	if config.MemoryCacheEnabled {
+		InitChannelCache()
+	}
+	return nil
+}
+
 func UpsertChannelModelEndpointPolicyWithDB(dbHandle *gorm.DB, row ChannelModelEndpointPolicy) (ChannelModelEndpointPolicy, error) {
 	if dbHandle == nil {
 		return ChannelModelEndpointPolicy{}, fmt.Errorf("database handle is nil")
@@ -232,11 +285,24 @@ func UpsertChannelModelEndpointPolicyWithDB(dbHandle *gorm.DB, row ChannelModelE
 	if normalized.Endpoint == "" {
 		return ChannelModelEndpointPolicy{}, fmt.Errorf("endpoint 无效")
 	}
+	if normalized.TemplateKey == "" {
+		return ChannelModelEndpointPolicy{}, fmt.Errorf("template_key 不能为空")
+	}
 	if _, err := normalized.ParseCapabilities(); err != nil {
 		return ChannelModelEndpointPolicy{}, err
 	}
-	if _, err := normalized.ParseRequestPolicy(); err != nil {
-		return ChannelModelEndpointPolicy{}, err
+	if normalized.TemplateKey == ChannelEndpointPolicyTemplateOverrideEndpointBaseURL {
+		accessPolicy, err := normalized.ParseAccessPolicy()
+		if err != nil {
+			return ChannelModelEndpointPolicy{}, err
+		}
+		if accessPolicy.BaseURL == "" {
+			return ChannelModelEndpointPolicy{}, fmt.Errorf("base_url 不能为空")
+		}
+	} else {
+		if _, err := normalized.ParseRequestPolicy(); err != nil {
+			return ChannelModelEndpointPolicy{}, err
+		}
 	}
 	if err := ParseEndpointPolicyJSON(normalized.ResponsePolicy); err != nil {
 		return ChannelModelEndpointPolicy{}, fmt.Errorf("parse response policy: %w", err)
@@ -257,11 +323,11 @@ func UpsertChannelModelEndpointPolicyWithDB(dbHandle *gorm.DB, row ChannelModelE
 				{Name: "channel_id"},
 				{Name: "model"},
 				{Name: "endpoint"},
+				{Name: "template_key"},
 			},
 			DoUpdates: clause.AssignmentColumns([]string{
 				"id",
 				"enabled",
-				"template_key",
 				"capabilities",
 				"request_policy",
 				"response_policy",

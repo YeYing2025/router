@@ -157,12 +157,12 @@ func ExplainManualChannelEndpointEnableBlockWithDB(db *gorm.DB, channelID string
 	if !containsNormalizedEndpoint(officialEndpoints, normalizedEndpoint) {
 		return fmt.Sprintf("模型 %s 的供应商官方端点范围不包含 %s", official.Model, normalizedEndpoint), nil
 	}
-	ok, err := HasSuccessfulExactChannelEndpointTestResultWithDB(db, normalizedChannelID, row.Model, normalizedEndpoint)
-	if err != nil {
+	channelRow := Channel{}
+	if err := db.Select("id", "protocol").Where("id = ?", normalizedChannelID).First(&channelRow).Error; err != nil {
 		return "", err
 	}
-	if !ok {
-		return fmt.Sprintf("模型 %s 的端点 %s 缺少最近一次成功测试结果，不能启用", displayChannelModelName(row), normalizedEndpoint), nil
+	if !IsChannelModelEndpointRouteSupported(channelRow.GetChannelProtocol(), officialType, normalizedEndpoint) {
+		return fmt.Sprintf("Router 当前不支持将协议 %s 的模型端点 %s 路由到该渠道", channelRow.GetProtocol(), normalizedEndpoint), nil
 	}
 	return "", nil
 }

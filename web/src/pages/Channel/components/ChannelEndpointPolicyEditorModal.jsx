@@ -25,6 +25,12 @@ const ChannelEndpointPolicyEditorModal = ({
   setPolicyDraft,
   saveEndpointPolicy,
 }) => {
+  const templateKey = (policyDraft.template_key || '').toString().trim();
+  const isAccessBaseURLPolicy = templateKey === 'OVERRIDE_ENDPOINT_BASE_URL';
+  const usesRawPolicyJSON =
+    templateKey === 'IMAGE_URL_TO_BASE64' ||
+    templateKey === 'CUSTOM_REQUEST_POLICY';
+
   return (
     <AppModal
       size='large'
@@ -64,6 +70,49 @@ const ChannelEndpointPolicyEditorModal = ({
             title={t('channel.edit.endpoint_policies.editor.hint')}
           />
           <AppFormRow>
+            <AppField
+              label={t('channel.edit.endpoint_policies.table.model')}
+              readOnly
+            >
+              <AppInput
+                className='router-modal-input'
+                value={policyDraft.model}
+                readOnly
+              />
+            </AppField>
+            <AppField
+              label={t('channel.edit.endpoint_policies.table.endpoint')}
+              readOnly
+            >
+              <AppInput
+                className='router-modal-input'
+                value={policyDraft.endpoint}
+                readOnly
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
+            <AppField label={t('channel.edit.endpoint_capabilities.table.enabled')}>
+              <AppSwitch
+                checked={policyDraft.endpoint_enabled === true}
+                disabled={
+                  !!(policyDraft.endpoint_enable_block_reason || '').trim() &&
+                  policyDraft.endpoint_enabled !== true
+                }
+                title={
+                  (policyDraft.endpoint_enable_block_reason || '').trim() ||
+                  undefined
+                }
+                onChange={(_, { checked }) =>
+                  setPolicyDraft((prev) => ({
+                    ...prev,
+                    endpoint_enabled: checked === true,
+                  }))
+                }
+              />
+            </AppField>
+          </AppFormRow>
+          <AppFormRow>
             <AppField label={t('channel.edit.endpoint_policies.editor.template')}>
               <AppSelect
                 clearable
@@ -89,7 +138,7 @@ const ChannelEndpointPolicyEditorModal = ({
               />
             </AppField>
           </AppFormRow>
-          {(policyDraft.template_key || '') === 'IMAGE_URL_TO_BASE64' ? (
+          {templateKey === 'IMAGE_URL_TO_BASE64' ? (
             <AppAlert
               type='warning'
               showIcon
@@ -97,28 +146,27 @@ const ChannelEndpointPolicyEditorModal = ({
               title={t('channel.edit.endpoint_policies.editor.image_url_to_base64_hint')}
             />
           ) : null}
-          <AppFormRow>
-            <AppField
-              label={t('channel.edit.endpoint_policies.table.model')}
-              readOnly
-            >
-              <AppInput
-                className='router-modal-input'
-                value={policyDraft.model}
-                readOnly
-              />
-            </AppField>
-            <AppField
-              label={t('channel.edit.endpoint_policies.table.endpoint')}
-              readOnly
-            >
-              <AppInput
-                className='router-modal-input'
-                value={policyDraft.endpoint}
-                readOnly
-              />
-            </AppField>
-          </AppFormRow>
+          {isAccessBaseURLPolicy ? (
+            <AppFormRow>
+              <AppField
+                label={t('channel.edit.endpoint_policies.editor.access_base_url')}
+              >
+                <AppInput
+                  className='router-modal-input'
+                  value={policyDraft.access_base_url || ''}
+                  placeholder={t(
+                    'channel.edit.endpoint_policies.editor.access_base_url_placeholder',
+                  )}
+                  onChange={(e, { value }) =>
+                    setPolicyDraft((prev) => ({
+                      ...prev,
+                      access_base_url: value || '',
+                    }))
+                  }
+                />
+              </AppField>
+            </AppFormRow>
+          ) : null}
           <AppFormRow>
             <AppField
               label={t('channel.edit.endpoint_policies.editor.template_key')}
@@ -133,9 +181,7 @@ const ChannelEndpointPolicyEditorModal = ({
                 )}
               />
             </AppField>
-          </AppFormRow>
-          <AppFormRow>
-            <AppField label={t('channel.edit.endpoint_policies.table.status')}>
+            <AppField label={t('channel.edit.endpoint_policies.editor.status')}>
               <AppSwitch
                 checked={policyDraft.enabled === true}
                 onChange={(_, { checked }) =>
@@ -161,57 +207,61 @@ const ChannelEndpointPolicyEditorModal = ({
               />
             </AppField>
           </AppFormRow>
-          <AppFormRow>
-            <AppField
-              label={t('channel.edit.endpoint_policies.editor.capabilities')}
-            >
-              <AppTextarea
-                className='router-section-textarea router-code-textarea router-code-textarea-md'
-                placeholder='{"input_image_url": false}'
-                value={policyDraft.capabilities}
-                onChange={(e, { value }) =>
-                  setPolicyDraft((prev) => ({
-                    ...prev,
-                    capabilities: value || '',
-                  }))
-                }
-              />
-            </AppField>
-          </AppFormRow>
-          <AppFormRow>
-            <AppField
-              label={t('channel.edit.endpoint_policies.editor.request_policy')}
-            >
-              <AppTextarea
-                className='router-section-textarea router-code-textarea router-code-textarea-md'
-                placeholder='{"actions":[{"type":"image_url_to_base64","input_types":["anthropic.image_url","openai.image_url","openai.input_image"]}]}'
-                value={policyDraft.request_policy}
-                onChange={(e, { value }) =>
-                  setPolicyDraft((prev) => ({
-                    ...prev,
-                    request_policy: value || '',
-                  }))
-                }
-              />
-            </AppField>
-          </AppFormRow>
-          <AppFormRow>
-            <AppField
-              label={t('channel.edit.endpoint_policies.editor.response_policy')}
-            >
-              <AppTextarea
-                className='router-section-textarea router-code-textarea router-code-textarea-md'
-                placeholder='{}'
-                value={policyDraft.response_policy}
-                onChange={(e, { value }) =>
-                  setPolicyDraft((prev) => ({
-                    ...prev,
-                    response_policy: value || '',
-                  }))
-                }
-              />
-            </AppField>
-          </AppFormRow>
+          {usesRawPolicyJSON ? (
+            <>
+              <AppFormRow>
+                <AppField
+                  label={t('channel.edit.endpoint_policies.editor.capabilities')}
+                >
+                  <AppTextarea
+                    className='router-section-textarea router-code-textarea router-code-textarea-md'
+                    placeholder='{"input_image_url": false}'
+                    value={policyDraft.capabilities}
+                    onChange={(e, { value }) =>
+                      setPolicyDraft((prev) => ({
+                        ...prev,
+                        capabilities: value || '',
+                      }))
+                    }
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormRow>
+                <AppField
+                  label={t('channel.edit.endpoint_policies.editor.request_policy')}
+                >
+                  <AppTextarea
+                    className='router-section-textarea router-code-textarea router-code-textarea-md'
+                    placeholder='{"actions":[{"type":"image_url_to_base64","input_types":["anthropic.image_url","openai.image_url","openai.input_image"]}]}'
+                    value={policyDraft.request_policy}
+                    onChange={(e, { value }) =>
+                      setPolicyDraft((prev) => ({
+                        ...prev,
+                        request_policy: value || '',
+                      }))
+                    }
+                  />
+                </AppField>
+              </AppFormRow>
+              <AppFormRow>
+                <AppField
+                  label={t('channel.edit.endpoint_policies.editor.response_policy')}
+                >
+                  <AppTextarea
+                    className='router-section-textarea router-code-textarea router-code-textarea-md'
+                    placeholder='{}'
+                    value={policyDraft.response_policy}
+                    onChange={(e, { value }) =>
+                      setPolicyDraft((prev) => ({
+                        ...prev,
+                        response_policy: value || '',
+                      }))
+                    }
+                  />
+                </AppField>
+              </AppFormRow>
+            </>
+          ) : null}
         </div>
       </div>
     </AppModal>

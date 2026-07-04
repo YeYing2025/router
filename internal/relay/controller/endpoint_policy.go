@@ -105,31 +105,101 @@ type fetchedPolicyMedia struct {
 	DataURL  string
 }
 
+func ApplyEndpointRequestPolicy(c *gin.Context, meta *relaymeta.Meta, raw []byte) ([]byte, error) {
+	return applyEndpointRequestPolicy(c, meta, raw)
+}
+
+func ApplyEndpointAccessPolicies(c *gin.Context, meta *relaymeta.Meta) error {
+	if meta == nil {
+		return nil
+	}
+	ctx := context.Background()
+	if c != nil && c.Request != nil {
+		ctx = c.Request.Context()
+	}
+	for _, policy := range resolveEndpointPolicies(meta) {
+		if !policy.Enabled || adminmodel.NormalizeChannelEndpointPolicyTemplateKey(policy.TemplateKey) != adminmodel.ChannelEndpointPolicyTemplateOverrideEndpointBaseURL {
+			continue
+		}
+		accessPolicy, err := policy.ParseAccessPolicy()
+		if err != nil {
+			return newEndpointPolicyError("invalid_policy", http.StatusInternalServerError, "parse endpoint access policy failed: %v", err)
+		}
+		baseURL := strings.TrimRight(strings.TrimSpace(accessPolicy.BaseURL), "/")
+		if baseURL == "" {
+			continue
+		}
+		meta.BaseURL = baseURL
+		if c != nil {
+			c.Set(ctxkey.BaseURL, baseURL)
+		}
+		logger.Debugf(
+			ctx,
+			"[endpoint_policy_access] channel_id=%s model=%s endpoint=%s policy_id=%s base_url=%s",
+			strings.TrimSpace(meta.ChannelId),
+			strings.TrimSpace(meta.ActualModelName),
+			strings.TrimSpace(meta.UpstreamRequestPath),
+			strings.TrimSpace(policy.ID),
+			baseURL,
+		)
+	}
+	return nil
+}
+
+func resolveEndpointPolicies(meta *relaymeta.Meta) []adminmodel.ChannelModelEndpointPolicy {
+	if meta == nil {
+		return nil
+	}
+	if len(meta.EndpointPolicies) > 0 {
+		return meta.EndpointPolicies
+	}
+	if meta.EndpointPolicy != nil {
+		return []adminmodel.ChannelModelEndpointPolicy{*meta.EndpointPolicy}
+	}
+	return nil
+}
+
 func applyEndpointRequestPolicy(c *gin.Context, meta *relaymeta.Meta, raw []byte) ([]byte, error) {
-	if len(raw) == 0 || meta == nil || meta.EndpointPolicy == nil || !meta.EndpointPolicy.Enabled {
+	if len(raw) == 0 || meta == nil {
 		return raw, nil
 	}
-	requestPolicy, err := meta.EndpointPolicy.ParseRequestPolicy()
-	if err != nil {
-		return nil, newEndpointPolicyError("invalid_policy", http.StatusInternalServerError, "parse endpoint policy failed: %v", err)
-	}
-	if len(requestPolicy.Actions) == 0 {
+	policies := resolveEndpointPolicies(meta)
+	if len(policies) == 0 {
 		return raw, nil
 	}
 	payload := map[string]any{}
-	if err := json.Unmarshal(raw, &payload); err != nil {
-		return nil, newEndpointPolicyError("invalid_policy", http.StatusInternalServerError, "parse request payload failed: %v", err)
-	}
-	report := &endpointPolicyReport{policyID: strings.TrimSpace(meta.EndpointPolicy.ID)}
 	mediaCache := make(map[string]fetchedPolicyMedia)
 	changed := false
-	for _, action := range requestPolicy.Actions {
-		actionChanged, actionErr := applyEndpointPolicyAction(c, meta, payload, action, report, mediaCache)
-		if actionErr != nil {
-			return nil, actionErr
+	parsedPayload := false
+	for _, policy := range policies {
+		if !policy.Enabled || adminmodel.NormalizeChannelEndpointPolicyTemplateKey(policy.TemplateKey) == adminmodel.ChannelEndpointPolicyTemplateOverrideEndpointBaseURL {
+			continue
 		}
-		if actionChanged {
-			changed = true
+		requestPolicy, err := policy.ParseRequestPolicy()
+		if err != nil {
+			return nil, newEndpointPolicyError("invalid_policy", http.StatusInternalServerError, "parse endpoint policy failed: %v", err)
+		}
+		if len(requestPolicy.Actions) == 0 {
+			continue
+		}
+		if !parsedPayload {
+			if err := json.Unmarshal(raw, &payload); err != nil {
+				return nil, newEndpointPolicyError("invalid_policy", http.StatusInternalServerError, "parse request payload failed: %v", err)
+			}
+			parsedPayload = true
+		}
+		report := &endpointPolicyReport{policyID: strings.TrimSpace(policy.ID)}
+		for _, action := range requestPolicy.Actions {
+			actionChanged, actionErr := applyEndpointPolicyAction(c, meta, payload, action, report, mediaCache)
+			if actionErr != nil {
+				return nil, actionErr
+			}
+			if actionChanged {
+				changed = true
+			}
+		}
+		if len(report.actions) > 0 || len(report.changedFields) > 0 {
+			logEndpointPolicyReport(c, meta, report)
 		}
 	}
 	if !changed {
@@ -141,7 +211,6 @@ func applyEndpointRequestPolicy(c *gin.Context, meta *relaymeta.Meta, raw []byte
 	}
 	c.Set(ctxkey.KeyRequestBody, updatedRaw)
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(updatedRaw))
-	logEndpointPolicyReport(c, meta, report)
 	return updatedRaw, nil
 }
 

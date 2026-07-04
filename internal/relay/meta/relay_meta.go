@@ -25,6 +25,7 @@ type Meta struct {
 	EntitlementSourceName string
 	ModelMapping          map[string]string
 	ChannelModelConfigs   []model.ChannelModel
+	EndpointPolicies      []model.ChannelModelEndpointPolicy
 	EndpointPolicy        *model.ChannelModelEndpointPolicy
 	// BaseURL is the proxy url set in the channel config
 	BaseURL  string
@@ -79,7 +80,14 @@ func GetByContext(c *gin.Context) *Meta {
 	if ok {
 		meta.Config = cfg.(model.ChannelConfig)
 	}
-	if endpointBaseURL := model.CacheGetChannelModelEndpointBaseURL(
+	if policyBaseURL := model.CacheGetChannelModelEndpointAccessPolicyBaseURL(
+		meta.ChannelId,
+		c.Request.URL.Path,
+		meta.OriginModelName,
+	); policyBaseURL != "" {
+		meta.BaseURL = policyBaseURL
+		c.Set(ctxkey.BaseURL, policyBaseURL)
+	} else if endpointBaseURL := model.CacheGetChannelModelEndpointBaseURL(
 		meta.ChannelId,
 		c.Request.URL.Path,
 		meta.OriginModelName,

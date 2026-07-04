@@ -6,6 +6,7 @@ import (
 
 	"github.com/yeying-community/router/common/config"
 	"github.com/yeying-community/router/common/helper"
+	relaychannel "github.com/yeying-community/router/internal/relay/channel"
 	"github.com/yeying-community/router/internal/relay/relaymode"
 	"gorm.io/gorm"
 )
@@ -55,6 +56,62 @@ func NormalizeRequestedChannelModelEndpoint(path string) string {
 		return ChannelModelEndpointVideos
 	default:
 		return ""
+	}
+}
+
+func IsChannelModelEndpointRouteSupported(channelProtocol int, modelType string, endpoint string) bool {
+	normalizedEndpoint := NormalizeRequestedChannelModelEndpoint(endpoint)
+	if normalizedEndpoint == "" {
+		return false
+	}
+	switch normalizeModelType(modelType, "") {
+	case ProviderModelTypeImage:
+		switch normalizedEndpoint {
+		case ChannelModelEndpointImages, ChannelModelEndpointImageEdit, ChannelModelEndpointResponses, ChannelModelEndpointBatches:
+			return true
+		default:
+			return false
+		}
+	case ProviderModelTypeAudio:
+		switch normalizedEndpoint {
+		case ChannelModelEndpointAudio:
+			return true
+		case ChannelModelEndpointRealtime:
+			return isRealtimeEndpointRouteSupported(channelProtocol)
+		default:
+			return false
+		}
+	case ProviderModelTypeVideo:
+		return normalizedEndpoint == ChannelModelEndpointVideos
+	case ProviderModelTypeEmbedding:
+		return normalizedEndpoint == ChannelModelEndpointEmbeddings
+	default:
+		switch normalizedEndpoint {
+		case ChannelModelEndpointChat, ChannelModelEndpointResponses:
+			return true
+		case ChannelModelEndpointMessages:
+			return isMessagesEndpointRouteSupported(channelProtocol)
+		default:
+			return false
+		}
+	}
+}
+
+func isMessagesEndpointRouteSupported(channelProtocol int) bool {
+	switch channelProtocol {
+	case relaychannel.Anthropic, relaychannel.AwsClaude, relaychannel.DeepSeek, relaychannel.Zhipu:
+		return true
+	default:
+		return false
+	}
+}
+
+func isRealtimeEndpointRouteSupported(channelProtocol int) bool {
+	switch channelProtocol {
+	case relaychannel.OpenAI, relaychannel.Azure, relaychannel.Ali, relaychannel.Zhipu, relaychannel.VolcEngine:
+		return true
+	default:
+		return false
 	}
 }
 

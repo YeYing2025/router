@@ -94,16 +94,7 @@ const resolveEffectiveAPIBaseURL = (inputs, config) =>
 
 const CHANNEL_IDENTIFIER_PATTERN = /^[a-z0-9-]+$/;
 const CHANNEL_IDENTIFIER_MAX_LENGTH = 64;
-const CHANNEL_ENDPOINT_COLUMN_WIDTHS = [
-  '13%',
-  '13%',
-  '17%',
-  '7%',
-  '15%',
-  '19%',
-  '9%',
-  '7%',
-];
+const CHANNEL_ENDPOINT_COLUMN_WIDTHS = ['28%', '18%', '10%', '34%', '10%'];
 const CHANNEL_MODEL_TEST_GROUP_COLUMN_WIDTHS = [
   '4%',
   '15%',
@@ -529,6 +520,36 @@ const buildChannelEndpointKey = (modelName, endpoint) =>
     .toString()
     .trim()}`;
 
+const buildChannelEndpointPolicyKey = (modelName, endpoint, templateKey) =>
+  `${buildChannelEndpointKey(modelName, endpoint)}::${(templateKey || '')
+    .toString()
+    .trim()}`;
+
+const ENDPOINT_POLICY_TEMPLATE_CUSTOM_REQUEST_POLICY = 'CUSTOM_REQUEST_POLICY';
+const ENDPOINT_POLICY_TEMPLATE_OVERRIDE_BASE_URL = 'OVERRIDE_ENDPOINT_BASE_URL';
+
+const parseEndpointAccessPolicyBaseURL = (requestPolicy) => {
+  const raw = (requestPolicy || '').toString().trim();
+  if (raw === '') {
+    return '';
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return normalizeBaseURL(parsed?.base_url || '');
+  } catch {
+    return '';
+  }
+};
+
+const buildEndpointAccessPolicyJSON = (baseURL) =>
+  JSON.stringify(
+    {
+      base_url: normalizeBaseURL(baseURL || ''),
+    },
+    null,
+    2
+  );
+
 const normalizeChannelEndpointRows = (items) => {
   if (!Array.isArray(items)) {
     return [];
@@ -749,7 +770,8 @@ const normalizeChannelEndpointPolicyRows = (items) => {
     if (model === '' || endpoint === '') {
       return;
     }
-    const key = buildChannelEndpointKey(model, endpoint);
+    const templateKey = (item.template_key || '').toString().trim();
+    const key = buildChannelEndpointPolicyKey(model, endpoint, templateKey);
     if (seen.has(key)) {
       return;
     }
@@ -760,7 +782,7 @@ const normalizeChannelEndpointPolicyRows = (items) => {
       model,
       endpoint,
       enabled: item.enabled === true,
-      template_key: (item.template_key || '').toString().trim(),
+      template_key: templateKey,
       capabilities: prettyJSONString(item.capabilities),
       request_policy: prettyJSONString(item.request_policy),
       response_policy: prettyJSONString(item.response_policy),
@@ -782,7 +804,15 @@ const normalizeChannelEndpointPolicyRows = (items) => {
     if (leftOrder !== rightOrder) {
       return leftOrder - rightOrder;
     }
-    return left.endpoint.localeCompare(right.endpoint);
+    const endpointOrder = left.endpoint.localeCompare(right.endpoint);
+    if (endpointOrder !== 0) {
+      return endpointOrder;
+    }
+    const templateOrder = left.template_key.localeCompare(right.template_key);
+    if (templateOrder !== 0) {
+      return templateOrder;
+    }
+    return left.id.localeCompare(right.id);
   });
   return rows;
 };
@@ -792,18 +822,56 @@ const buildEmptyEndpointPolicyDraft = (channelId, modelName, endpoint) => ({
   channel_id: (channelId || '').toString().trim(),
   model: (modelName || '').toString().trim(),
   endpoint: (endpoint || '').toString().trim(),
+  endpoint_enabled: false,
+  endpoint_legacy_base_url: '',
+  access_base_url: '',
+  endpoint_enable_block_reason: '',
   enabled: true,
   template_key: '',
+  original_template_key: '',
   capabilities: '',
   request_policy: '',
   response_policy: '',
   reason: '',
   source: 'manual',
+  endpoint_policy_rows: [],
   last_verified_at: 0,
   updated_at: 0,
 });
 
 const ENDPOINT_POLICY_TEMPLATES = [
+  {
+    key: ENDPOINT_POLICY_TEMPLATE_OVERRIDE_BASE_URL,
+    value: ENDPOINT_POLICY_TEMPLATE_OVERRIDE_BASE_URL,
+    text: 'OVERRIDE_ENDPOINT_BASE_URL',
+    buildDraft: (prev = {}) => {
+      const baseURL = normalizeBaseURL(
+        prev.access_base_url || parseEndpointAccessPolicyBaseURL(prev.request_policy)
+      );
+      return {
+        template_key: ENDPOINT_POLICY_TEMPLATE_OVERRIDE_BASE_URL,
+        access_base_url: baseURL,
+        capabilities: '',
+        request_policy: buildEndpointAccessPolicyJSON(baseURL),
+        response_policy: '',
+        reason: '该端点使用独立访问地址',
+        source: 'manual',
+      };
+    },
+  },
+  {
+    key: ENDPOINT_POLICY_TEMPLATE_CUSTOM_REQUEST_POLICY,
+    value: ENDPOINT_POLICY_TEMPLATE_CUSTOM_REQUEST_POLICY,
+    text: 'CUSTOM_REQUEST_POLICY',
+    buildDraft: () => ({
+      template_key: ENDPOINT_POLICY_TEMPLATE_CUSTOM_REQUEST_POLICY,
+      capabilities: '',
+      request_policy: '',
+      response_policy: '',
+      reason: '',
+      source: 'manual',
+    }),
+  },
   {
     key: 'IMAGE_URL_TO_BASE64',
     value: 'IMAGE_URL_TO_BASE64',
@@ -1540,6 +1608,21 @@ const fetchChannelEndpointPolicies = async (channelId) => {
   return normalizeChannelEndpointPolicyRows(data?.items);
 };
 
+const deleteChannelEndpointPolicy = async (channelId, policyId) => {
+  const normalizedChannelId = (channelId || '').toString().trim();
+  const normalizedPolicyId = (policyId || '').toString().trim();
+  if (normalizedChannelId === '' || normalizedPolicyId === '') {
+    throw new Error('delete channel endpoint policy failed');
+  }
+  const res = await API.delete(
+    `/api/v1/admin/channel/${normalizedChannelId}/policies/${normalizedPolicyId}`
+  );
+  const { success, message } = res.data || {};
+  if (!success) {
+    throw new Error(message || 'delete channel endpoint policy failed');
+  }
+};
+
 const fetchActiveChannelTasks = async (channelId) => {
   const normalizedChannelId = (channelId || '').toString().trim();
   if (normalizedChannelId === '') {
@@ -2021,6 +2104,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
   const [channelEndpointPoliciesLoading, setChannelEndpointPoliciesLoading] =
     useState(false);
   const [channelEndpointPoliciesError, setChannelEndpointPoliciesError] =
+    useState('');
+  const [endpointPolicyDeletingKey, setEndpointPolicyDeletingKey] =
     useState('');
   const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
   const [policyEditorSaving, setPolicyEditorSaving] = useState(false);
@@ -2898,17 +2983,9 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     () =>
       t('channel.edit.endpoint_capabilities.summary', {
         total: endpointCapabilityStats.total,
-        configured: channelEndpointPolicies.length,
         capability_enabled: endpointCapabilityStats.enabled,
-        policy_enabled: channelEndpointPolicies.filter((row) => row.enabled)
-          .length,
       }),
-    [
-      channelEndpointPolicies,
-      endpointCapabilityStats.enabled,
-      endpointCapabilityStats.total,
-      t,
-    ]
+    [endpointCapabilityStats.enabled, endpointCapabilityStats.total, t]
   );
   const endpointCapabilityReadonly =
     !isDetailMode ||
@@ -4706,22 +4783,28 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       if (targetChannelId === '' || modelName === '' || endpoint === '') {
         return;
       }
-      const existingPolicy =
-        channelEndpointPolicies.find(
-          (item) => item.model === modelName && item.endpoint === endpoint
-        ) || null;
-      setPolicyDraft(
-        existingPolicy
-          ? {
-              ...existingPolicy,
-              channel_id: targetChannelId,
-              capabilities: prettyJSONString(existingPolicy.capabilities),
-              request_policy: prettyJSONString(existingPolicy.request_policy),
-              response_policy: prettyJSONString(existingPolicy.response_policy),
-            }
-          : buildEmptyEndpointPolicyDraft(targetChannelId, modelName, endpoint)
+      const endpointPolicies = channelEndpointPolicies.filter(
+        (item) => item.model === modelName && item.endpoint === endpoint
       );
-      setSelectedPolicyTemplate(existingPolicy?.template_key || '');
+      const legacyBaseURL = normalizeBaseURL(row?.base_url || '');
+      const baseDraft = buildEmptyEndpointPolicyDraft(
+        targetChannelId,
+        modelName,
+        endpoint
+      );
+      setPolicyDraft({
+        ...baseDraft,
+        template_key: '',
+        original_template_key: (baseDraft.template_key || '').toString().trim(),
+        endpoint_enabled: row?.enabled === true,
+        endpoint_legacy_base_url: legacyBaseURL,
+        endpoint_policy_rows: endpointPolicies,
+        access_base_url: legacyBaseURL,
+        endpoint_enable_block_reason: (row?.enable_block_reason || '')
+          .toString()
+          .trim(),
+      });
+      setSelectedPolicyTemplate('');
       setPolicyEditorOpen(true);
     },
     [channelEndpointPolicies, channelId]
@@ -4743,11 +4826,37 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     if (!template) {
       return;
     }
-    const patch = template.buildDraft();
-    setPolicyDraft((prev) => ({
-      ...prev,
-      ...patch,
-    }));
+    setPolicyDraft((prev) => {
+      const existingPolicy =
+        (Array.isArray(prev.endpoint_policy_rows)
+          ? prev.endpoint_policy_rows
+          : []
+        ).find(
+          (item) =>
+            (item.template_key || '').toString().trim() === templateValue
+        ) || null;
+      const patch = existingPolicy
+        ? {
+            ...existingPolicy,
+            capabilities: prettyJSONString(existingPolicy.capabilities),
+            request_policy: prettyJSONString(existingPolicy.request_policy),
+            response_policy: prettyJSONString(existingPolicy.response_policy),
+            access_base_url:
+              templateValue === ENDPOINT_POLICY_TEMPLATE_OVERRIDE_BASE_URL
+                ? parseEndpointAccessPolicyBaseURL(existingPolicy.request_policy)
+                : '',
+          }
+        : template.buildDraft(prev);
+      return {
+        ...prev,
+        id: existingPolicy ? existingPolicy.id : '',
+        ...patch,
+        template_key: templateValue,
+        original_template_key: existingPolicy
+          ? (existingPolicy.template_key || '').toString().trim()
+          : '',
+      };
+    });
     setSelectedPolicyTemplate(templateValue);
   }, []);
 
@@ -4762,34 +4871,85 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
       showError(t('channel.edit.endpoint_policies.invalid'));
       return;
     }
+    const templateKey = (policyDraft.template_key || '').toString().trim();
+    let requestPolicy = (policyDraft.request_policy || '').toString().trim();
+    let capabilities = (policyDraft.capabilities || '').toString().trim();
+    let responsePolicy = (policyDraft.response_policy || '').toString().trim();
+    if (templateKey === ENDPOINT_POLICY_TEMPLATE_OVERRIDE_BASE_URL) {
+      const baseURL = normalizeBaseURL(policyDraft.access_base_url || '');
+      if (baseURL === '') {
+        showError(t('channel.edit.endpoint_policies.editor.base_url_required'));
+        return;
+      }
+      requestPolicy = buildEndpointAccessPolicyJSON(baseURL);
+      capabilities = '';
+      responsePolicy = '';
+    }
     setPolicyEditorSaving(true);
     try {
-      const res = await API.put(
-        `/api/v1/admin/channel/${targetChannelId}/policies`,
+      const shouldSavePolicy =
+        (policyDraft.id || '').toString().trim() !== '' ||
+        [templateKey, capabilities, requestPolicy, responsePolicy, policyDraft.reason].some(
+          (value) => (value || '').toString().trim() !== ''
+        ) ||
+        policyDraft.enabled === false;
+      if (shouldSavePolicy && templateKey === '') {
+        showError(t('channel.edit.endpoint_policies.editor.template_required'));
+        return;
+      }
+      const endpointRes = await API.put(
+        `/api/v1/admin/channel/${targetChannelId}/endpoints`,
         {
-          id: (policyDraft.id || '').toString().trim(),
           model: modelName,
           endpoint,
-          enabled: !!policyDraft.enabled,
-          template_key: (policyDraft.template_key || '').toString().trim(),
-          capabilities: (policyDraft.capabilities || '').toString().trim(),
-          request_policy: (policyDraft.request_policy || '').toString().trim(),
-          response_policy: (policyDraft.response_policy || '')
-            .toString()
-            .trim(),
-          reason: (policyDraft.reason || '').toString(),
-          source: 'manual',
-          last_verified_at: Number(policyDraft.last_verified_at || 0),
+          base_url:
+            templateKey === ENDPOINT_POLICY_TEMPLATE_OVERRIDE_BASE_URL
+              ? ''
+              : normalizeBaseURL(policyDraft.endpoint_legacy_base_url || ''),
+          enabled: policyDraft.endpoint_enabled === true,
         }
       );
-      const { success, message } = res.data || {};
-      if (!success) {
-        showError(message || t('channel.edit.endpoint_policies.update_failed'));
+      const endpointResult = endpointRes.data || {};
+      if (!endpointResult.success) {
+        showError(
+          endpointResult.message ||
+            t('channel.edit.endpoint_capabilities.update_failed')
+        );
         return;
+      }
+      if (shouldSavePolicy) {
+        const res = await API.put(
+          `/api/v1/admin/channel/${targetChannelId}/policies`,
+          {
+            id: (policyDraft.id || '').toString().trim(),
+            model: modelName,
+            endpoint,
+            enabled: !!policyDraft.enabled,
+            template_key: templateKey,
+            capabilities,
+            request_policy: requestPolicy,
+            response_policy: responsePolicy,
+            reason: (policyDraft.reason || '').toString(),
+            source: 'manual',
+            last_verified_at: Number(policyDraft.last_verified_at || 0),
+          }
+        );
+        const { success, message } = res.data || {};
+        if (!success) {
+          showError(
+            message || t('channel.edit.endpoint_policies.update_failed')
+          );
+          return;
+        }
       }
       const nextPolicies = await loadChannelEndpointPoliciesFromServer(
         targetChannelId
       );
+      const nextEndpoints = await loadChannelEndpointsFromServer(
+        targetChannelId
+      );
+      setChannelEndpoints(normalizeChannelEndpointRows(nextEndpoints));
+      setChannelEndpointsError('');
       setChannelEndpointPolicies(
         normalizeChannelEndpointPolicyRows(nextPolicies)
       );
@@ -4805,11 +4965,58 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
     }
   }, [
     closeEndpointPolicyEditor,
+    loadChannelEndpointsFromServer,
     loadChannelEndpointPoliciesFromServer,
     policyDraft,
     policyEditorSaving,
     t,
   ]);
+
+  const removeEndpointPolicy = useCallback(
+    async (policyRow) => {
+      if (endpointPolicyReadonly) {
+        return;
+      }
+      const targetChannelId = (policyRow?.channel_id || channelId || '')
+        .toString()
+        .trim();
+      const policyID = (policyRow?.id || '').toString().trim();
+      if (targetChannelId === '' || policyID === '') {
+        showError(t('channel.edit.endpoint_policies.invalid'));
+        return;
+      }
+      setEndpointPolicyDeletingKey(policyID);
+      try {
+        await deleteChannelEndpointPolicy(targetChannelId, policyID);
+        const nextPolicies = await loadChannelEndpointPoliciesFromServer(
+          targetChannelId
+        );
+        const nextEndpoints = await loadChannelEndpointsFromServer(
+          targetChannelId
+        );
+        setChannelEndpointPolicies(
+          normalizeChannelEndpointPolicyRows(nextPolicies)
+        );
+        setChannelEndpointPoliciesError('');
+        setChannelEndpoints(normalizeChannelEndpointRows(nextEndpoints));
+        setChannelEndpointsError('');
+        showSuccess(t('channel.edit.endpoint_policies.remove_success'));
+      } catch (error) {
+        showError(
+          error?.message || t('channel.edit.endpoint_policies.remove_failed')
+        );
+      } finally {
+        setEndpointPolicyDeletingKey('');
+      }
+    },
+    [
+      channelId,
+      endpointPolicyReadonly,
+      loadChannelEndpointsFromServer,
+      loadChannelEndpointPoliciesFromServer,
+      t,
+    ]
+  );
 
   const toggleModelSelection = useCallback(
     async (upstreamModel, checked) => {
@@ -5989,6 +6196,8 @@ const ChannelForm = ({ mode = 'auto' } = {}) => {
                     channelEndpointPolicies={channelEndpointPolicies}
                     channelEndpointPoliciesError={channelEndpointPoliciesError}
                     endpointPolicyReadonly={endpointPolicyReadonly}
+                    endpointPolicyDeletingKey={endpointPolicyDeletingKey}
+                    removeEndpointPolicy={removeEndpointPolicy}
                     openEndpointPolicyEditor={openEndpointPolicyEditor}
                   />
                 )}
