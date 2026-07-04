@@ -1527,7 +1527,7 @@
       "visibility_scope_all": "Visible to All",
       "visibility_scope_partial_users": "Visible to Selected Users",
       "visible_users": "Visible Users",
-      "visible_users_placeholder": "Search and select users",
+      "visible_users_placeholder": "Search username or wallet address",
       "sale_price": "Sale Price",
       "sale_currency": "Sale Currency",
       "daily_quota_limit": "Daily Amount",

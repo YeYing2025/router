@@ -291,6 +291,110 @@ func TestValidateChannelModelTestEndpointAgainstProviderAllowsProviderEndpoint(t
 	}
 }
 
+func TestCreateChannelModelTestTasks_TargetConfigsAllowSameModelMultipleEndpoints(t *testing.T) {
+	previousDB := adminmodel.DB
+	t.Cleanup(func() {
+		adminmodel.DB = previousDB
+	})
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=private"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	adminmodel.DB = db
+	if err := db.AutoMigrate(
+		&adminmodel.Channel{},
+		&adminmodel.ChannelModel{},
+		&adminmodel.ChannelModelPriceComponent{},
+		&adminmodel.ChannelModelEndpoint{},
+		&adminmodel.ChannelModelEndpointTestResult{},
+		&adminmodel.ChannelTest{},
+		&adminmodel.AsyncTask{},
+		&adminmodel.ProviderModel{},
+		&adminmodel.ProviderModelPriceComponent{},
+	); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+	if err := db.Create(&adminmodel.Channel{
+		Id:       "channel-1",
+		Name:     "channel-1",
+		Protocol: "openai",
+		Status:   adminmodel.ChannelStatusEnabled,
+	}).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+	if err := db.Create(&adminmodel.ProviderModel{
+		Provider:           "openai",
+		Model:              "gpt-5.4",
+		Tags:               adminmodel.ProviderModelTypeText,
+		Status:             adminmodel.ProviderModelStatusActive,
+		SupportedEndpoints: strings.Join([]string{adminmodel.ChannelModelEndpointChat, adminmodel.ChannelModelEndpointResponses}, ","),
+	}).Error; err != nil {
+		t.Fatalf("create provider model: %v", err)
+	}
+	if err := db.Create(&adminmodel.ChannelModel{
+		ChannelId:     "channel-1",
+		Model:         "gpt-5.4",
+		UpstreamModel: "gpt-5.4",
+		Provider:      "openai",
+		Type:          adminmodel.ProviderModelTypeText,
+		Endpoint:      adminmodel.ChannelModelEndpointResponses,
+		Endpoints: []string{
+			adminmodel.ChannelModelEndpointChat,
+			adminmodel.ChannelModelEndpointResponses,
+		},
+		Selected: true,
+	}).Error; err != nil {
+		t.Fatalf("create channel model: %v", err)
+	}
+	for _, endpoint := range []string{
+		adminmodel.ChannelModelEndpointChat,
+		adminmodel.ChannelModelEndpointResponses,
+	} {
+		if err := db.Create(&adminmodel.ChannelModelEndpoint{
+			ChannelId: "channel-1",
+			Model:     "gpt-5.4",
+			Endpoint:  endpoint,
+			Enabled:   true,
+		}).Error; err != nil {
+			t.Fatalf("create channel endpoint %s: %v", endpoint, err)
+		}
+	}
+
+	tasks, createdCount, reusedCount, err := CreateChannelModelTestTasks(
+		"channel-1",
+		"admin",
+		"",
+		[]string{"gpt-5.4"},
+		[]channelModelTestTargetItem{
+			{
+				Model:    "gpt-5.4",
+				Endpoint: adminmodel.ChannelModelEndpointChat,
+			},
+			{
+				Model:    "gpt-5.4",
+				Endpoint: adminmodel.ChannelModelEndpointResponses,
+			},
+		},
+		"trace-1",
+		"",
+		"",
+		"",
+	)
+	if err != nil {
+		t.Fatalf("CreateChannelModelTestTasks returned error: %v", err)
+	}
+	if createdCount != 2 || reusedCount != 0 || len(tasks) != 2 {
+		t.Fatalf("created=%d reused=%d len(tasks)=%d, want 2/0/2", createdCount, reusedCount, len(tasks))
+	}
+	endpoints := map[string]bool{}
+	for _, task := range tasks {
+		endpoints[task.Endpoint] = true
+	}
+	if !endpoints[adminmodel.ChannelModelEndpointChat] || !endpoints[adminmodel.ChannelModelEndpointResponses] {
+		t.Fatalf("task endpoints=%v, want chat and responses", endpoints)
+	}
+}
+
 func TestRestoreRuntimeDisabledCapabilitiesAfterSuccessfulTests(t *testing.T) {
 	previousDB := adminmodel.DB
 	t.Cleanup(func() {

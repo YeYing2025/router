@@ -49,8 +49,6 @@ const ChannelDetailTestsTab = ({
   modelTestResultsByKey,
   buildModelTestResultKey,
   activeChannelTasksByModel,
-  getEndpointOptionsForModel,
-  updateModelTestEndpoint,
   modelTesting,
   modelTestingScope,
   modelTestingTargetSet,
@@ -60,7 +58,6 @@ const ChannelDetailTestsTab = ({
   openChannelTaskView,
   selectedModelTestHasActiveTasks,
   timestamp2string,
-  updateAllModelTestEndpoints,
   updateAllModelTestStreams,
   resolvePreferredProviderForModel,
   normalizeChannelModelType,
@@ -84,6 +81,14 @@ const ChannelDetailTestsTab = ({
   if (inputs.protocol === 'proxy') {
     return null;
   }
+
+  const getRowTestKey = (row) =>
+    (row?.test_key || buildModelTestResultKey(row?.model, row?.endpoint || ''))
+      .toString()
+      .trim();
+
+  const getRowEndpoint = (row) =>
+    (row?.endpoint || getEffectiveModelEndpoint(row) || '').toString().trim();
 
   const rowsWithMeta = useMemo(
     () =>
@@ -215,8 +220,8 @@ const ChannelDetailTestsTab = ({
     [providerFilter, rowsWithMeta, typeFilter],
   );
 
-  const filteredModelIDs = useMemo(
-    () => filteredRows.map((row) => row.model),
+  const filteredTargetKeys = useMemo(
+    () => filteredRows.map((row) => getRowTestKey(row)).filter(Boolean),
     [filteredRows],
   );
   const filteredTargetSet = useMemo(
@@ -225,32 +230,13 @@ const ChannelDetailTestsTab = ({
   );
   const filteredAllSelected =
     filteredRows.length > 0 &&
-    filteredRows.every((row) => filteredTargetSet.has(row.model));
+    filteredRows.every((row) => filteredTargetSet.has(getRowTestKey(row)));
   const filteredPartiallySelected =
     !filteredAllSelected &&
-    filteredRows.some((row) => filteredTargetSet.has(row.model));
+    filteredRows.some((row) => filteredTargetSet.has(getRowTestKey(row)));
   const filteredSelectedCount = filteredRows.filter((row) =>
-    filteredTargetSet.has(row.model),
+    filteredTargetSet.has(getRowTestKey(row)),
   ).length;
-
-  const batchEndpointOptions = useMemo(() => {
-    const map = new Map();
-    filteredRows.forEach((row) => {
-      getEndpointOptionsForModel(row).forEach((option) => {
-        if (!map.has(option.value)) {
-          map.set(option.value, option);
-        }
-      });
-    });
-    return Array.from(map.values());
-  }, [filteredRows, getEndpointOptionsForModel]);
-
-  const batchEndpointValue = useMemo(() => {
-    const endpointSet = new Set(
-      filteredRows.map((row) => getEffectiveModelEndpoint(row)).filter(Boolean),
-    );
-    return endpointSet.size === 1 ? Array.from(endpointSet)[0] || '' : '';
-  }, [filteredRows, getEffectiveModelEndpoint]);
 
   const disabledBase = detailTestingReadonly || detailModelMutating;
   const streamCapableRows = useMemo(
@@ -269,8 +255,8 @@ const ChannelDetailTestsTab = ({
   }, [streamCapableRows]);
   const hasResponsesTestRows = useMemo(
     () =>
-      filteredRows.some((row) => getEffectiveModelEndpoint(row) === '/v1/responses'),
-    [filteredRows, getEffectiveModelEndpoint],
+      filteredRows.some((row) => getRowEndpoint(row) === '/v1/responses'),
+    [filteredRows],
   );
 
   const resultSummaryByKey = useMemo(() => {
@@ -316,19 +302,20 @@ const ChannelDetailTestsTab = ({
 
   const toggleFilteredTargets = (checked) => {
     const targetSet = new Set(filteredTargetSet);
-    filteredModelIDs.forEach((model) => {
+    filteredTargetKeys.forEach((targetKey) => {
       if (checked) {
-        targetSet.add(model);
+        targetSet.add(targetKey);
       } else {
-        targetSet.delete(model);
+        targetSet.delete(targetKey);
       }
     });
     const nextSelected = Array.from(targetSet);
     modelTestRows.forEach((row) => {
-      const shouldSelect = nextSelected.includes(row.model);
-      const isSelected = filteredTargetSet.has(row.model);
+      const targetKey = getRowTestKey(row);
+      const shouldSelect = nextSelected.includes(targetKey);
+      const isSelected = filteredTargetSet.has(targetKey);
       if (shouldSelect !== isSelected) {
-        toggleModelTestTarget(row.model, shouldSelect);
+        toggleModelTestTarget(targetKey, shouldSelect);
       }
     });
   };
@@ -350,7 +337,7 @@ const ChannelDetailTestsTab = ({
           disabled: disabledBase,
         }),
         onSelect: (record, selected) => {
-          toggleModelTestTarget(record.model, selected);
+          toggleModelTestTarget(getRowTestKey(record), selected);
         },
         onSelectAll: (selected) => {
           toggleFilteredTargets(selected);
@@ -397,20 +384,6 @@ const ChannelDetailTestsTab = ({
                 if (nextValue !== '') {
                   window.localStorage.setItem(typeStorageKey, nextValue);
                 }
-              }}
-            />
-            <AppSelect
-              clearable
-              className='router-section-dropdown router-detail-filter-dropdown router-dropdown-min-170'
-              options={batchEndpointOptions}
-              value={batchEndpointValue || undefined}
-              disabled={disabledBase || batchEndpointOptions.length === 0}
-              placeholder={t('channel.edit.model_tester.table.batch_set')}
-              onChange={(e, { value }) => {
-                if ((value || '').toString().trim() === '') {
-                  return;
-                }
-                updateAllModelTestEndpoints(value, filteredModelIDs);
               }}
             />
             <AppPopover
@@ -595,7 +568,7 @@ const ChannelDetailTestsTab = ({
                 : 'channel.edit.model_selector.empty_filtered',
             ),
           }}
-          rowKey={(row) => row.model}
+          rowKey={(row) => getRowTestKey(row)}
           dataSource={filteredRows}
           columns={[
             {
@@ -617,25 +590,15 @@ const ChannelDetailTestsTab = ({
               key: 'endpoint',
               width: displayedColumnWidths[batchSelectionMode ? 2 : 1],
               render: (_, row) => {
-                const normalizedEndpoint = getEffectiveModelEndpoint(row);
-                if (
-                  row.type === 'text' ||
-                  row.type === 'image' ||
-                  row.type === 'audio'
-                ) {
-                  return (
-                    <AppSelect
-                      className='router-mini-dropdown router-table-dropdown-fluid'
-                      options={getEndpointOptionsForModel(row)}
-                      disabled={disabledBase}
-                      value={normalizedEndpoint}
-                      onChange={(e, { value }) =>
-                        updateModelTestEndpoint(row.model, value)
-                      }
-                    />
-                  );
-                }
-                return normalizedEndpoint || row.endpoint || '-';
+                const normalizedEndpoint = getRowEndpoint(row);
+                return (
+                  <span
+                    className='router-cell-truncate'
+                    title={normalizedEndpoint || '-'}
+                  >
+                    {normalizedEndpoint || '-'}
+                  </span>
+                );
               },
             },
             {
@@ -643,11 +606,13 @@ const ChannelDetailTestsTab = ({
               key: 'status',
               width: displayedColumnWidths[batchSelectionMode ? 3 : 2],
               render: (_, row) => {
-                const normalizedEndpoint = getEffectiveModelEndpoint(row);
+                const normalizedEndpoint = getRowEndpoint(row);
+                const rowTestKey = getRowTestKey(row);
                 const item = modelTestResultsByKey.get(
                   buildModelTestResultKey(row.model, normalizedEndpoint),
                 );
-                const activeTask = activeChannelTasksByModel.get(row.model) || null;
+                const activeTask =
+                  activeChannelTasksByModel.get(rowTestKey) || null;
                 const endpointSummary =
                   resultSummaryByKey.get(
                     buildModelTestResultKey(row.model, normalizedEndpoint),
@@ -686,13 +651,18 @@ const ChannelDetailTestsTab = ({
               key: 'recent_test',
               width: displayedColumnWidths[batchSelectionMode ? 4 : 3],
               render: (_, row) => {
-                const normalizedEndpoint = getEffectiveModelEndpoint(row);
+                const normalizedEndpoint = getRowEndpoint(row);
+                const rowTestKey = getRowTestKey(row);
                 const item = modelTestResultsByKey.get(
                   buildModelTestResultKey(row.model, normalizedEndpoint),
                 );
-                const activeTask = activeChannelTasksByModel.get(row.model) || null;
+                const activeTask =
+                  activeChannelTasksByModel.get(rowTestKey) || null;
                 const effectiveStatus = normalizeRecentTestStatus(
-                  activeTask?.status || item?.status || row?.last_test_status,
+                  activeTask?.status ||
+                    item?.status ||
+                    row?.endpoint_last_test_status ||
+                    row?.last_test_status,
                 );
                 const tagColor =
                   effectiveStatus === 'running'
@@ -716,7 +686,7 @@ const ChannelDetailTestsTab = ({
               key: 'latency',
               width: displayedColumnWidths[batchSelectionMode ? 5 : 4],
               render: (_, row) => {
-                const normalizedEndpoint = getEffectiveModelEndpoint(row);
+                const normalizedEndpoint = getRowEndpoint(row);
                 const endpointSummary =
                   resultSummaryByKey.get(
                     buildModelTestResultKey(row.model, normalizedEndpoint),
@@ -740,13 +710,14 @@ const ChannelDetailTestsTab = ({
               key: 'tested_at',
               width: displayedColumnWidths[batchSelectionMode ? 6 : 5],
               render: (_, row) => {
-                const normalizedEndpoint = getEffectiveModelEndpoint(row);
+                const normalizedEndpoint = getRowEndpoint(row);
                 const item = modelTestResultsByKey.get(
                   buildModelTestResultKey(row.model, normalizedEndpoint),
                 );
+                const testedAt = item?.tested_at || row?.endpoint_last_tested_at || 0;
                 return (
                   <span className='router-nowrap'>
-                    {item?.tested_at > 0 ? timestamp2string(item.tested_at) : '-'}
+                    {testedAt > 0 ? timestamp2string(testedAt) : '-'}
                   </span>
                 );
               },
@@ -756,7 +727,9 @@ const ChannelDetailTestsTab = ({
                 key: 'actions',
                 width: displayedColumnWidths[batchSelectionMode ? 7 : 6],
                 render: (_, row) => {
-                  const activeTask = activeChannelTasksByModel.get(row.model) || null;
+                  const rowTestKey = getRowTestKey(row);
+                  const activeTask =
+                    activeChannelTasksByModel.get(rowTestKey) || null;
                   return (
                   <div className='router-inline-actions router-table-actions-icon-compact'>
                     <AppTableActionButton
@@ -765,18 +738,18 @@ const ChannelDetailTestsTab = ({
                       loading={
                         (modelTesting &&
                           modelTestingScope === 'single' &&
-                          modelTestingTargetSet.has(row.model)) ||
+                          modelTestingTargetSet.has(rowTestKey)) ||
                         !!activeTask
                       }
                       disabled={
                         disabledBase ||
                         modelTesting ||
                         batchSelectionMode ||
-                        activeChannelTasksByModel.has(row.model)
+                        activeChannelTasksByModel.has(rowTestKey)
                       }
                       onClick={() =>
                         handleRunModelTests({
-                          targetModels: [row.model],
+                          targetModels: [rowTestKey],
                           scope: 'single',
                         })
                       }
@@ -788,6 +761,7 @@ const ChannelDetailTestsTab = ({
                         openChannelTaskView({
                           type: 'channel_model_test',
                           model: row.model,
+                          endpoint: getRowEndpoint(row),
                         })
                       }
                     />

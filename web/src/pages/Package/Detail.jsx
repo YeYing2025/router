@@ -99,7 +99,9 @@ const toUserOption = (item) => {
   return {
     key: id,
     value: id,
-    text: [primaryName, secondaryName].filter(Boolean).join(' / ') || id,
+    text:
+      [primaryName, secondaryName, walletAddress].filter(Boolean).join(' / ') ||
+      id,
     wallet_address: walletAddress,
   };
 };
