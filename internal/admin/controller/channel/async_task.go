@@ -273,7 +273,18 @@ func enqueueInsufficientBalanceRecoveryTest(channelRow *model.Channel, traceID s
 	if channelRow == nil || strings.TrimSpace(channelRow.Id) == "" {
 		return false, nil
 	}
-	targetRows := resolveChannelTestTargetModels(channelRow, channelModelTestModeSingle, "", nil)
+	channelID := strings.TrimSpace(channelRow.Id)
+	fullChannelRow, err := channelsvc.GetByID(channelID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	if fullChannelRow.Status != model.ChannelStatusAutoDisabled {
+		return false, nil
+	}
+	targetRows := resolveChannelTestTargetModels(fullChannelRow, channelModelTestModeSingle, "", nil)
 	if len(targetRows) == 0 {
 		return false, nil
 	}
@@ -284,7 +295,7 @@ func enqueueInsufficientBalanceRecoveryTest(channelRow *model.Channel, traceID s
 		return false, err
 	}
 	_, createdCount, _, err := CreateChannelModelTestTasks(
-		channelRow.Id,
+		channelID,
 		"channel_recovery",
 		modelID,
 		[]string{modelID},
